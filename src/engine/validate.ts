@@ -83,7 +83,7 @@ export function migrateProject(data: Record<string, unknown>): Record<string, un
       bracket: null, groupId: null, scheduledAt: null, venue: null, ...m,
     }));
     const t = data['tournament'] as Record<string, unknown>;
-    return { audit: [], groups: [], settings: { autosave: true, confirmDestructive: true, theme: 'light' }, ...data, tournament: t, matches: ms };
+    return { audit: [], groups: [], resources: [], settings: { autosave: true, confirmDestructive: true, theme: 'light' }, ...data, tournament: t, matches: ms };
   }
   // v0 (pre-release): bare { tournament, participants, matches } — upgrade.
   const d = data;

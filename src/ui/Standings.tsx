@@ -1,9 +1,9 @@
 import { useApp } from '../state/store';
 import { useMemo, useState } from 'react';
 import { computeStandings } from '../engine/standings';
-import { pickQualifiers, seedKnockout, QualifierPick } from '../engine/generate';
-import { genSingleElim } from '../engine/elim';
-import { recomputeBracket } from '../engine/recompute';
+import { pickQualifiers } from '../engine/generate';
+import { planKnockout, applyPlan, KnockoutPlan } from '../engine/ko-plan';
+import { uid } from '../engine/types';
 
 export default function Standings() {
   const { domain, standings, update, go } = useApp();
@@ -12,6 +12,8 @@ export default function Standings() {
   const [perGroup, setPerGroup] = useState(domain.tournament.rules.advancePerGroup ?? 2);
   const [wildcards, setWildcards] = useState(0);
   const [err, setErr] = useState('');
+  const [plan, setPlan] = useState<KnockoutPlan | null>(null);
+
   const groupTables = useMemo(() => {
     const m = new Map<string, ReturnType<typeof computeStandings>>();
     if (!isGroups) return m;
@@ -23,35 +25,48 @@ export default function Standings() {
     }
     return m;
   }, [domain, isGroups]);
-  const preview: QualifierPick[] = useMemo(() => {
+  const preview = useMemo(() => {
     if (!isGroups) return [];
     return pickQualifiers(domain.groups, groupTables, { perGroup, wildcards });
   }, [domain.groups, groupTables, isGroups, perGroup, wildcards]);
   const groupDone = (gid: string) =>
     domain.matches.filter(m => m.groupId === gid && ['played','draw','walkover','overtime'].includes(m.result.status)).length;
   const groupTotal = (gid: string) => domain.matches.filter(m => m.groupId === gid && m.result.status !== 'bye').length;
-  const advance = () => {
+
+  // Step 1 — build the plan and show it. Nothing in the project changes yet.
+  const buildPlan = () => {
     setErr('');
-    if (preview.length < 2) { setErr('Need at least 2 qualifiers to build a knockout stage.'); return; }
-    const existingKo = domain.matches.filter(m => !m.groupId && m.bracket?.kind === 'winners');
-    if (existingKo.some(m => ['played','draw','walkover','overtime'].includes(m.result.status))) {
-      if (!window.confirm('A knockout stage already exists with entered results. Re-seeding will discard them. Continue?')) return;
-    }
-    const seeded = seedKnockout(preview, domain.participants);
-    const ko = genSingleElim(seeded, domain.tournament.rules, { order: 'given' });
-    const groupMatches = domain.matches.filter(m => m.groupId);
-    const roundOffset = groupMatches.reduce((mx, m) => Math.max(mx, m.round), 0);
-    // offset KO rounds past group rounds so schedule/bracket grouping never mixes them
-    const koMatches = ko.matches.map(m => ({ ...m, round: m.round + roundOffset, roundName: 'KO ' + m.roundName }));
-    const matches = recomputeBracket([...groupMatches, ...koMatches]);
-    update(() => ({ tournament: domain.tournament, participants: domain.participants, groups: domain.groups, matches, audit: domain.audit }),
-      `knockout.seed groups(${domain.groups.length}) perGroup=${perGroup} wild=${wildcards} qualifiers=${preview.length}`);
+    const p = planKnockout({
+      groups: domain.groups,
+      standingsByGroup: groupTables,
+      participants: domain.participants,
+      rules: domain.tournament.rules,
+      options: { perGroup, wildcards },
+      existingMatches: domain.matches,
+    });
+    if (p.reason) { setPlan(null); setErr(p.reason); return; }
+    setPlan(p);
+  };
+  // Step 2 — the organizer confirms; cancelling simply closes the plan.
+  const confirmPlan = () => {
+    if (!plan) return;
+    const next = applyPlan(domain, plan, domain.tournament.rules);
+    update(() => ({
+      tournament: { ...next.tournament, updatedAt: new Date().toISOString() },
+      participants: next.participants, groups: next.groups, matches: next.matches,
+      audit: [...domain.audit, { id: uid('a'), at: new Date().toISOString(), action: 'knockout.seeded', detail: `${plan.qualifiers.length} qualifiers` }],
+      resources: domain.resources ?? [],
+    }), `knockout.seed qualifiers=${plan.qualifiers.length}`);
+    setPlan(null);
     go('bracket');
   };
+
   const finish = () => {
     if (!window.confirm('Archive this tournament as finished? You can still reopen it.')) return;
     update(d => ({ ...d, tournament: { ...d.tournament, archived: true } }), 'tournament.finished');
   };
+  const rounds = plan ? [...new Set(plan.matches.map(m => m.round))].sort((a, b) => a - b) : [];
+
   return (
     <div className="wrap">
       <h1>Standings &amp; final ranking</h1>
@@ -78,8 +93,59 @@ export default function Standings() {
             <span className="muted">Qualifiers: {preview.length ? preview.map(q => names.get(q.participantId)).join(', ') : '—'}</span>
           </div>
           <div className="row" style={{ marginTop: 8 }}>
-            <button className="btn primary" onClick={advance} disabled={preview.length < 2}>Seed knockout from standings</button>
-            <span className="muted">Group results are kept; KO bracket is appended as “KO …” rounds.</span>
+            <button className="btn primary" onClick={buildPlan} disabled={preview.length < 2}>Preview knockout stage</button>
+            <span className="muted">Shows the qualifiers and the bracket first — nothing is created until you confirm.</span>
+          </div>
+        </div>
+      )}
+
+      {plan && (
+        <div className="card">
+          <h3>Knockout preview — nothing saved yet</h3>
+          <div className="grid2">
+            <div>
+              <h4>Who advances ({plan.qualifiers.length})</h4>
+              <table><thead><tr><th>Seed</th><th>Who</th><th>From</th><th>Pts</th></tr></thead>
+                <tbody>{plan.qualifiers.map(q => (
+                  <tr key={q.participantId}>
+                    <td>#{q.seed}</td><td>{q.name}</td>
+                    <td className="muted">{q.fromGroup}{q.groupRank ? ` (${q.groupRank})` : ''}</td>
+                    <td>{q.points}</td>
+                  </tr>
+                ))}</tbody></table>
+              <p className="muted" style={{ fontSize: 13 }}>
+                Seeding is deterministic: qualifiers are ordered by their tiebreak order
+                (points, wins, goal difference, goals scored, seed, name) and standard seeding
+                pairs {plan.qualifiers.length > 1 ? `#1 vs #${plan.qualifiers.length}` : ''}.
+              </p>
+              {plan.droppedKoMatches > 0 && (
+                <div className="warn">
+                  This replaces the {plan.droppedKoMatches} existing knockout match(es) — group results are kept.
+                </div>
+              )}
+            </div>
+            <div>
+              <h4>Bracket that will be created</h4>
+              {rounds.length === 0 && <div className="muted">No rounds.</div>}
+              {rounds.map(r => (
+                <div key={r} style={{ marginBottom: 10 }}>
+                  <b>{plan.matches.find(m => m.round === r)?.roundName ?? `KO round ${r}`}</b>
+                  {plan.matches.filter(m => m.round === r).map(m => (
+                    <div className="bmatch" key={m.id}>
+                      <div className="nm">
+                        <span>{m.homeId ? names.get(m.homeId) ?? 'Unknown' : 'TBD'}</span>
+                        <span>{m.awayId ? names.get(m.awayId) ?? 'Unknown' : 'TBD'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="row" style={{ marginTop: 8 }}>
+            <button className="btn primary" onClick={confirmPlan}>Create knockout stage</button>
+            <button className="btn" onClick={() => setPlan(null)}>Cancel</button>
+            <span className="muted">Cancelling changes nothing — the plan is only a preview.</span>
           </div>
         </div>
       )}

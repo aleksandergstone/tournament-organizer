@@ -16,7 +16,7 @@ export default function Export() {
   const names = new Map(domain.participants.map(p => [p.id, p.name]));
   const t = domain.tournament;
   const played = domain.matches.filter(m => ['played','draw','walkover','overtime'].includes(m.result.status)).length;
-  const projectText = () => serializeProject({ tournament: domain.tournament, participants: domain.participants, groups: domain.groups, matches: domain.matches, audit: domain.audit, settings: { autosave: true, confirmDestructive: true, theme: 'light' } });
+  const projectText = () => serializeProject({ tournament: domain.tournament, participants: domain.participants, groups: domain.groups, matches: domain.matches, audit: domain.audit, resources: domain.resources ?? [], settings: { autosave: true, confirmDestructive: true, theme: 'light' } });
   const saveFile = async () => {
     setErr('');
     try {

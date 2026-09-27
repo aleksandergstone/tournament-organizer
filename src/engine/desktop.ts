@@ -10,6 +10,25 @@ export interface DesktopBridge {
   readonly available: boolean;
   saveText(filename: string, text: string): Promise<string | null>;
   openText(): Promise<{ path: string; text: string } | null>;
+  /** Opens the read-only Display Mode in a second window (desktop only). */
+  openDisplay(fullscreen?: boolean): Promise<boolean>;
+  /** LAN sync: host side (needs the desktop app; a browser cannot listen on a port). */
+  lanStart(): Promise<LanInfo>;
+  lanStop(): Promise<void>;
+  lanStatus(): Promise<LanInfo>;
+  lanPublish(payload: unknown): Promise<boolean>;
+  lanInbox(): Promise<{ receivedAt: string; payload: unknown }[]>;
+  /** LAN sync: client side — plain HTTP against a host on the same network. */
+  lanPull(baseUrl: string): Promise<unknown>;
+  lanPush(baseUrl: string, payload: unknown): Promise<void>;
+}
+
+export interface LanInfo {
+  ok: boolean;
+  error?: string;
+  port?: number;
+  addresses?: string[];
+  urls?: string[];
 }
 
 type SaveResult = { path?: string; canceled?: true; error?: string };
@@ -19,7 +38,21 @@ declare global {
   interface Window { toDesktop?: {
     saveText(f: string, t: string): Promise<SaveResult | string | null>;
     openText(): Promise<OpenResult | { path: string; text: string } | null>;
+    openDisplay(fullscreen?: boolean): Promise<{ ok?: boolean; error?: string }>;
+    lanStart(): Promise<LanInfo>;
+    lanStop(): Promise<{ ok: boolean }>;
+    lanStatus(): Promise<LanInfo>;
+    lanPublish(payload: unknown): Promise<{ ok: boolean }>;
+    lanInbox(): Promise<{ items: { receivedAt: string; payload: unknown }[] }>;
   }; }
+}
+
+/** Normalizes a LAN address typed by the user (adds scheme, strips trailing /). */
+export function lanBase(input: string): string {
+  const t = (input ?? '').trim();
+  if (!t) return '';
+  const withScheme = /^https?:\/\//i.test(t) ? t : `http://${t}`;
+  return withScheme.replace(/\/+$/, '');
 }
 
 export const desktop: DesktopBridge = {
@@ -62,5 +95,69 @@ export const desktop: DesktopBridge = {
       };
       inp.click();
     });
+  },
+
+  // ---- Display Mode -------------------------------------------------------
+  async openDisplay(fullscreen) {
+    if (!window.toDesktop) return false; // browser: use the Display screen in this tab
+    const r = await window.toDesktop.openDisplay(fullscreen);
+    if (r && r.error) throw new Error(r.error);
+    return !!(r && r.ok);
+  },
+
+  // ---- LAN sync: host -----------------------------------------------------
+  async lanStart() {
+    if (!window.toDesktop) return { ok: false, error: 'Sharing needs the desktop app — a browser cannot open a port.' };
+    const r = await window.toDesktop.lanStart();
+    if (r && r.error) throw new Error(r.error);
+    return r;
+  },
+  async lanStop() {
+    if (!window.toDesktop) return;
+    await window.toDesktop.lanStop();
+  },
+  async lanStatus() {
+    if (!window.toDesktop) return { ok: false, error: 'LAN sync needs the desktop app.' };
+    return window.toDesktop.lanStatus();
+  },
+  async lanPublish(payload) {
+    if (!window.toDesktop) return false;
+    const r = await window.toDesktop.lanPublish(payload);
+    return !!(r && r.ok);
+  },
+  async lanInbox() {
+    if (!window.toDesktop) return [];
+    const r = await window.toDesktop.lanInbox();
+    return (r && r.items) || [];
+  },
+
+  // ---- LAN sync: client (works in browser and desktop) --------------------
+  async lanPull(baseUrl) {
+    const base = lanBase(baseUrl);
+    if (!base) throw new Error('Enter the address of the device that is sharing.');
+    let res: Response;
+    try {
+      res = await fetch(`${base}/api/state`, { headers: { Accept: 'application/json' } });
+    } catch {
+      throw new Error(`No answer from ${base} — check the address, Wi-Fi and any firewall prompt.`);
+    }
+    if (res.status === 503) throw new Error('That device is not sharing a project yet.');
+    if (!res.ok) throw new Error(`Could not read shared data (HTTP ${res.status}).`);
+    return res.json();
+  },
+  async lanPush(baseUrl, payload) {
+    const base = lanBase(baseUrl);
+    if (!base) throw new Error('Enter the address of the device that is sharing.');
+    let res: Response;
+    try {
+      res = await fetch(`${base}/api/state`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      throw new Error(`Could not reach ${base} — check the address, Wi-Fi and any firewall prompt.`);
+    }
+    if (!res.ok) throw new Error(`The other device refused the update (HTTP ${res.status}).`);
   },
 };

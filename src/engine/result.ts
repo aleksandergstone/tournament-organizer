@@ -63,7 +63,10 @@ export function recordResult(
   const hard = v.filter(i => i.field === 'score' || i.field === 'walkover');
   if (hard.length) return { matches, issues: hard.map(i => i.message) };
   r = stampVs(r, m.homeId, m.awayId);
-  const next = matches.map(x => (x.id === matchId ? { ...x, result: r } : x));
+  // Stamp the edit time: LAN sync resolves conflicting results by newest edit.
+  const next = matches.map(x => (x.id === matchId
+    ? { ...x, result: r, modifiedAt: new Date().toISOString() }
+    : x));
   return { matches: recomputeBracket(next), issues: [] };
 }
 

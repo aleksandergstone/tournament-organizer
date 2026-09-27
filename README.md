@@ -66,6 +66,25 @@ Tournament data lives in the app's local storage on the computer where you creat
 no account, no sync and no analytics — nothing leaves your machine unless you export it
 yourself. See [PRIVACY.md](PRIVACY.md).
 
+## Event operations (new in 1.1)
+
+- **Display** — a big read-only screen for a projector or TV: current match, what is
+  next, the top five and a live clock. Open it in a second window or full screen; it
+  updates by itself and holds no organizer controls.
+- **Schedule** — define your courts, tables or stations and put matches on them with a
+  start time and a duration. Conflicts are listed, and *Fill free slots* plans a day
+  without double-booking anything.
+- **QR codes** — print check-in codes per participant, a code per match and per station.
+  Scanning one opens the app on that exact participant or match. Codes are generated
+  locally; nothing is uploaded.
+- **Settings → Event operations** — share the project on the local network so a second
+  or third device (referee, display, laptop) can receive or send it. No account, no
+  internet; merges are per match, newest edit wins, and every merge is undoable.
+- **Standings** — *Preview knockout stage* shows who advances, in what order, and the
+  bracket that will be created. Nothing is created until you confirm.
+
+Full walkthrough: [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
+
 ## Support
 
 - **Bug or idea:** open an issue in the repository (templates included).

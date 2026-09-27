@@ -1,6 +1,9 @@
 const { app, BrowserWindow, dialog, ipcMain, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const os = require('os');
+const dgram = require('dgram');
 
 // --- App identity -----------------------------------------------------------
 const APP_TITLE = 'Tournament Organizer';
@@ -104,6 +107,66 @@ if (gotLock) app.whenReady().then(create);
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) create(); });
 
+// --- Display Mode window ----------------------------------------------------
+// A second, read-only window on the same data — for a projector or TV.
+ipcMain.handle('window:open-display', (_e, fullscreen) => {
+  const index = path.join(__dirname, '..', 'dist', 'index.html');
+  if (!fs.existsSync(index)) return { error: 'Build the app first (npm run build).' };
+  const icon = path.join(__dirname, '..', 'build', 'icon.png');
+  const w = new BrowserWindow({
+    width: 1280, height: 760, minWidth: 800, minHeight: 500,
+    backgroundColor: '#0b1220',
+    title: `${APP_TITLE} — Display`,
+    icon: fs.existsSync(icon) ? icon : undefined,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.cjs'),
+    },
+  });
+  w.loadFile(index, { hash: 'display' });
+  if (fullscreen) w.setFullScreen(true);
+  return { ok: true };
+});
+
+// --- LAN sync host ----------------------------------------------------------
+// Opt-in, local network only: a small HTTP server the renderer feeds with the
+// current project. Devices on the same LAN pull it or push their own state.
+// No internet, no accounts, no cloud. A UDP beacon helps devices find each
+// other; typing the address by hand always works too.
+const SYNC_PORT = 8971;
+const BEACON_PORT = 8970;
+let lanServer = null;
+let beacon = null;
+let beaconTimer = null;
+let published = null;      // last state published by the renderer
+let inbox = [];            // states pushed by other devices, waiting to merge
+
+function lanAddresses() {
+  const out = [];
+  const ifaces = os.networkInterfaces();
+  for (const name of Object.keys(ifaces)) {
+    for (const i of ifaces[name] || []) {
+      if (i.family === 'IPv4' && !i.internal) out.push(i.address);
+    }
+  }
+  return out.length ? out : ['127.0.0.1'];
+}
+function lanInfo() {
+  const addresses = lanAddresses();
+  return { ok: true, port: SYNC_PORT, addresses, urls: addresses.map(a => `http://${a}:${SYNC_PORT}`) };
+}
+function cors(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+function sendJson(res, code, body) {
+  cors(res);
+  res.writeHead(code, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(body));
+}
+
 // --- File dialogs -----------------------------------------------------------
 // Every handler returns a plain result object — the renderer turns `error`
 // into a human message. Nothing ever rejects with a raw stack trace.
@@ -124,6 +187,7 @@ ipcMain.handle('file:save', async (_e, filename, text) => {
     return { error: `Could not save the file: ${e && e.message ? e.message : e}` };
   }
 });
+
 ipcMain.handle('file:open', async () => {
   try {
     const r = await dialog.showOpenDialog({
@@ -141,3 +205,86 @@ ipcMain.handle('file:open', async () => {
     return { error: `Could not open the file dialog: ${e && e.message ? e.message : e}` };
   }
 });
+
+function startBeacon() {
+  try {
+    beacon = dgram.createSocket('udp4');
+    beacon.on('error', () => { /* discovery is optional, never fatal */ });
+    beacon.bind(BEACON_PORT, () => {
+      try { beacon.setBroadcast(true); } catch { /* ignore */ }
+      const announce = () => {
+        const msg = JSON.stringify({
+          app: 'tournament-organizer',
+          port: SYNC_PORT,
+          name: (published && published.project && published.project.tournament && published.project.tournament.name) || 'Tournament Organizer',
+        });
+        try { beacon.send(Buffer.from(msg), BEACON_PORT, '255.255.255.255', () => {}); } catch { /* ignore */ }
+      };
+      announce();
+      beaconTimer = setInterval(announce, 3000);
+    });
+  } catch { beacon = null; }
+}
+function stopBeacon() {
+  if (beaconTimer) { clearInterval(beaconTimer); beaconTimer = null; }
+  if (beacon) { try { beacon.close(); } catch { /* ignore */ } beacon = null; }
+}
+function startHost() {
+  if (lanServer) return lanInfo();
+  lanServer = http.createServer((req, res) => {
+    try {
+      const url = new URL(req.url || '/', 'http://localhost');
+      if (req.method === 'OPTIONS') { cors(res); res.writeHead(204); return res.end(); }
+      if (url.pathname === '/api/ping') {
+        return sendJson(res, 200, { app: 'tournament-organizer', ok: true, at: new Date().toISOString() });
+      }
+      if (url.pathname === '/api/state' && req.method === 'GET') {
+        return published
+          ? sendJson(res, 200, published)
+          : sendJson(res, 503, { error: 'This device is not sharing a project yet.' });
+      }
+      if (url.pathname === '/api/state' && req.method === 'POST') {
+        let body = '';
+        req.on('data', (c) => {
+          body += c;
+          if (body.length > 32 * 1024 * 1024) req.destroy();
+        });
+        req.on('end', () => {
+          try {
+            inbox.push({ receivedAt: new Date().toISOString(), payload: JSON.parse(body || '{}') });
+            if (inbox.length > 20) inbox.shift();
+            sendJson(res, 200, { ok: true, pending: inbox.length });
+          } catch {
+            sendJson(res, 400, { error: 'Could not read the pushed data.' });
+          }
+        });
+        return;
+      }
+      sendJson(res, 404, { error: 'Unknown endpoint.' });
+    } catch {
+      sendJson(res, 500, { error: 'Host error.' });
+    }
+  });
+  lanServer.on('error', (e) => { lanServer = null; stopBeacon(); console.error('LAN host failed:', e.message); });
+  lanServer.listen(SYNC_PORT, '0.0.0.0');
+  startBeacon();
+  return lanInfo();
+}
+function stopHost() {
+  stopBeacon();
+  if (lanServer) { try { lanServer.close(); } catch { /* ignore */ } lanServer = null; }
+  inbox = [];
+}
+
+// Renderer-facing LAN controls. All results are plain objects with an `error`
+// field — the UI shows the message instead of a crash.
+ipcMain.handle('lan:start', () => {
+  try { return startHost(); }
+  catch (e) { return { error: `Could not start sharing: ${e && e.message ? e.message : e}` }; }
+});
+ipcMain.handle('lan:stop', () => { stopHost(); return { ok: true }; });
+ipcMain.handle('lan:status', () => (lanServer ? lanInfo() : { ok: false, port: SYNC_PORT, addresses: lanAddresses() }));
+ipcMain.handle('lan:publish', (_e, payload) => { published = payload || null; return { ok: !!published }; });
+ipcMain.handle('lan:inbox', () => ({ items: inbox.splice(0) }));
+
+app.on('will-quit', () => { stopHost(); });

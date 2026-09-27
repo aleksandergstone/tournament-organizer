@@ -25,6 +25,17 @@ export interface Participant {
   active: boolean;      // false = withdrawn / missing
   withdrawnRound?: number | null;
   avatar?: string | null; // dataURL or initials fallback
+  modifiedAt?: string | null; // last edit — used by LAN sync merge
+}
+
+// A venue resource a match can be played on: court, table, station, board…
+export type ResourceKind = 'court' | 'table' | 'station' | 'board' | 'lane' | 'other';
+
+export interface VenueResource {
+  id: Id;
+  name: string;
+  kind: ResourceKind;
+  note?: string | null;
 }
 
 export interface RuleSet {
@@ -93,6 +104,9 @@ export interface Match {
   result: MatchResult;
   scheduledAt?: string | null;
   venue?: string | null;
+  resourceId?: Id | null;  // venue resource (court/table/station) — scheduling
+  durationMin?: number | null; // estimated length in minutes
+  modifiedAt?: string | null;  // last edit — used by LAN sync merge
   bracket?: BracketMeta | null;
 }
 
@@ -168,6 +182,7 @@ export interface ProjectFile {
   matches: Match[];
   audit: AuditEntry[];
   settings: AppSettings;
+  resources?: VenueResource[]; // optional since v1.0 (venue scheduling)
 }
 
 export interface AppSettings {

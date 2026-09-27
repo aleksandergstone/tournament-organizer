@@ -9,7 +9,7 @@ const KNOCKOUT = new Set(['single-elimination', 'double-elimination']);
 
 
 export default function Matches() {
-  const { domain, update, go } = useApp();
+  const { domain, update, go, focusMatch, setFocusMatch } = useApp();
   const [q, setQ] = useState('');
   const [onlyOpen, setOnlyOpen] = useState(true);
   const [err, setErr] = useState('');
@@ -23,11 +23,14 @@ export default function Matches() {
   if (onlyOpen) list = list.filter(m => ['scheduled','unfinished','interrupted'].includes(m.result.status));
   if (q) list = list.filter(m => (pn(m.homeId)+' '+pn(m.awayId)+' '+m.roundName).toLowerCase().includes(q.toLowerCase()));
   const visible = list.slice(0, 200);
+  // A QR code may point at a match hidden by the current filter — always show it.
+  const focusM = focusMatch ? domain.matches.find(m => m.id === focusMatch) ?? null : null;
+  const shown = focusM && !visible.includes(focusM) ? [focusM, ...visible] : visible;
   const apply = (m: Match, spec: EditSpec) => {
     const r = recordResult(domain.matches, m.id, spec, domain.tournament.rules, { knockout: isKoMatch(m) });
     if (r.issues.length) { setErr(r.issues[0]); return; }
     setErr('');
-    update(() => ({ tournament: domain.tournament, participants: domain.participants, groups: domain.groups, matches: r.matches, audit: domain.audit }), `result.edit ${pn(m.homeId)}-${pn(m.awayId)}`);
+    update(() => ({ tournament: domain.tournament, participants: domain.participants, groups: domain.groups, matches: r.matches, audit: domain.audit, resources: domain.resources ?? [] }), `result.edit ${pn(m.homeId)}-${pn(m.awayId)}`);
   };
   const setScore = (m: Match, hs: number | null, as: number | null) => {
     update(d => ({ ...d, matches: d.matches.map(x => x.id === m.id ? { ...x, result: { ...x.result, homeScore: hs, awayScore: as } } : x) }), 'result.score-draft');
@@ -59,13 +62,19 @@ export default function Matches() {
         {domain.tournament.format === 'swiss' && <button className="btn" onClick={nextSwiss}>Generate next Swiss round</button>}
         <span className="muted"><span className="kbd">j</span>/<span className="kbd">k</span> move · <span className="kbd">Enter</span> in score = save · <span className="kbd">/</span> search</span>
       </div>
+      {focusM && (
+        <div className="ok row" style={{ justifyContent: 'space-between' }}>
+          <span>Showing the match from the QR code: {pn(focusM.homeId)} vs {pn(focusM.awayId)}</span>
+          <button className="btn sm" onClick={() => setFocusMatch(null)}>Clear</button>
+        </div>
+      )}
       {domain.matches.length === 0 && (
         <div className="empty">
           No matches yet — generate the schedule first.
           <div style={{ marginTop: 10 }}><button className="btn primary" onClick={() => go('rules')}>Go to Rules → generate</button></div>
         </div>
       )}
-      {domain.matches.length > 0 && visible.length === 0 && (
+      {domain.matches.length > 0 && shown.length === 0 && (
         <div className="empty">
           {list.length === 0 && q
             ? 'No matches match your search.'
@@ -75,8 +84,15 @@ export default function Matches() {
           </div>
         </div>
       )}
-      {visible.map((m, i) => (
-        <div className="card" key={m.id} style={i === sel ? { borderColor: '#1f5eff' } : undefined} onClick={() => setSel(i)}>
+      {shown.map((m, i) => (
+        <div
+          className="card"
+          key={m.id}
+          style={{
+            ...(i === sel ? { borderColor: '#1f5eff' } : undefined),
+            ...(focusM && m.id === focusM.id ? { borderColor: '#15803d', boxShadow: '0 0 0 2px #d1fae5' } : undefined),
+          }}
+          onClick={() => setSel(i)}>
           <div className="row"><b>{pn(m.homeId)}</b><span className="muted">vs</span><b>{pn(m.awayId)}</b><span className="pill">{m.roundName}</span><span className="pill">{m.result.status}</span></div>
           <div className="row" style={{ marginTop: 8 }}>
             <input type="number" min={0} style={{ width: 90 }} value={m.result.homeScore ?? ''} onChange={e => setScore(m, e.target.value === '' ? null : Number(e.target.value), m.result.awayScore)} onKeyDown={e => { if (e.key === 'Enter') commitPlayed(m); e.stopPropagation(); }} placeholder="home" />

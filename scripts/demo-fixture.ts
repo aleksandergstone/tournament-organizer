@@ -105,9 +105,26 @@ function cityLeague(): ProjectFile {
   matches = recomputeBracket([...matches, ...koMatches]);
   matches = playFirst(matches, 1, rnd, RULES, true); // one semi-final decided
 
+  // A venue: two courts, and the first group matches put on them — this is what
+  // the Schedule and Display screens show in the launch screenshots.
+  const resources = [
+    { id: 'r_court1', name: 'Court 1', kind: 'court' as const, note: null },
+    { id: 'r_court2', name: 'Court 2', kind: 'court' as const, note: null },
+  ];
+  const dayStart = Date.UTC(2026, 8, 27, 9, 0, 0);
+  let slot = 0;
+  const scheduled = matches.map(m => {
+    if (!m.groupId || !m.homeId || !m.awayId || m.result.status !== 'scheduled') return m;
+    if (slot >= 6) return m;
+    const court = resources[slot % resources.length];
+    const start = new Date(dayStart + slot * 45 * 60_000).toISOString();
+    slot++;
+    return { ...m, resourceId: court.id, venue: court.name, scheduledAt: start, durationMin: 30 };
+  });
+
   return {
     version: 1, app: 'tournament-organizer', tournament: tour, participants,
-    groups: g.groups, matches,
+    groups: g.groups, matches: scheduled, resources,
     audit: [{ id: uid('a'), at: nowIso(), action: 'project.created', detail: 'City League 2026' }],
     settings: { ...DEFAULT_SETTINGS },
   };

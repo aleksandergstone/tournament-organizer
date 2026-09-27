@@ -1,6 +1,7 @@
 import { useApp } from '../state/store';
 import { describeEdition } from '../engine/features';
 import { APP_NAME, APP_VERSION } from '../version';
+import SyncPanel from './SyncPanel';
 
 export default function Settings() {
   const { settings, setSettings } = useApp();
@@ -12,6 +13,10 @@ export default function Settings() {
         <label className="row"><input type="checkbox" style={{ width: 16 }} checked={settings.confirmDestructive} onChange={e => setSettings({ ...settings, confirmDestructive: e.target.checked })} /> Confirm destructive actions</label>
         <label className="f" style={{ maxWidth: 240 }}>Theme<select value={settings.theme} onChange={e => setSettings({ ...settings, theme: e.target.value as 'light' | 'dark' })}><option value="light">Light</option><option value="dark">Dark</option></select></label>
         <p className="muted">Shortcuts: <span className="kbd">Ctrl+Z</span> undo · <span className="kbd">Ctrl+Y</span> redo · <span className="kbd">Ctrl+S</span> save now.</p>
+      </div>
+      <div className="card">
+        <h3>Event operations</h3>
+        <SyncPanel />
       </div>
       <div className="card">
         <h3>About</h3>

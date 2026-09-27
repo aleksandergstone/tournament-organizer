@@ -3,6 +3,37 @@
 All notable changes to Tournament Organizer.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semver.
 
+## [1.1.0] — 2026-09-27
+
+Event operations: run a venue, not just a bracket. Everything stays local — no cloud,
+no account, no internet.
+
+### Added
+
+- **Display Mode** — a big read-only screen for a projector or TV: current match, next
+  match, top five, venue and live clock. Opens in a second window (`#display`) or
+  full screen, updates automatically, and never exposes organizer controls.
+- **QR codes** — check-in codes per participant, a code per match and per station,
+  generated on the machine with no service involved. Scanning one opens the desktop app
+  directly on that participant, match or place; unknown codes explain themselves.
+- **Venue scheduling** — define courts, tables, stations, boards or lanes, give each
+  match a place, a start time and a duration. Double bookings and removed places are
+  reported as conflicts, and a deterministic planner fills free slots without overlaps.
+- **Group → knockout preview** — the next stage is planned and shown first (qualifiers,
+  seeding order, resulting bracket) and only created after confirmation; cancelling
+  changes nothing.
+- **LAN sync** — opt-in sharing on the local network: one device shares the project over
+  `http://<ip>:8971`, others pull or push. Merges are per match, last edit wins, ties keep
+  the local copy, brackets are recomputed after every merge, and each merge is undoable.
+  A UDP beacon helps devices find each other; typing the address also works.
+- Result edits are now timestamped, which is what makes conflict-aware LAN merges possible.
+
+### Changed
+
+- Project files may contain an optional `resources` list; older files without it open
+  unchanged.
+- `Standings` no longer seeds the knockout in one click — it now shows a preview first.
+
 ## [1.0.0] — 2026-09-27
 
 First public release.

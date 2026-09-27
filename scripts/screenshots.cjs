@@ -129,7 +129,21 @@ app.whenReady().then(async () => {
     await nav('Bracket', 'Double elimination');
     await shot('08-bracket-double-elimination');
 
-    // 5) Settings / About — version, edition, data statement
+    // 5) Event operations: display mode, venue schedule, QR codes
+    await nav('Home');
+    await openProject('City League 2026');
+    await expectH1('City League 2026');
+
+    await nav('Schedule', 'Schedule');
+    await shot('10-schedule');
+
+    await nav('Display', 'City League 2026');
+    await shot('11-display');
+
+    await nav('QR codes', 'QR codes');
+    await shot('12-qr-codes');
+
+    // 6) Settings / About — version, edition, data statement
     await nav('Home');
     await button('Settings');
     await expectH1('Settings');

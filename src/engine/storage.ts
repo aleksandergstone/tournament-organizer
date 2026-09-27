@@ -1,4 +1,4 @@
-import { AppSettings, AuditEntry, DEFAULT_SETTINGS, Group, Match, Participant, ProjectFile, Tournament, nowIso, uid } from './types';
+import { AppSettings, AuditEntry, DEFAULT_SETTINGS, Group, Match, Participant, ProjectFile, Tournament, VenueResource, nowIso, uid } from './types';
 import { migrateProject, sanitizeImport } from './validate';
 import { recomputeBracket } from './recompute';
 
@@ -13,12 +13,13 @@ export function fileNameFor(t: Pick<Tournament, 'name'>): string {
 
 export function serializeProject(p: {
   tournament: Tournament; participants: Participant[]; groups: Group[]; matches: Match[];
-  audit: AuditEntry[]; settings: AppSettings;
+  audit: AuditEntry[]; settings: AppSettings; resources?: VenueResource[];
 }): string {
   const file: ProjectFile = {
     version: 1, app: 'tournament-organizer',
     tournament: p.tournament, participants: p.participants, groups: p.groups,
     matches: p.matches, audit: p.audit, settings: { ...DEFAULT_SETTINGS, ...p.settings },
+    resources: p.resources ?? [],
   };
   return JSON.stringify(file, null, 2);
 }

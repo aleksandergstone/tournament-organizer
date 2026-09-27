@@ -85,3 +85,36 @@ h2 { font-size: 17px; }
 :root[data-theme="dark"] .ok { background: #12241a; border-color: #1f4b33; }
 :root[data-theme="dark"] .topbar button:hover { background: #232a37; }
 :root[data-theme="dark"] option { background: #12161d; color: var(--ink); }
+
+/* Display Mode — a projector screen: big, calm, read-only. */
+.display-root { min-height: 100vh; background: #0b1220; color: #f4f7fb; padding: 28px 34px 34px; }
+.display-head { display: flex; align-items: flex-start; gap: 20px; border-bottom: 1px solid #22304a; padding-bottom: 18px; }
+.display-head h1 { font-size: 40px; margin: 0 0 6px; }
+.display-head .muted { color: #8fa3bf; }
+.display-right { margin-left: auto; text-align: right; }
+.display-pill { display: inline-block; padding: 6px 16px; border-radius: 999px; font-size: 16px; font-weight: 600; }
+.display-pill.live { background: #14532d; color: #86efac; }
+.display-pill.waiting { background: #422006; color: #fcd34d; }
+.display-pill.complete { background: #1e293b; color: #cbd5e1; }
+.display-clock { display: block; font-size: 30px; font-weight: 700; margin-top: 10px; letter-spacing: 1px; }
+.display-main { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin: 26px 0; }
+.display-card { background: #131c2e; border: 1px solid #22304a; border-radius: 16px; padding: 22px 26px; min-height: 190px; }
+.display-label { font-size: 15px; letter-spacing: 1.4px; text-transform: uppercase; color: #8fa3bf; }
+.display-teams { display: grid; grid-template-columns: 1fr auto auto auto 1fr; gap: 14px; align-items: baseline; margin-top: 18px; }
+.display-teams span { font-size: 34px; font-weight: 600; }
+.display-teams span:nth-of-type(2) { text-align: right; }
+.display-teams b { font-size: 44px; font-variant-numeric: tabular-nums; }
+.display-vs { color: #64748b; }
+.display-status { margin-top: 14px; font-size: 15px; color: #8fa3bf; }
+.display-none { margin-top: 22px; font-size: 40px; color: #334764; }
+.display-bottom { display: grid; grid-template-columns: 1fr 320px; gap: 22px; }
+.display-standings { background: #131c2e; border: 1px solid #22304a; border-radius: 16px; padding: 20px 24px; }
+.display-standings table { font-size: 22px; }
+.display-standings th, .display-standings td { border-color: #22304a; padding: 8px 10px; }
+.display-meta { color: #cbd5e1; }
+.display-root .btn { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+.display-root .btn:hover { background: #27364d; }
+@media (max-width: 900px) {
+  .display-main, .display-bottom { grid-template-columns: 1fr; }
+  .display-head h1 { font-size: 28px; }
+}
