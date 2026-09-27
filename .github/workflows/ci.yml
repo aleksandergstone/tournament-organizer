@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Any branch push. Tag pushes are excluded (tags are not branches) so a
+    # release tag triggers only the Release workflow.
+    branches: ['**']
   pull_request:
   workflow_dispatch:
 
@@ -17,6 +19,7 @@ jobs:
   validate:
     name: Validate (version + tests + typecheck + build)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,6 +33,7 @@ jobs:
   package-windows:
     name: Package Windows installer
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

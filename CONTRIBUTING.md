@@ -15,6 +15,11 @@ npm.cmd run dev   # app in a browser at http://localhost:5173
 npm.cmd start     # production build + desktop window (Electron)
 ```
 
+> Recent npm versions may print `allow-scripts` warnings for packages with postinstall
+> steps (electron, esbuild). If they are not executed, Electron's binary will be missing
+> and packaging will fail — approve them with `npm approve-scripts` (or use npm 10.x).
+> GitHub Actions uses Node 22 / npm 10 and runs these scripts normally.
+
 ## Everyday commands
 
 | Command | What it does |

@@ -60,7 +60,7 @@ See [docs/RELEASE.md](docs/RELEASE.md) for the full version-bump → publish che
   `npm run release:check` on Ubuntu and builds the Windows installer as an artifact.
 - **Releases** (`.github/workflows/release.yml`): pushing a `v*` tag whose version matches
   `package.json` builds Windows/macOS/Linux artifacts and attaches them to the GitHub Release
-  automatically.
+  automatically. First-time setup: [docs/RELEASE.md § 0](docs/RELEASE.md).
 - **One version source of truth**: `package.json` → injected into the UI at build time,
   embedded in release file names, mirrored by the CHANGELOG entry.
 - Tracked: `src/`, `tests/`, `electron/`, `build/`, `docs/`, CI and config files.

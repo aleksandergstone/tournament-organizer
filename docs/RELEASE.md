@@ -8,6 +8,44 @@ version bump → changelog entry → npm run dist (local sanity) → commit → 
                                                                         └─ CI builds Win/macOS/Linux and publishes the GitHub Release
 ```
 
+## 0. First time: connect this repo to GitHub
+
+The local repository has no remote yet — add one, then push `main` and the tag.
+Create the (empty, **no README**) repository on github.com first, or use the CLI:
+
+```powershell
+# with GitHub CLI
+gh auth login
+gh repo create tournament-organizer --public --source=. --remote=origin --push
+
+# or manually (replace with your account/repo name)
+git remote add origin https://github.com/<user>/tournament-organizer.git
+git push -u origin main
+git push origin v1.0.0
+```
+
+If you created the GitHub repo with a README/license, push with
+`git push -u origin main --force-with-lease` or pull first — GitHub's auto-created
+files would otherwise conflict.
+
+After pushing:
+
+1. **Actions tab** — the `CI` workflow runs (validate + Windows package).
+2. **Actions tab** — the `Release` workflow runs for the pushed `v1.0.0` tag:
+   builds Windows/macOS/Linux, then creates the Release.
+3. **Releases page** — `Tournament Organizer v1.0.0` should list three assets:
+   `*-win-x64.exe`, `*-mac-*.dmg`, `*-linux-x86_64.AppImage`.
+
+Verify from the CLI (optional — everything is visible in the GitHub UI):
+
+```powershell
+gh run list
+gh release view v1.0.0 --json tagName,assets
+```
+
+Installers are **unsigned**: Windows shows "Unknown publisher" (choose *More info →
+Run anyway*), macOS requires right-click → Open. Say so in the release notes.
+
 ## 1. Version bump (the only place)
 
 1. Pick the version (semver):
