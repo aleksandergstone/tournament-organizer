@@ -1,0 +1,88 @@
+name: Release
+
+# Tag-driven, fully automated release:
+#   git tag v1.2.3 && git push --tags
+# The tag must match the package.json version (enforced below).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows installer (x64)
+            os: windows-latest
+            args: --win --x64
+            artifact: win-x64
+            glob: 'release/*.exe'
+          - name: macOS disk image (x64 + arm64)
+            os: macos-latest
+            args: --mac dmg --x64 --arm64
+            artifact: mac
+            glob: 'release/*.dmg'
+          - name: Linux AppImage (x64)
+            os: ubuntu-latest
+            args: --linux AppImage --x64
+            artifact: linux-x86_64
+            glob: 'release/*.AppImage'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tag must match package.json version
+        shell: bash
+        run: |
+          set -euo pipefail
+          v=$(node -p "require('./package.json').version")
+          if [ "${{ github.ref_name }}" != "v$v" ]; then
+            echo "::error::Tag ${{ github.ref_name }} does not match package.json version $v"
+            exit 1
+          fi
+      - run: npm run release:check
+      - run: npx electron-builder ${{ matrix.args }} --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tournament-organizer-${{ matrix.artifact }}
+          path: ${{ matrix.glob }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Create release and attach artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          v=${TAG#v}
+          ls -l artifacts
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" artifacts/* --clobber
+          else
+            gh release create "$TAG" artifacts/* \
+              --title "Tournament Organizer $v" \
+              --generate-notes
+          fi

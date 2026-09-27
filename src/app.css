@@ -1,0 +1,87 @@
+:root { --bg: #f4f5f7; --panel: #ffffff; --ink: #1a1d21; --muted: #6b7280; --line: #e2e5ea; --acc: #1f5eff; --acc-d: #1748c6; --ok: #15803d; --warn: #b45309; --bad: #b91c1c; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; background: var(--bg); color: var(--ink); }
+.topbar { display: flex; align-items: center; gap: 12px; background: #111827; color: #fff; padding: 8px 14px; position: sticky; top: 0; z-index: 10; }
+.topbar .brand { font-weight: 700; letter-spacing: .3px; }
+.topbar nav { display: flex; gap: 4px; flex-wrap: wrap; }
+.topbar button { background: transparent; border: 1px solid transparent; color: #d1d5db; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.topbar button:hover { background: #1f2937; color: #fff; }
+.topbar button.on { background: var(--acc); color: #fff; }
+.topbar .sp { flex: 1; }
+.topbar .acts { display: flex; gap: 6px; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--panel); padding: 7px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.btn:hover { border-color: #b9c0cc; background: #f8fafc; }
+.btn.primary { background: var(--acc); border-color: var(--acc); color: #fff; }
+.btn.primary:hover { background: var(--acc-d); }
+.btn.danger { border-color: #f0b6b6; color: var(--bad); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.sm { padding: 4px 8px; font-size: 12px; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 18px 16px 60px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+.card h2, .card h3 { margin: 0 0 10px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+input, select, textarea { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 14px; color: var(--ink); background: #fff; width: 100%; }
+input:focus, select:focus, textarea:focus { outline: 2px solid #bfd0ff; border-color: var(--acc); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+.err { background: #fef2f2; border: 1px solid #f3c1c1; color: var(--bad); padding: 8px 10px; border-radius: 6px; margin: 8px 0; font-size: 13px; }
+.warn { background: #fffbeb; border: 1px solid #f3d68b; color: var(--warn); padding: 8px 10px; border-radius: 6px; margin: 8px 0; }
+.ok { background: #f0fdf4; border: 1px solid #b7e4c7; color: var(--ok); padding: 8px 10px; border-radius: 6px; margin: 8px 0; }
+.muted { color: var(--muted); }
+.pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--line); background: #f8fafc; }
+.pill.played { background: #e8f7ee; border-color: #b7e4c7; color: var(--ok); }
+.pill.wo { background: #fef3c7; border-color: #f3d68b; color: var(--warn); }
+.bracket { display: flex; gap: 18px; overflow-x: auto; padding-bottom: 8px; }
+.bround { min-width: 220px; }
+.bmatch { border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin-bottom: 8px; background: #fff; }
+.bmatch .nm { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; }
+.bmatch .nm.w { font-weight: 700; }
+.bmatch .rh { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.kbd { font: 12px monospace; background: #eef1f5; border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
+.empty { padding: 26px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; background: #fff; }
+.toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+h1 { font-size: 22px; margin: 4px 0 12px; }
+h2 { font-size: 17px; }
+@media print {
+  .topbar, .toolbar, .btn, button { display: none !important; }
+  body { background: #fff; }
+  .wrap { max-width: none; padding: 0; }
+  .card { border: none; padding: 0 0 12px; }
+  .printable h2 { font-size: 20px; }
+  table { font-size: 12px; }
+}
+
+/* First-run quick start */
+.steps { margin: 0 0 10px; padding-left: 20px; }
+.steps li { margin-bottom: 6px; }
+
+/* Dark theme — applied via <html data-theme="dark"> (Settings → Theme). */
+:root[data-theme="dark"] {
+  --bg: #11141a; --panel: #1a1f28; --ink: #e5e7eb; --muted: #9ca3af;
+  --line: #2a3140; --acc: #3b6fff; --acc-d: #2f5ee0;
+  --ok: #4ade80; --warn: #fbbf24; --bad: #f87171;
+}
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea { background: #12161d; color: var(--ink); border-color: var(--line); }
+:root[data-theme="dark"] input:focus,
+:root[data-theme="dark"] select:focus,
+:root[data-theme="dark"] textarea:focus { outline-color: var(--acc); }
+:root[data-theme="dark"] .btn { background: var(--panel); color: var(--ink); }
+:root[data-theme="dark"] .btn:hover { background: #232a37; border-color: #3a4354; }
+:root[data-theme="dark"] .btn.primary { background: var(--acc); color: #fff; }
+:root[data-theme="dark"] .bmatch,
+:root[data-theme="dark"] .empty { background: var(--panel); }
+:root[data-theme="dark"] .pill,
+:root[data-theme="dark"] .kbd { background: #202735; color: var(--ink); }
+:root[data-theme="dark"] .pill.played { background: #14251c; border-color: #1f4b33; }
+:root[data-theme="dark"] .pill.wo { background: #2b2110; border-color: #5b4a1f; }
+:root[data-theme="dark"] .err { background: #2a1414; border-color: #5b2222; }
+:root[data-theme="dark"] .warn { background: #2b2110; border-color: #5b4a1f; }
+:root[data-theme="dark"] .ok { background: #12241a; border-color: #1f4b33; }
+:root[data-theme="dark"] .topbar button:hover { background: #232a37; }
+:root[data-theme="dark"] option { background: #12161d; color: var(--ink); }
