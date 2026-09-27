@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tournament Organizer — offline desktop app for tournaments & leagues</title>
+<meta name="description" content="Create brackets, enter results and print standings on your own computer. Offline-first desktop app for tournament organizers. No account, no server, MIT licensed." />
+<!--
+  Static launch page. Deploy for free with GitHub Pages (see .github/workflows/pages.yml)
+  or any static host. Before publishing, replace OWNER/REPO in the links below.
+-->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231f5eff'/%3E%3Ctext x='32' y='43' font-family='Segoe UI,Arial' font-size='27' font-weight='700' fill='white' text-anchor='middle'%3ETO%3C/text%3E%3C/svg%3E" />
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #fff; --ink: #16191f; --muted: #5b6472;
+    --line: #e2e5ea; --acc: #1f5eff; --acc-d: #1748c6; --code: #eef1f5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.6 -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+  header { background: #111827; color: #fff; padding: 14px 0; }
+  header .wrap { display: flex; align-items: center; gap: 12px; }
+  .logo { display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 8px; background: var(--acc);
+    font-weight: 700; font-size: 13px; }
+  header nav { margin-left: auto; display: flex; gap: 18px; flex-wrap: wrap; }
+  header nav a { color: #cbd5e1; text-decoration: none; font-size: 14px; }
+  header nav a:hover { color: #fff; }
+  h1 { font-size: 34px; line-height: 1.25; margin: 40px 0 12px; letter-spacing: -0.4px; }
+  h2 { font-size: 22px; margin: 44px 0 12px; }
+  h3 { font-size: 16px; margin: 0 0 6px; }
+  .lead { font-size: 19px; color: var(--muted); max-width: 720px; margin: 0 0 20px; }
+  .muted { color: var(--muted); }
+  .btn { display: inline-block; background: var(--acc); color: #fff; text-decoration: none;
+    padding: 11px 20px; border-radius: 8px; font-weight: 600; font-size: 15px; }
+  .btn:hover { background: var(--acc-d); }
+  .btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  .btn.ghost:hover { background: #f8fafc; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .grid.two { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+  ul.clean { list-style: none; padding: 0; margin: 0; }
+  ul.clean li { padding: 7px 0 7px 26px; position: relative; border-bottom: 1px solid var(--line); }
+  ul.clean li:last-child { border-bottom: 0; }
+  ul.clean li::before { content: "✓"; position: absolute; left: 0; color: var(--acc); font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  code { background: var(--code); border-radius: 5px; padding: 2px 6px; font-size: 13.5px; }
+  figure { margin: 0 0 18px; }
+  figure img { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .note { background: #fffbeb; border: 1px solid #f3d68b; color: #7c4a03;
+    padding: 12px 14px; border-radius: 10px; font-size: 14.5px; }
+  .tag { display: inline-block; background: var(--code); border: 1px solid var(--line);
+    border-radius: 20px; padding: 3px 11px; font-size: 13px; margin: 0 6px 6px 0; }
+  footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 24px 0 44px;
+    color: var(--muted); font-size: 14px; }
+  @media (max-width: 640px) { h1 { font-size: 27px; } .lead { font-size: 17px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <span class="logo">TO</span>
+    <strong>Tournament Organizer</strong>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#formats">Formats</a>
+      <a href="#screens">Screenshots</a>
+      <a href="#download">Download</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap">
+  <h1>Run your tournament on your own computer.</h1>
+  <p class="lead">
+    Tournament Organizer is a free desktop app for people who organise cups, leagues and club
+    nights: create the bracket, enter results as they happen and print final standings —
+    <strong>offline, without an account, on your own machine.</strong>
+  </p>
+  <div class="row">
+    <a class="btn" href="#download">Download</a>
+    <a class="btn ghost" href="#screens">See the screens</a>
+    <span class="muted">Free · Windows, macOS, Linux · MIT licensed</span>
+  </div>
+
+  <h2 id="features">Why organizers use it</h2>
+  <div class="grid">
+    <div class="card"><h3>Brackets that stay correct</h3>
+      <p class="muted">Change a result and the bracket recomputes: winners advance, and results
+      that became impossible are cleared instead of silently kept.</p></div>
+    <div class="card"><h3>Fast result entry</h3>
+      <p class="muted">Type both scores and press Enter. Walkover, unfinished and interrupted
+      matches each have their own button.</p></div>
+    <div class="card"><h3>Works with no internet</h3>
+      <p class="muted">No sign-in, no server, no sync. It runs on a laptop in a hall with bad wifi.</p></div>
+    <div class="card"><h3>Your data stays on your device</h3>
+      <p class="muted">Projects are stored locally and exported as one portable
+      <code>.top.json</code> file you can copy anywhere.</p></div>
+    <div class="card"><h3>Undo, autosave, recovery</h3>
+      <p class="muted">Undo and redo every change, autosave locally, and re-import a backup file
+      after a crash or a mistake.</p></div>
+    <div class="card"><h3>Take the result with you</h3>
+      <p class="muted">Export standings and matches as CSV, or print a clean summary sheet for
+      the wall.</p></div>
+  </div>
+  <h2 id="formats">Tournament formats</h2>
+  <div class="card">
+    <p>
+      <span class="tag">Single elimination</span>
+      <span class="tag">Double elimination</span>
+      <span class="tag">Round robin</span>
+      <span class="tag">Swiss</span>
+      <span class="tag">Groups + knockout</span>
+      <span class="tag">League season</span>
+      <span class="tag">Team match event</span>
+      <span class="tag">Individual match event</span>
+      <span class="tag">Custom schedule</span>
+    </p>
+    <p class="muted">
+      Double elimination includes a winners bracket, a losers bracket, a grand final and the
+      conditional final reset. Groups + knockout seeds the knockout stage from the group tables
+      you choose. Leagues can be played home &amp; away. Swiss rounds are generated on demand and
+      paired by current points.
+    </p>
+  </div>
+
+  <h2 id="start">Your first tournament takes five steps</h2>
+  <div class="card">
+    <ul class="clean">
+      <li><strong>Create</strong> a tournament — name, sport and format.</li>
+      <li><strong>Add participants</strong> — one by one, or paste a whole list.</li>
+      <li><strong>Set rules and generate</strong> — points, tiebreaks, seeding; the schedule appears instantly.</li>
+      <li><strong>Enter results</strong> — as they happen; brackets and standings update by themselves.</li>
+      <li><strong>Export or print</strong> — <code>.top.json</code> backup, CSV, or a print sheet.</li>
+    </ul>
+  </div>
+
+  <h2 id="download">Download</h2>
+  <div class="card">
+    <div class="row" style="margin-bottom:14px">
+      <a class="btn" href="https://github.com/OWNER/REPO/releases/latest">Download the latest release</a>
+      <a class="btn ghost" href="https://github.com/OWNER/REPO/releases">All releases</a>
+    </div>
+    <table>
+      <thead><tr><th>Your system</th><th>Download</th><th>Install</th></tr></thead>
+      <tbody>
+        <tr><td>Windows (x64)</td><td><code>Tournament-Organizer-&lt;version&gt;-win-x64.exe</code></td>
+          <td>Run the installer, choose the folder, done.</td></tr>
+        <tr><td>macOS (Intel &amp; Apple silicon)</td><td><code>Tournament-Organizer-&lt;version&gt;-mac-*.dmg</code></td>
+          <td>Open the disk image and drag the app to Applications.</td></tr>
+        <tr><td>Linux (x64)</td><td><code>Tournament-Organizer-&lt;version&gt;-linux-x86_64.AppImage</code></td>
+          <td>Make it executable (<code>chmod +x</code>) and run it.</td></tr>
+      </tbody>
+    </table>
+    <p class="note" style="margin-top:14px">
+      <strong>The installers are not code-signed.</strong> Windows shows “Unknown publisher” —
+      choose <em>More info → Run anyway</em>. macOS asks you to confirm the first open
+      (right-click → Open). This is expected for a free, unsigned release; it does not affect how
+      the app works.
+    </p>
+  </div>
+  <h2 id="screens">Screens</h2>
+  <p class="muted">Real screens from the app, generated from a demo tournament — no mockups.</p>
+  <div class="grid two">
+    <figure><img src="assets/screens/01-home.png" alt="Home screen with recent projects" loading="lazy" />
+      <figcaption>Home — recent projects on this device.</figcaption></figure>
+    <figure><img src="assets/screens/02-new-tournament.png" alt="New tournament wizard" loading="lazy" />
+      <figcaption>Creating a tournament: name, sport and format.</figcaption></figure>
+    <figure><img src="assets/screens/03-players.png" alt="Participants screen" loading="lazy" />
+      <figcaption>Participants — add one by one or paste a list.</figcaption></figure>
+    <figure><img src="assets/screens/04-bracket-groups-knockout.png" alt="Groups and knockout bracket" loading="lazy" />
+      <figcaption>Groups + knockout: group stage results and the seeded KO bracket.</figcaption></figure>
+    <figure><img src="assets/screens/05-results.png" alt="Result entry screen" loading="lazy" />
+      <figcaption>Result entry — two scores and a button; brackets update immediately.</figcaption></figure>
+    <figure><img src="assets/screens/06-standings.png" alt="Standings with group tables and qualifiers" loading="lazy" />
+      <figcaption>Standings with tiebreaks, and the qualifiers chosen for the knockout.</figcaption></figure>
+    <figure><img src="assets/screens/08-bracket-double-elimination.png" alt="Double elimination bracket" loading="lazy" />
+      <figcaption>Double elimination — winners bracket, losers bracket and grand final.</figcaption></figure>
+    <figure><img src="assets/screens/07-export.png" alt="Export and print screen" loading="lazy" />
+      <figcaption>Export — project file, CSV and print.</figcaption></figure>
+  </div>
+
+  <h2 id="faq">Questions</h2>
+  <div class="card">
+    <p><strong>Does it need an internet connection?</strong><br>
+      No. The app is a desktop program; everything runs on your computer. Internet is only
+      needed to download the installer in the first place.</p>
+    <p><strong>Do I need an account?</strong><br>
+      No account, no email, no subscription. Install, use it, done.</p>
+    <p><strong>Where is my data?</strong><br>
+      In the app's local storage on this computer. Use <em>Export → Save .top.json</em> to keep a
+      portable backup you control — that file can be opened on another computer.</p>
+    <p><strong>What if I enter a result wrongly?</strong><br>
+      Press <span class="kbd">Ctrl+Z</span> to undo, or reopen the match and change the score —
+      the bracket recalculates and clears results that no longer make sense.</p>
+    <p><strong>How many participants can I use?</strong><br>
+      Bracket formats are tested from 2 up to 64 participants. Leagues and round robins scale
+      further, but keep in mind the number of matches grows quickly.</p>
+    <p><strong>Is it really free?</strong><br>
+      Yes — MIT licensed, free for any use. Optional paid extras are not implemented and the
+      core workflow will stay free.</p>
+  </div>
+
+  <h2 id="privacy">Privacy</h2>
+  <div class="card">
+    <p>
+      Tournament Organizer has no analytics, no telemetry and no network features.
+      <strong>Your tournaments never leave your computer</strong> unless you export them yourself.
+      There is no account to create and no data to sync. Deleting a project removes it from this
+      device; keeping a backup is your choice.
+    </p>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>
+      Tournament Organizer · free desktop app for tournament organizers · MIT license ·
+      source code and releases on <a href="https://github.com/OWNER/REPO">GitHub</a>.
+    </p>
+    <p>
+      <a href="https://github.com/OWNER/REPO/releases/latest">Download</a> ·
+      <a href="https://github.com/OWNER/REPO/blob/main/docs/USER_GUIDE.md">User guide</a> ·
+      <a href="https://github.com/OWNER/REPO/issues">Report an issue</a>
+    </p>
+  </div>
+</footer>
+</body>
+</html>

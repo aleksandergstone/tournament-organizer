@@ -11,6 +11,9 @@ logs/
 *.log
 npm-debug.log*
 
+# Generated demo data for screenshots (regenerate with `npm run screenshots`)
+.cache/
+
 # Test coverage
 coverage/
 

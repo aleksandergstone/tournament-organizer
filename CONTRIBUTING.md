@@ -31,6 +31,7 @@ npm.cmd start     # production build + desktop window (Electron)
 | `npm run build` | Typecheck + production bundle into `dist/` |
 | `npm run version:check` | Version consistency (package.json / CHANGELOG / app / artifacts) |
 | `npm run release:check` | version:check + tests + build — run this before every push |
+| `npm run screenshots` | Rebuilds the app, regenerates the demo tournament and re-captures the launch screenshots |
 | `npm run dist` | release:check + electron-builder installers into `release/` |
 | `npm run dist:win` | Same, Windows only |
 
@@ -65,7 +66,21 @@ npm.cmd start     # production build + desktop window (Electron)
 
 ## Repository conventions
 
-- Tracked: `src/`, `tests/`, `electron/`, `build/` (icons + generator), `docs/`, config files.
-- Not tracked: `node_modules/`, `dist/`, `release/`, `logs/` (see `.gitignore`).
+- Tracked: `src/`, `tests/`, `electron/`, `build/` (icons + generator), `site/` (launch page),
+  `docs/`, config files.
+- Not tracked: `node_modules/`, `dist/`, `release/`, `logs/`, `.cache/` (see `.gitignore`).
 - `build/icon.png` / `build/icon.ico` are committed on purpose — CI needs them on
   Linux/macOS runners. Regenerate with `powershell -File build/make-icon.ps1`.
+
+## Launch assets (public presentation)
+
+- `site/index.html` is the public launch page (GitHub Pages or any static host). It uses
+  `OWNER/REPO` placeholders in its links — replace them once the GitHub repository exists.
+- Screenshots in `site/assets/screens/` are **generated from the real app**, never mocked:
+  `npm run screenshots` builds the app, runs `scripts/demo-fixture.ts` (the actual tournament
+  engine) to create a demo tournament, then drives the UI and captures each screen with
+  `scripts/screenshots.cjs`. Run it again whenever the UI changes and commit the new PNGs.
+- Public release notes live in `docs/releases/vX.Y.Z.md`, copied from
+  `docs/RELEASE_NOTES_TEMPLATE.md`. Keep claims honest: only what actually shipped.
+- Privacy statements live in `PRIVACY.md`; the app must stay free of analytics, accounts and
+  network calls, so any change there needs a matching update.

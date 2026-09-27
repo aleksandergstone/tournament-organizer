@@ -17,6 +17,7 @@
     "electron": "electron .",
     "version:check": "node scripts/check-version.mjs",
     "release:check": "npm run version:check && npm run test && npm run build",
+    "screenshots": "npm run build && node scripts/make-demo-project.mjs && electron scripts/screenshots.cjs",
     "dist": "npm run release:check && electron-builder --publish never",
     "dist:win": "npm run release:check && electron-builder --win --publish never"
   },

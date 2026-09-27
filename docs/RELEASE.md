@@ -55,6 +55,10 @@ Run anyway*), macOS requires right-click → Open. Say so in the release notes.
    into the app UI at build time and embedded in release file names.
 3. Add a `CHANGELOG.md` entry at the top:
    `## [x.y.z] — YYYY-MM-DD` with **Added / Changed / Fixed** sections.
+4. Copy `docs/RELEASE_NOTES_TEMPLATE.md` to `docs/releases/vX.Y.Z.md` and fill it in — this is
+   what users read on the release page (highlights, fixes, known limitations, downloads,
+   unsigned-installer note).
+5. If the UI changed, re-run `npm run screenshots` and commit the updated PNGs.
 
 `npm run version:check` (part of `release:check`, part of CI) fails if these disagree.
 
