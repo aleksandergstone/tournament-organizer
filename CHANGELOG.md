@@ -28,6 +28,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Round names are written in the language active when the bracket is generated —
   they are project data, stored in the file and printed on paper. The grand final
   is identified by its round number, so no engine logic depends on a name.
+- The document's own language (`lang`) now follows the selected language, so screen
+  readers and hyphenation match what is on screen.
+
+### Fixed
+
+- Privacy, README and launch-page wording now describes local-network sharing
+  accurately: it is optional, off by default and stays inside your own Wi-Fi, and
+  nothing ever reaches a server. The user guide documents the Output & branding
+  screen and the language switch.
 
 ### Known limitations
 

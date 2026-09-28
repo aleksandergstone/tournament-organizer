@@ -83,9 +83,21 @@ const listeners = new Set<() => void>();
 
 export function getLocale(): Locale { return active; }
 
+/**
+ * Keeps the document's own language in step with the app: screen readers, the
+ * spell-checker and hyphenation all follow `lang`. A no-op outside the browser,
+ * so the engine and the tests are unaffected.
+ */
+function syncDocumentLanguage(locale: Locale): void {
+  if (typeof document === 'undefined') return;
+  document.documentElement.lang = INTL_LOCALES[locale] ?? locale;
+}
+
 /** Called by the store when the preference changes; notifies React. */
 export function setLocale(locale: Locale): void {
-  if (!isLocale(locale) || locale === active) return;
+  if (!isLocale(locale)) return;
+  syncDocumentLanguage(locale);
+  if (locale === active) return;
   active = locale;
   for (const fn of listeners) fn();
 }

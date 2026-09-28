@@ -102,11 +102,35 @@ side by side on the same Wi-Fi.
 
 
 
-Open **Export**:
+## Output & branding
 
-- **Save .top.json** — portable project file (backup, move to another PC).
-- **Standings CSV / Matches CSV** — spreadsheets.
-- **Print** — clean print sheet of ranking + results.
+Open **Output** to produce the paperwork. The screen shows a live preview of the
+exact page that gets printed, so what you see is what leaves the app.
+
+1. **Pick a document** — standings, match list, timetable, bracket, group tables, or
+   the *organizer pack* (event information + table + match list + timetable + bracket
+   in one file).
+2. **Set the branding** — event title, competition subtitle, season/edition, event
+   logo, optional sponsor logo, a header line, footer text, a notes block and an
+   accent colour. Branding belongs to the project: it is saved, exported, synced and
+   used by every document.
+3. **Produce it** — **Save as PDF**, **Print…**, or **Save CSV** for spreadsheets.
+4. **Save project file…** — one portable `.top.json` with the whole project (backup,
+   move to another PC).
+
+Documents follow the language you selected (see below): headings, column names,
+status words and dates are printed in it.
+
+## Language (1.3+)
+
+**Settings → Appearance → Language** — *System*, English, Polski, Deutsch or
+Español. The switch applies immediately; nothing restarts, nothing is downloaded.
+The choice is remembered with your settings, and the printed documents, the CSV and
+every message the app produces follow it.
+
+Round names (for example *Runda 3*, *Quarterfinal*) are written in the language
+active when you generate the bracket — they are part of the project. Generate the
+bracket again if you want a different language on an existing project.
 
 ## Import / recover
 
@@ -121,7 +145,7 @@ Open **Export**:
 - Autosave keeps ~everything you commit; the top bar shows **● Save** when there
   are unsaved changes and the last save time.
 - If saving fails, a red banner explains why — your data stays in memory; use
-  **Export → Save .top.json** as a rescue backup.
+  **Output → Save project file…** as a rescue backup.
 - Deleted the wrong project from Home? It is gone from this device — restore
   from a `.top.json` export via Import / Recovery.
 
@@ -129,4 +153,5 @@ Open **Export**:
 
 The app never needs the internet: no login, no server, no telemetry. Projects
 are stored on this device (app local storage) and optionally in `.top.json`
-files you control. Install once, use forever.
+files you control. Install once, use forever. Sharing a project with your own
+devices (LAN sync) is optional, off by default, and stays inside your Wi-Fi.

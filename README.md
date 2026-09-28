@@ -22,9 +22,12 @@ Windows · macOS · Linux · MIT licensed
   and interrupted states, and keyboard navigation (`j`/`k`, `/`, `Enter`).
 - **Standings with your rules** — points, tiebreak order, group tables, and qualifier selection
   that seeds the knockout stage.
-- **Offline and local-first** — no account, no server, no telemetry. Autosave to the device,
+- **Offline and local-first** — no account, no cloud, no telemetry. Autosave to the device,
   export one portable `.top.json` file you own.
 - **Recovery built in** — undo/redo, validated import, CSV export and a print sheet.
+- **Four languages** — English, Polish, German and Spanish. The switch is in
+  Settings → Appearance, and the printed documents follow it: headings, column names, status
+  words and dates all come out in the chosen language.
 
 ## Screens
 
@@ -63,8 +66,9 @@ Full walkthrough: **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)**.
 ## Offline by design
 
 Tournament data lives in the app's local storage on the computer where you created it. There is
-no account, no sync and no analytics — nothing leaves your machine unless you export it
-yourself. See [PRIVACY.md](PRIVACY.md).
+no account, no cloud and no analytics — nothing leaves your machine unless you export it
+yourself, or you switch on local-network sharing to pass the project to your own devices.
+See [PRIVACY.md](PRIVACY.md).
 
 ## Event operations (new in 1.1)
 
