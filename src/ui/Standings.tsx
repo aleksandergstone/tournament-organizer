@@ -2,7 +2,8 @@
 import { useApp } from '../state/store';
 import { useMemo, useState } from 'react';
 import { computeStandings } from '../engine/standings';
-import { pickQualifiers, describeFormat } from '../engine/generate';
+import { pickQualifiers, describeFormat, hasPointTable } from '../engine/generate';
+import { knockoutPlaces } from '../engine/bracket-view';
 import { planKnockout, applyPlan, KnockoutPlan } from '../engine/ko-plan';
 import { uid } from '../engine/types';
 import { Alert, Empty, Field, Page, Panel, StatusPill } from './kit';
@@ -71,6 +72,10 @@ export default function Standings() {
     if (settings.confirmDestructive && !window.confirm('Mark this tournament as finished?\n\nIt stays fully editable — you can reopen it at any time.')) return;
     update(d => ({ ...d, tournament: { ...d.tournament, archived: true } }), 'tournament.finished');
   };
+  // Points decide a league, a Swiss run or a group stage — never a knockout.
+  const points = hasPointTable(domain.tournament.format);
+  const koMs = domain.matches.filter(m => !m.groupId);
+  const places = knockoutPlaces(koMs, id => (id ? names.get(id) ?? t('common.unknown') : ''));
   const rounds = plan ? [...new Set(plan.matches.map(m => m.round))].sort((a, b) => a - b) : [];
   const played = domain.matches.filter(m => FINISHED.has(m.result.status)).length;
 
@@ -199,6 +204,7 @@ export default function Standings() {
         </Panel>
       )}
 
+      {points ? (
       <Panel title={t('st.ranking')} sub={t('st.rankingSub')}>
         {standings.length === 0 ? (
           <Empty
@@ -230,6 +236,29 @@ export default function Standings() {
           </div>
         )}
       </Panel>
+      ) : (
+        <Panel title={t('st.finalTitle')} sub={t('st.finalSub')}>
+          {places.length === 0 ? (
+            <Empty
+              title={t('st.noChampionYet')}
+              hint={t('st.enterResultsFirst')}
+              action={<button className="btn primary" onClick={() => go('matches')}>{t('st.entry')}</button>}
+            />
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th className="num">{t('doc.place')}</th><th>{t('st.colWho')}</th></tr></thead>
+                <tbody>{places.map(p => (
+                  <tr key={p.place} className={p.place === 1 ? 'champion' : ''}>
+                    <td className="rank num">{p.place}</td>
+                    <td className="name">{p.name}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
+      )}
 
       <div className="footbar">
         <span className="muted">

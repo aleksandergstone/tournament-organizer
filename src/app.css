@@ -581,3 +581,16 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
 .hex-input { width: 110px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: lowercase; }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
 .btn.ghost:hover { background: var(--panel-2); color: var(--ink); }
+
+/* --- drawn bracket (spider) ------------------------------------------- */
+.bracket-svg { overflow-x: auto; }
+.bracket-svg svg { display: block; width: 100%; min-width: 640px; height: auto; }
+.champion-row { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline; }
+.champion-place { color: var(--ink-2, var(--muted)); font-size: 13px; }
+.champion-place b {
+  display: inline-block; min-width: 18px; margin-right: 6px; text-align: center;
+  color: var(--acc); font-weight: 700;
+}
+.champion-place.place-1 { font-size: 15px; font-weight: 600; color: var(--ink); }
+tr.champion td { font-weight: 600; color: var(--ink); }
+tr.champion td.rank { color: var(--acc); }

@@ -27,6 +27,17 @@ Everything works offline. Nothing is uploaded anywhere.
 3. You land on the **Bracket** view. Regenerating later asks for confirmation
    because it discards entered results.
 
+The Bracket screen exists for formats that end in a knockout — single elimination,
+double elimination and groups + knockout. In a league, a round robin or Swiss there
+is nothing to draw: every match is on **Results** and the table is on **Standings**,
+so those screens do not appear in the navigation at all.
+
+A single-elimination bracket is drawn as a **spider**: every round is a column, the
+first round on the left, the final on the right, with lines joining a match to the
+one it feeds. The winner of each match is marked in colour and the champion is
+called out above the final. The same drawing is what the *Bracket* document prints,
+on its own page.
+
 ## Enter results
 
 1. Open **Results**.
@@ -38,6 +49,11 @@ Everything works offline. Nothing is uploaded anywhere.
 
 Groups + knockout: once group matches are played, open **Standings**, choose
 qualifiers (per group + wildcards) and click **Seed knockout from standings**.
+
+**Standings** shows a points table where points decide the event — a league, a
+round robin, Swiss or a group stage. A knockout has nothing to rank by points, so
+the screen shows the final result instead: champion, runner-up and third place,
+and the same list is what the *Final result* document prints.
 
 ## Event operations (1.1+)
 
@@ -52,18 +68,12 @@ qualifiers (per group + wildcards) and click **Seed knockout from standings**.
 
 The display never shows organizer controls, so a visitor cannot change anything.
 
-### QR codes — check-in and jump-to-match
+### QR codes — coming back in a later version
 
-1. Open **QR codes** and pick a tab: **Check-in**, **Match** or **Station**.
-2. Pick a target and press **Print** (or just show it on screen).
-3. A participant code marks that participant as checked in when scanned; a match code
-   opens the result entry for exactly that match (highlighted, even if the filter
-   hides it); a station code opens the schedule of that place.
-4. Codes contain only a local identifier (`to://<project>/<kind>/<id>`) — no server,
-   no internet. A code that points at something removed is refused with a clear message.
-
-On a phone, point the camera at the code to read the identifier, then open the app
-and paste it into the address after `#` (e.g. `#to://t_123/match/m_456`).
+The QR check-in, match and station codes are being reworked, so the QR screen is
+hidden for now. The codes are generated locally and always were — no server, no
+internet — and the deep links behind them (`to://<project>/<kind>/<id>`) keep
+working, so anything already printed still opens the right match or participant.
 
 ### Courts, tables and stations
 
@@ -109,7 +119,9 @@ exact page that gets printed, so what you see is what leaves the app.
 
 1. **Pick a document** — standings, match list, timetable, bracket, group tables, or
    the *organizer pack* (event information + table + match list + timetable + bracket
-   in one file).
+   in one file). In a knockout event the *standings* document is called **Final
+   result** and prints the places instead of a table — a bracket has no points to
+   rank by.
 2. **Set the branding** — event title, competition subtitle, season/edition, event
    logo, optional sponsor logo, a header line, footer text, a notes block and an
    accent colour. Branding belongs to the project: it is saved, exported, synced and

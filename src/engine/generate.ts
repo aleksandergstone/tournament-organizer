@@ -160,6 +160,20 @@ export function formatKey(f: string): keyof Dict | null {
   return m[f] ?? null;
 }
 
+/**
+ * Does a points table mean anything in this format? A knockout bracket is won by
+ * being the last one standing, so ranking by points there would be noise — those
+ * formats get the final result instead.
+ */
+export function hasPointTable(f: string): boolean {
+  return f === 'round-robin' || f === 'league' || f === 'swiss' || f === 'groups-knockout';
+}
+
+/** Formats that end in a knockout bracket worth drawing. */
+export function hasBracket(f: string): boolean {
+  return f === 'single-elimination' || f === 'double-elimination' || f === 'groups-knockout';
+}
+
 export function describeFormat(f: string): string {
   const k = formatKey(f);
   return k ? t(k) : f;

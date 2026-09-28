@@ -10,7 +10,8 @@
 // section is either a table (columns + rows) or a set of rounds (bracket view).
 // The PDF/print renderer and the CSV writer both consume only this structure.
 import { Branding, brandingOf } from './branding';
-import { describeFormat, pickQualifiers } from './generate';
+import { describeFormat, hasPointTable, pickQualifiers } from './generate';
+import { bracketSvg, buildBracketTree, knockoutPlaces } from './bracket-view';
 import { decidedWinner } from './pairings';
 import { computeStandings } from './standings';
 import { Group, Match, Participant, StandingRow, Tournament, VenueResource } from './types';
@@ -52,6 +53,8 @@ export interface Section {
   columns?: Column[];
   rows?: Cell[][];
   rounds?: RoundView[];
+  /** A drawn bracket ("spider") as one self-contained SVG string. */
+  bracket?: string;
   note?: string;
   /** Start on a fresh page — keeps a title from being split from its table. */
   pageBreakBefore?: boolean;
@@ -374,8 +377,8 @@ function bracketRounds(c: Ctx, matches: Match[]): RoundView[] {
     if (list) list.push(m); else byRound.set(m.round, [m]);
   }
   return [...byRound.entries()].sort((a, b) => a[0] - b[0]).map(([round, ms]) => ({
-    name: ms[0]?.roundName || `Round ${round}`,
-    label: `Round ${round}`,
+    name: ms[0]?.roundName || t('round.n', { n: round }),
+    label: t('round.n', { n: round }),
     rows: ms.map(m => ({
       no: c.noOf.get(m.id) ?? '', home: nameOf(c, m.homeId), score: scoreOf(m),
       away: nameOf(c, m.awayId), status: statusOf(c, m),
@@ -383,14 +386,31 @@ function bracketRounds(c: Ctx, matches: Match[]): RoundView[] {
   }));
 }
 
+  // ---- Knockout -------------------------------------------------------------
+
 function bracketSections(c: Ctx): Section[] {
   const matches = knockoutMatches(c);
   if (!matches.length) return [];
+  // A single-elimination bracket reads far better as the drawn "spider"; a
+  // double-elimination one has an irregular shape, so it stays as round tables.
+  // The round rows are kept either way: the CSV writer has no drawing to read.
+  const drawable = c.t.format !== 'double-elimination' && matches.length > 1;
   const out: Section[] = [{
     id: 'bracket', title: t('doc.knockout'),
     sub: t('doc.knockoutSub'),
+    pageBreakBefore: true,
     rounds: bracketRounds(c, matches),
   }];
+  if (drawable) {
+    const tree = buildBracketTree(matches, id => nameOf(c, id), {
+      emptyLabel: '—', roundName: n => t('round.n', { n }),
+    });
+    out[0].bracket = bracketSvg({
+      tree, title: t('doc.knockout'), championLabel: t('doc.championLabel'),
+    });
+    out[0].note = t('doc.spiderNote');
+  }
+
   // The final is the highest round present; decided means a champion exists.
   const last = matches[matches.length - 1];
   const champ = last ? decidedWinner(last) : null;
@@ -445,9 +465,10 @@ function overviewSection(c: Ctx): Section {
 
 function packSections(c: Ctx): Section[] {
   const withGroups = c.groups.length > 0;
+  const final = finalResultSection(c);
   return [
     overviewSection(c),
-    ...(withGroups ? groupSections(c) : [overallStandings(c)]),
+    ...(withGroups ? groupSections(c) : final ? [final] : [overallStandings(c)]),
     matchListSection(c),
     ...scheduleSections(c),
     ...bracketSections(c),
@@ -469,18 +490,41 @@ function buildMeta(c: Ctx, generatedAt?: string): ReportMeta {
     title: b.eventTitle || tour.name || t('doc.tournament'),
     subtitle: b.subtitle, edition: b.edition, headerNote: b.headerNote,
     contextLine: bits.join('  ·  '),
-    generatedLine: generatedAt ? `Generated ${fmtDateFull(generatedAt)} at ${fmtTime(generatedAt)}` : '',
+    generatedLine: generatedAt
+      ? t('doc.generated', { date: fmtDateFull(generatedAt), time: fmtTime(generatedAt) })
+      : '',
+
     footer: b.footerNote, notes: b.notes, accent: b.accent,
     logoDataUrl: b.logoDataUrl, sponsorDataUrl: b.sponsorDataUrl,
   };
 }
 
+/**
+ * A knockout bracket has no meaningful points table: the order comes from who
+ * survived. Such events print the final result instead of a ranking.
+ */
+function finalResultSection(c: Ctx): Section | null {
+  if (hasPointTable(c.t.format)) return null;
+  const places = knockoutPlaces(knockoutMatches(c), id => nameOf(c, id));
+  if (!places.length) return null;
+  return {
+    id: 'final', title: t('doc.finalTitle'), sub: t('doc.finalSub'),
+    columns: [
+      { key: 'place', label: t('doc.place'), align: 'center' },
+      { key: 'name', label: t('st.colWho') },
+    ],
+    rows: places.map(p => [p.place, p.name]),
+  };
+}
+
 function buildSections(c: Ctx, kind: ReportKind): Section[] {
+  const final = finalResultSection(c);
   switch (kind) {
     // A group event has no meaningful overall table — the groups *are* the table.
     case 'standings':
     case 'groups':
-      return c.groups.length > 0 ? groupSections(c) : [overallStandings(c)];
+      if (c.groups.length > 0) return groupSections(c);
+      return final ? [final] : [overallStandings(c)];
     case 'matches': return [matchListSection(c)];
     case 'schedule': return scheduleSections(c);
     case 'bracket': return bracketSections(c);

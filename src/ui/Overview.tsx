@@ -1,6 +1,7 @@
 // Overview — one screen that says where the tournament stands and what to do next.
 import { useApp } from '../state/store';
-import { describeFormat } from '../engine/generate';
+import { describeFormat, hasPointTable } from '../engine/generate';
+import { knockoutPlaces } from '../engine/bracket-view';
 import { Empty, Meta, Page, Panel } from './kit';
 import { useT } from '../i18n';
 
@@ -15,6 +16,11 @@ export default function Overview() {
   const played = domain.matches.filter(m => FINISHED.has(m.result.status)).length;
   const open = domain.matches.length - played;
   const hasBracket = domain.matches.length > 0;
+  // Points only rank a league, a Swiss run or a group stage.
+  const points = hasPointTable(domain.tournament.format);
+  const places = knockoutPlaces(
+    domain.matches.filter(m => !m.groupId),
+    id => (id ? names.get(id) ?? tr('common.unknown') : ''));
 
   // One clear next step, in the order an organizer actually works in.
   const next = !domain.participants.length
@@ -42,8 +48,29 @@ export default function Overview() {
       </Panel>
 
       <div className="grid2">
-        <Panel title={tr('overview.ranking')} sub={tr('overview.rankingSub')}>
-          {standings.length === 0 ? (
+        <Panel title={tr(points ? 'overview.ranking' : 'st.finalTitle')}
+          sub={tr(points ? 'overview.rankingSub' : 'st.finalSub')}>
+          {!points ? (
+            places.length === 0 ? (
+              <Empty
+                title={tr('st.noChampionYet')}
+                hint={tr('st.enterResultsFirst')}
+                action={<button className="btn primary" onClick={() => go('matches')}>{tr('overview.enterResults')}</button>}
+              />
+            ) : (
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th className="num">{tr('doc.place')}</th><th>{tr('st.colWho')}</th></tr></thead>
+                  <tbody>{places.map(p => (
+                    <tr key={p.place} className={p.place === 1 ? 'champion' : ''}>
+                      <td className="rank num">{p.place}</td>
+                      <td className="name">{p.name}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            )
+          ) : standings.length === 0 ? (
             <Empty
               title={tr('overview.noResults')}
               hint={tr('overview.noResultsHint')}

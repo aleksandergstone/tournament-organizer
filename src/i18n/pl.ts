@@ -827,5 +827,26 @@ export const pl: Dict = {
   'out.docPreview': 'Podgląd dokumentu',
   // Document column labels
   'doc.matchCol': 'Mecz',
+  // Bracket spider, final result and hidden features
+  'st.finalTitle': 'Wynik końcowy',
+  'st.finalSub': 'Drabinkę wygrywa ten, kto zostaje ostatni — tabela punktów nie ma tu sensu.',
+  'st.noChampionYet': 'Brak mistrza',
+  'st.champion': 'Mistrz',
+  'st.runnerUp': 'Finalista',
+  'st.thirdPlace': 'Trzecie miejsce',
+  'st.seeBracket': 'Zobacz drabinkę',
+  'st.enterResultsFirst': 'Wpisz wyniki, aby zobaczyć wynik końcowy.',
+  'doc.finalTitle': 'Wynik końcowy',
+  'doc.finalSub': 'Miejsca rozstrzygnięte na parkiecie.',
+  'doc.place': 'Miejsce',
+  'doc.championLabel': 'Mistrz',
+  'doc.spiderNote': 'Rysunek to drabinka w grze: pierwsza runda po lewej, finał po prawej.',
+  'doc.matchListTitle': 'Wszystkie mecze',
+  'out.kind.result': 'Wynik końcowy',
+  'out.kind.resultHint': 'Kto wygrał drabinkę — miejsca tak, jak rozstrzygnięto na parkiecie.',
+  'bracket.notHere': 'Ten format nie ma drabinki',
+  'bracket.notHereHint': 'Wszystkie mecze są na ekranie Wyniki, a tabela punktów tam, gdzie liczą się punkty.',
+  'soon.title': 'Wkrótce',
+  'soon.qr': 'Odświeżamy kody QR do rejestracji. Reszta działa jak dotąd.',
 };
 

@@ -5,6 +5,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../state/store';
 import { buildDisplay, DisplayMatch } from '../engine/display';
+import { hasPointTable } from '../engine/generate';
+import { knockoutPlaces } from '../engine/bracket-view';
 import { desktop } from '../engine/desktop';
 import { useT } from '../i18n';
 import { statusLabel } from './kit';
@@ -45,6 +47,13 @@ export default function Display() {
   }, []);
 
   const names = useMemo(() => new Map(domain.participants.map(p => [p.id, p.name])), [domain.participants]);
+  // A points table only means something where points decide the event; in a
+  // knockout the hall screen shows the places instead.
+  const points = hasPointTable(domain.tournament.format);
+  const places = useMemo(() => knockoutPlaces(
+    domain.matches.filter(m => !m.groupId),
+    id => (id ? names.get(id) ?? t('common.unknown') : '')),
+    [domain.matches, names, t]);
   const model = buildDisplay({
     tournamentName: domain.tournament.name || t('app.untitled'),
     matches: domain.matches,
@@ -86,8 +95,23 @@ export default function Display() {
 
       <section className="display-bottom">
         <div className="display-standings">
-          <div className="display-label">{t('disp.standings')}</div>
-          {model.top.length === 0
+          <div className="display-label">{points ? t('disp.standings') : t('st.finalTitle')}</div>
+          {!points ? (
+            places.length === 0
+              ? <div className="display-none">{t('st.enterResultsFirst')}</div>
+              : (
+                <table>
+                  <tbody>
+                    {places.map(p => (
+                      <tr key={p.place}>
+                        <td>#{p.place}</td>
+                        <td>{p.name}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
+          ) : model.top.length === 0
             ? <div className="display-none">{t('disp.noResults')}</div>
             : (
               <table>

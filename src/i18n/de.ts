@@ -827,5 +827,26 @@ export const de: Dict = {
   'out.docPreview': 'Dokumentvorschau',
   // Document column labels
   'doc.matchCol': 'Partie',
+  // Bracket spider, final result and hidden features
+  'st.finalTitle': 'Endresultat',
+  'st.finalSub': 'Eine K.-o.-Runde gewinnt, wer übrig bleibt — eine Punktetaabelle wäre hier irreführend.',
+  'st.noChampionYet': 'Noch kein Sieger',
+  'st.champion': 'Sieger',
+  'st.runnerUp': 'Zweitplatzierter',
+  'st.thirdPlace': 'Dritter Platz',
+  'st.seeBracket': 'Baum ansehen',
+  'st.enterResultsFirst': 'Trage die Ergebnisse ein, um das Endresultat zu sehen.',
+  'doc.finalTitle': 'Endresultat',
+  'doc.finalSub': 'Die auf dem Platz entschiedenen Plätze.',
+  'doc.place': 'Platz',
+  'doc.championLabel': 'Sieger',
+  'doc.spiderNote': 'Die Zeichnung ist der Spielbaum: erste Runde links, Finale rechts.',
+  'doc.matchListTitle': 'Alle Partien',
+  'out.kind.result': 'Endresultat',
+  'out.kind.resultHint': 'Wer die K.-o.-Runde gewonnen hat — die Platzierungen vom Platz.',
+  'bracket.notHere': 'Dieses Format hat keinen Baum',
+  'bracket.notHereHint': 'Alle Partien stehen unter Ergebnisse, die Tabelle dort, wo Punkte zählen.',
+  'soon.title': 'Demnächst',
+  'soon.qr': 'Die QR-Anmeldung wird überarbeitet. Alles andere bleibt wie bisher.',
 };
 

@@ -7,6 +7,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Added
 
+- **The bracket as a drawing.** A single-elimination bracket is now spread out as a
+  bracket “spider” — rounds as columns, matches as boxes, connector lines between
+  them, the winner marked and the champion called out. The same drawing appears on
+  the Bracket screen and in the printed document (on its own landscape page), so
+  the picture you see is the picture you print.
+- **Final result for knockout events.** A bracket is won by being the last one
+  standing, so a points table would be noise. Where points decide something — a
+  league, a round robin, Swiss, a group stage — the table is still there; in a
+  knockout you get the champion, the runner-up and third place instead, on the
+  Standings screen, on the Overview card, on the hall display and in the document
+  (*Final result* replaces the standings table).
 - **Four languages — English, Polish, German, Spanish.** The whole interface, every
   message the engine produces (validation, import, LAN sharing, deep links) and
   every printed document now speak the selected language.
@@ -19,6 +30,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Changed
 
+- **QR codes are parked.** The check-in, match and station codes are being
+  reworked; the QR screen is hidden from the navigation and shows “coming soon”
+  instead. Nothing else is affected — the codes return in a later version.
+- **No bracket without a knockout stage.** The Bracket screen only appears for
+  single elimination, double elimination and groups + knockout. In a league every
+  match is on the Results screen and the table is on Standings, which is where
+  they belong.
 - One dictionary (`src/i18n/`) is the single source of truth: `en` is canonical
   and the other three are typed against it, so a missing or misspelled key fails
   the build instead of leaking a raw key into the UI.
@@ -33,6 +51,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Fixed
 
+- Stray English left in printed documents: the round-table headers (“No. / Home /
+  Score / Away / Status”), the “Notes” heading, the “Generated … at …” line and the
+  `lang` of the document itself. CSV headers for knockout exports are localized too.
 - Privacy, README and launch-page wording now describes local-network sharing
   accurately: it is optional, off by default and stays inside your own Wi-Fi, and
   nothing ever reaches a server. The user guide documents the Output & branding

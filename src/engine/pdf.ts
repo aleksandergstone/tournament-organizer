@@ -4,8 +4,8 @@
 // the same string is (a) shown in the in-app preview, (b) printed by Electron's
 // printToPDF in an offscreen window, and (c) printed from a browser. What the
 // organizer previews is exactly what comes out of the printer.
-import { Report, Section } from './output';
-import { t } from '../i18n';
+import { Report, Section, REPORT_KINDS } from './output';
+import { getLocale, INTL_LOCALES, t } from '../i18n';
 
 export function escapeHtml(v: string): string {
   return v.replace(/[&<>"']/g, ch => (
@@ -35,6 +35,9 @@ export function reportFileName(report: Report, ext: string): string {
 
 const CSS = `
   @page { size: A4 portrait; margin: 14mm 12mm 18mm; }
+  /* A drawn bracket gets its own landscape page where the engine supports it,
+     so the spider stays readable instead of being squeezed onto A4 portrait. */
+  @page wide { size: A4 landscape; margin: 10mm; }
   * { box-sizing: border-box; }
   html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body {
@@ -53,6 +56,9 @@ const CSS = `
   .hint { font-style: italic; }
   section { margin-bottom: 18px; }
   section.break { break-before: page; }
+  section.wide { page: wide; }
+  .spider { margin: 4px 0 0; }
+  .spider svg { display: block; width: 100%; height: auto; }
   h2 { font-size: 12.5pt; margin: 0 0 2px; padding-bottom: 4px; border-bottom: 1px solid var(--accent-soft);
        break-after: avoid; page-break-after: avoid; }
   .sub { font-size: 9pt; color: #5b6472; margin: 0 0 6px; }
@@ -92,7 +98,7 @@ function roundsHtml(s: Section): string {
   return (s.rounds ?? []).map(r => `
     <div class="round">
       <h3>${escapeHtml(r.label || r.name)}</h3>
-      <table><thead><tr><th class="r">No.</th><th>Home</th><th class="c">Score</th><th>Away</th><th>Status</th></tr></thead>
+      <table><thead><tr><th class="r">${escapeHtml(t('doc.no'))}</th><th>${escapeHtml(t('common.home'))}</th><th class="c">${escapeHtml(t('common.score'))}</th><th>${escapeHtml(t('common.away'))}</th><th>${escapeHtml(t('common.status'))}</th></tr></thead>
       <tbody>${r.rows.map(m => `<tr><td class="r">${escapeHtml(m.no)}</td><td class="name">${escapeHtml(m.home)}</td>` +
         `<td class="c">${escapeHtml(m.score)}</td><td class="name">${escapeHtml(m.away)}</td>` +
         `<td>${escapeHtml(m.status)}</td></tr>`).join('')}</tbody></table>
@@ -104,24 +110,30 @@ function roundsHtml(s: Section): string {
 export function renderReportHtml(report: Report): string {
   const m = report.meta;
   const logo = safeImage(m.logoDataUrl), sponsor = safeImage(m.sponsorDataUrl);
-  const style = `:root { --accent: ${m.accent}; --accent-soft: ${tint(m.accent, 0.1)}; }`;
+  // The document carries the app's variable names so the drawn bracket picks up
+  // the event's accent colour, and always prints on white paper.
+  const style = `:root { --accent: ${m.accent}; --accent-soft: ${tint(m.accent, 0.1)};
+    --acc: ${m.accent}; --ink: #1a1d21; --muted: #5b6472; --line: #c8ced8; --panel: #ffffff; }`;
   const body = report.sections.map(s => `
-    <section class="${s.pageBreakBefore ? 'break' : ''}">
+    <section class="${s.pageBreakBefore ? 'break' : ''}${s.bracket ? ' wide' : ''}">
       <h2>${escapeHtml(s.title)}</h2>
       ${s.sub ? `<p class="sub">${escapeHtml(s.sub)}</p>` : ''}
       ${s.columns && s.rows ? tableHtml(s) : ''}
-      ${s.rounds ? roundsHtml(s) : ''}
+      ${s.bracket ? `<div class="spider">${s.bracket}</div>` : ''}
+      ${s.rounds && !s.bracket ? roundsHtml(s) : ''}
       ${s.note ? `<p class="note">${escapeHtml(s.note)}</p>` : ''}
     </section>`).join('');
   const notes = m.notes ? `
     <section>
-      <h2>Notes</h2>
+      <h2>${escapeHtml(t('doc.notes'))}</h2>
       <p class="notes">${escapeHtml(m.notes)}</p>
     </section>` : '';
   const foot = [m.footer, m.generatedLine].filter(Boolean).map(escapeHtml).join('  ·  ');
+  const kindLabel = REPORT_KINDS.find(k => k.kind === report.kind)?.label;
+  const lang = INTL_LOCALES[getLocale()];
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8" />
-<title>${escapeHtml(m.title)} — ${escapeHtml(m.subtitle || report.kind)}</title>
+<html lang="${lang}"><head><meta charset="utf-8" />
+<title>${escapeHtml(m.title)} — ${escapeHtml(kindLabel ? t(kindLabel) : m.subtitle)}</title>
 <style>${style}${CSS}</style></head>
 <body>
   <div class="head">

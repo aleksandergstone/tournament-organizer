@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../state/store';
 import { REPORT_KINDS, ReportKind, buildReport, reportToCsv } from '../engine/output';
+import { hasPointTable } from '../engine/generate';
 import { renderReportHtml, reportFileName } from '../engine/pdf';
 import { Branding, normalizeBranding } from '../engine/branding';
 import { desktop } from '../engine/desktop';
@@ -35,6 +36,8 @@ export default function Output() {
   }, kind), [t, domain, kind]);
   const html = useMemo(() => renderReportHtml(report), [report]);
   const hasData = domain.matches.length > 0;
+  // A knockout prints its final result where a league prints a table.
+  const points = hasPointTable(domain.tournament.format);
 
   const commitBranding = (next: Branding) => {
     setDraft(next);

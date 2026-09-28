@@ -18,10 +18,14 @@ Windows · macOS · Linux · MIT licensed
   season, team and individual match events, custom schedule.
 - **Brackets that stay correct** — change a result and the bracket recomputes: winners advance,
   results that became impossible are cleared instead of silently kept.
+- **A bracket you can read at a glance** — the single-elimination bracket is drawn as a
+  “spider”: rounds as columns, connector lines, the champion called out. The same picture
+  prints on its own page.
 - **Result entry made for a venue** — two score fields and a button, plus walkover, unfinished
   and interrupted states, and keyboard navigation (`j`/`k`, `/`, `Enter`).
 - **Standings with your rules** — points, tiebreak order, group tables, and qualifier selection
-  that seeds the knockout stage.
+  that seeds the knockout stage. A knockout event has no points table, so it shows the final
+  result instead: champion, runner-up, third place.
 - **Offline and local-first** — no account, no cloud, no telemetry. Autosave to the device,
   export one portable `.top.json` file you own.
 - **Recovery built in** — undo/redo, validated import, CSV export and a print sheet.

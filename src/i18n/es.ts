@@ -827,5 +827,26 @@ export const es: Dict = {
   'out.docPreview': 'Vista previa del documento',
   // Document column labels
   'doc.matchCol': 'Partido',
+  // Bracket spider, final result and hidden features
+  'st.finalTitle': 'Resultado final',
+  'st.finalSub': 'En una eliminatoria gana quien llega el último: una tabla de puntos no aporta nada.',
+  'st.noChampionYet': 'Todavía no hay campeón',
+  'st.champion': 'Campeón',
+  'st.runnerUp': 'Subcampeón',
+  'st.thirdPlace': 'Tercer puesto',
+  'st.seeBracket': 'Ver el cuadro',
+  'st.enterResultsFirst': 'Introduce los resultados para ver el resultado final.',
+  'doc.finalTitle': 'Resultado final',
+  'doc.finalSub': 'Los puestos decididos en la pista.',
+  'doc.place': 'Puesto',
+  'doc.championLabel': 'Campeón',
+  'doc.spiderNote': 'El dibujo es el cuadro tal y como se jugó: primera ronda a la izquierda, final a la derecha.',
+  'doc.matchListTitle': 'Todos los partidos',
+  'out.kind.result': 'Resultado final',
+  'out.kind.resultHint': 'Quién ganó la eliminatoria: los puestos decididos en la pista.',
+  'bracket.notHere': 'Este formato no tiene cuadro',
+  'bracket.notHereHint': 'Todos los partidos están en Resultados y la tabla aparece donde cuentan los puntos.',
+  'soon.title': 'Próximamente',
+  'soon.qr': 'El registro con QR se está renovando. Todo lo demás sigue igual.',
 };
 

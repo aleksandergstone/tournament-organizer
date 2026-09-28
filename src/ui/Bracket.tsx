@@ -1,8 +1,10 @@
-// The generated structure: bracket columns, group fixtures or a plain list.
-// Read-only by design — results are entered on the Results screen.
+// The generated structure: the knockout bracket drawn as a "spider", group
+// fixtures, or a plain match list for formats that end in a league.
+import { useMemo } from 'react';
 import { useApp } from '../state/store';
 import { Match } from '../engine/types';
-import { describeFormat } from '../engine/generate';
+import { describeFormat, hasBracket } from '../engine/generate';
+import { bracketSvg, buildBracketTree, knockoutPlaces } from '../engine/bracket-view';
 import { Empty, Meta, Page, Panel, StatusPill } from './kit';
 import { useT } from '../i18n';
 
@@ -12,7 +14,7 @@ function useNames() {
   const t = useT();
   const { domain } = useApp();
   const names = new Map(domain.participants.map(p => [p.id, p.name]));
-  return (id: string | null) => (id ? names.get(id) ?? t('common.unknown') : 'TBD');
+  return (id: string | null | undefined) => (id ? names.get(id) ?? t('common.unknown') : t('common.tbd'));
 }
 
 export default function Bracket() {
@@ -20,6 +22,19 @@ export default function Bracket() {
   const { domain, go } = useApp();
   const pn = useNames();
   const fmt = domain.tournament.format;
+
+  // A league (or any format without a knockout stage) has no bracket to draw.
+  if (!hasBracket(fmt)) {
+    return (
+      <Page title={t('bracket.notHere')}>
+        <Empty
+          title={t('bracket.notHere')}
+          hint={t('bracket.notHereHint')}
+          action={<button className="btn primary" onClick={() => go('matches')}>{t('res.title')}</button>}
+        />
+      </Page>
+    );
+  }
 
   if (domain.matches.length === 0) {
     return (
@@ -39,36 +54,35 @@ export default function Bracket() {
   if (fmt === 'double-elimination') return <DoubleView pn={pn} sub={sub} />;
   if (fmt === 'groups-knockout' && domain.groups.length > 0) return <GroupsKoView pn={pn} sub={sub} />;
 
-  const rounds = [...new Set(domain.matches.map(m => m.round))].sort((a, b) => a - b);
-  const elim = fmt === 'single-elimination';
+  // Single elimination: the bracket as a drawn spider, the same drawing the
+  // document prints — one picture, no second rendering to keep in sync.
+  const koMs = domain.matches.filter(m => !m.groupId);
+  const tree = useMemo(() => buildBracketTree(koMs, pn, {
+    emptyLabel: t('common.tbd'), roundName: n => t('round.n', { n }),
+  }), [koMs, pn, t]);
+  const spider = useMemo(() => bracketSvg({
+    tree, title: t('bracket.title'), championLabel: t('st.champion'),
+  }), [tree, t]);
+  const places = useMemo(() => knockoutPlaces(koMs, pn), [koMs, pn]);
+
   return (
-    <Page title={elim ? t('bracket.title') : t('bracket.scheduleTitle')} sub={sub}
+    <Page title={t('bracket.title')} sub={sub}
       actions={<button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>}>
-      {elim ? (
-        <div className="bracket">{rounds.map(r => (
-          <div className="bround" key={r}>
-            <h3>{domain.matches.find(m => m.round === r)?.roundName ?? 'Round ' + r}</h3>
-            {domain.matches.filter(m => m.round === r).map(m => <MCard key={m.id} m={m} pn={pn} />)}
-          </div>
-        ))}</div>
-      ) : (
-        <Panel>
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>{t('common.round')}</th><th>{t('nav.home')}</th><th>{t('common.away')}</th><th className="num">{t('common.score')}</th><th>{t('common.status')}</th></tr></thead>
-              <tbody>{domain.matches.map(m => (
-                <tr key={m.id} className={FINISHED.has(m.result.status) ? '' : 'dim'}>
-                  <td className="muted nowrap">{m.roundName}</td>
-                  <td className="name">{pn(m.homeId)}</td>
-                  <td className="name">{pn(m.awayId)}</td>
-                  <td className="num">{m.result.homeScore ?? '–'} : {m.result.awayScore ?? '–'}</td>
-                  <td><StatusPill status={m.result.status} /></td>
-                </tr>
-              ))}</tbody>
-            </table>
+      {places.length > 0 && (
+        <Panel title={t('st.finalTitle')}>
+          <div className="champion-row">
+            {places.map(p => (
+              <span className={`champion-place place-${p.place}`} key={p.place}>
+                <b>{p.place}</b> {p.name}
+              </span>
+            ))}
           </div>
         </Panel>
       )}
+      <Panel>
+        <div className="bracket-svg" dangerouslySetInnerHTML={{ __html: spider }} />
+        <p className="table-note">{t('doc.spiderNote')}</p>
+      </Panel>
       <div className="footbar">
         <span className="muted">{t('bracket.updateNote')}</span>
         <span className="sp" />

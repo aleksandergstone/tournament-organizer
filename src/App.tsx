@@ -14,10 +14,11 @@ import Settings from './ui/Settings';
 import Import from './ui/Import';
 import Display from './ui/Display';
 import Schedule from './ui/Schedule';
-import Codes from './ui/Codes';
+import ComingSoon from './ui/ComingSoon';
 import ErrorBoundary from './ui/ErrorBoundary';
 import { Alert } from './ui/kit';
 import { parseDeepLink, resolveDeepLink } from './engine/deeplink';
+import { hasBracket } from './engine/generate';
 import { nowIso } from './engine/types';
 import { useT, type Dict } from './i18n';
 
@@ -96,14 +97,21 @@ export default function App() {
         {hasProject && domain.tournament.name ? (
           <span className="topbar-proj" title={t('nav.openTournament')}>{domain.tournament.name}</span>
         ) : null}
-        <nav>{NAV.map((group, gi) => (
-          <span className="nav-group" key={gi}>
-            {gi > 0 ? <span className="divider" /> : null}
-            {group.items.map(([k, label]) => (
-              <button key={k} className={screen === k ? 'on' : ''} onClick={() => go(k)} disabled={(k !== 'home' && !hasProject)}>{t(label)}</button>
-            ))}
-          </span>
-        ))}</nav>
+        <nav>{NAV.map((group, gi) => {
+          // The bracket only exists when the format has one; QR codes are
+          // temporarily parked, so they do not clutter the navigation.
+          const items = group.items.filter(([k]) => k !== 'codes'
+            && (k !== 'bracket' || hasBracket(domain.tournament.format)));
+          if (!items.length) return null;
+          return (
+            <span className="nav-group" key={gi}>
+              {gi > 0 ? <span className="divider" /> : null}
+              {items.map(([k, label]) => (
+                <button key={k} className={screen === k ? 'on' : ''} onClick={() => go(k)} disabled={(k !== 'home' && !hasProject)}>{t(label)}</button>
+              ))}
+            </span>
+          );
+        })}</nav>
         <span className="sp" />
         <span className="acts">
           <button onClick={undo_} disabled={!canUndo} title={t('nav.undo') + ' (Ctrl+Z)'} aria-label={t('nav.undo')}>{t('nav.undo')}</button>
@@ -138,7 +146,7 @@ export default function App() {
       {screen === 'standings' && (hasProject ? <Standings /> : <Home />)}
       {screen === 'schedule' && (hasProject ? <Schedule /> : <Home />)}
       {screen === 'display' && (hasProject ? <Display /> : <Home />)}
-      {screen === 'codes' && (hasProject ? <Codes /> : <Home />)}
+      {screen === 'codes' && <ComingSoon title="codes" />}
       {screen === 'export' && (hasProject ? <Output /> : <Home />)}
       {screen === 'settings' && <Settings />}
       {screen === 'import' && <Import />}

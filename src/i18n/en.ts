@@ -826,5 +826,26 @@ export const en = {
   'out.docPreview': 'Document preview',
   // Document column labels
   'doc.matchCol': 'Match',
+  // Bracket spider, final result and hidden features
+  'st.finalTitle': 'Final result',
+  'st.finalSub': 'A knockout bracket is won by being the last one standing — there is no points table.',
+  'st.noChampionYet': 'No champion yet',
+  'st.champion': 'Champion',
+  'st.runnerUp': 'Runner-up',
+  'st.thirdPlace': 'Third place',
+  'st.seeBracket': 'See the bracket',
+  'st.enterResultsFirst': 'Enter the results to see the final result.',
+  'doc.finalTitle': 'Final result',
+  'doc.finalSub': 'The places decided on the court.',
+  'doc.place': 'Place',
+  'doc.championLabel': 'Champion',
+  'doc.spiderNote': 'The drawing is the bracket as played: the first round on the left, the final on the right.',
+  'doc.matchListTitle': 'All matches',
+  'out.kind.result': 'Final result',
+  'out.kind.resultHint': 'Who won the knockout bracket — places as decided on the court.',
+  'bracket.notHere': 'This format has no bracket',
+  'bracket.notHereHint': 'Every match is listed on the Results screen, and the standings show the table where points decide.',
+  'soon.title': 'Coming soon',
+  'soon.qr': 'QR check-in is being reworked. Everything else keeps working as before.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };
