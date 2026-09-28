@@ -42,7 +42,16 @@ app.whenReady().then(async () => {
   });
 
   const js = (code) => win.webContents.executeJavaScript(code, true);
-  const settle = () => delay(600);
+  // Hidden windows must keep painting so captures are not stale.
+  win.webContents.setBackgroundThrottling(false);
+  // The window is hidden, so a capture can lag behind the DOM. Wait for two
+  // real paint frames before every screenshot, otherwise a stale frame lands
+  // in the file.
+  const settle = async () => {
+    await delay(250);
+    await js('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))');
+    await delay(450);
+  };
 
   try {
     await win.loadFile(index);

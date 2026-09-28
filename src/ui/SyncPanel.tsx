@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../state/store';
 import { desktop, lanBase, LanInfo } from '../engine/desktop';
 import { makePayload, mergeProjects, parsePayload } from '../engine/sync';
+import { Alert } from './kit';
 
 const POLL_MS = 3000;
 
@@ -110,20 +111,31 @@ export default function SyncPanel() {
         <button className="btn" onClick={push} disabled={busy || !addr || !hasProject}>Send to it</button>
       </div>
 
-      {err && <div className="err">{err}</div>}
+      {err && <Alert tone="err" title="Sharing problem">{err}</Alert>}
 
-      <h3 style={{ marginTop: 18 }}>How conflicts are decided</h3>
-      <ul className="muted" style={{ fontSize: 13.5 }}>
-        <li>Matches merge one by one: the result edited most recently wins; a tie keeps this device.</li>
-        <li>Participants, groups and places are taken from the device whose project was updated last.</li>
-        <li>Brackets are recomputed after every merge, so a received result can never leave a stale pairing.</li>
-        <li>Every merge is written to the project history — undo works like any other change.</li>
-      </ul>
+      <details className="disclosure" style={{ marginTop: 10 }}>
+        <summary>How conflicts are decided</summary>
+        <ul className="muted" style={{ fontSize: 13, paddingLeft: 18, margin: '8px 0 0' }}>
+          <li>Matches merge one by one: the result edited most recently wins; a tie keeps this device.</li>
+          <li>Participants, groups and places are taken from the device whose project was updated last.</li>
+          <li>Brackets are recomputed after every merge, so a received result can never leave a stale pairing.</li>
+          <li>Every merge is written to the project history — undo works like any other change.</li>
+        </ul>
+      </details>
 
       {log.length > 0 && (
-        <table style={{ marginTop: 10 }}><tbody>
-          {log.map((l, i) => <tr key={i}><td className="muted" style={{ width: 90 }}>{l.split(' — ')[0]}</td><td>{l.split(' — ').slice(1).join(' — ')}</td></tr>)}
-        </tbody></table>
+        <div className="table-wrap" style={{ marginTop: 10 }}>
+          <table>
+            <tbody>
+              {log.map((l, i) => (
+                <tr key={i}>
+                  <td className="muted tnum nowrap" style={{ width: 90 }}>{l.split(' — ')[0]}</td>
+                  <td>{l.split(' — ').slice(1).join(' — ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

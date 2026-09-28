@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../state/store';
 import { buildDisplay, DisplayMatch } from '../engine/display';
 import { desktop } from '../engine/desktop';
+import { statusLabel } from './kit';
 
 function clockText(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -28,7 +29,7 @@ function BigMatch({ label, m }: { label: string; m: DisplayMatch | null }) {
         <span className="display-vs">:</span>
         <b>{m.awayScore ?? '–'}</b><span>{m.away}</span>
       </div>
-      <div className="display-status">{m.status}</div>
+      <div className="display-status">{statusLabel(m.status)}</div>
     </div>
   );
 }
@@ -56,13 +57,19 @@ export default function Display() {
     if (document.fullscreenElement) void document.exitFullscreen();
     else void el.requestFullscreen?.();
   };
+  // In the projector window (#display) the organizer controls are hidden —
+  // nobody should be able to change anything from the big screen.
+  const kiosk = typeof window !== 'undefined' && window.location.hash === '#display';
 
   return (
     <div className="display-root">
       <header className="display-head">
         <div>
           <h1>{model.tournamentName}</h1>
-          <div className="muted">{domain.tournament.location || 'Venue not set'} · {domain.participants.length} participants</div>
+          <div className="muted">
+            {domain.tournament.location || 'Venue not set'} · {domain.participants.length} participants
+            {model.top.length ? ` · leader ${names.get(model.top[0].participantId) ?? '?'}` : ''}
+          </div>
         </div>
         <div className="display-right">
           <span className={`display-pill ${model.status}`}>{model.statusLabel}</span>
@@ -71,8 +78,8 @@ export default function Display() {
       </header>
 
       <section className="display-main">
-        <BigMatch label="Now / next up" m={model.current} />
-        <BigMatch label="Then" m={model.next} />
+        <BigMatch label="Playing now" m={model.current} />
+        <BigMatch label="Up next" m={model.next} />
       </section>
 
       <section className="display-bottom">
@@ -98,12 +105,14 @@ export default function Display() {
         </div>
         <div className="display-meta">
           <div>{model.playedCount}/{model.totalCount} matches played · {model.openCount} open</div>
-          <div className="muted">Updated {clockText(now)} — refreshes automatically</div>
-          <div className="row" style={{ marginTop: 10 }}>
-            <button className="btn sm" onClick={() => void desktop.openDisplay()}>Open on second screen</button>
-            <button className="btn sm" onClick={fullscreen}>Full screen</button>
-            <button className="btn sm" onClick={() => go('overview')}>Back to organizer view</button>
-          </div>
+          {!kiosk && <div className="muted">Updates automatically as results are entered.</div>}
+          {!kiosk && (
+            <div className="row" style={{ marginTop: 12 }}>
+              <button className="btn sm" onClick={() => void desktop.openDisplay()}>Open on second screen</button>
+              <button className="btn sm" onClick={fullscreen}>Full screen</button>
+              <button className="btn sm" onClick={() => go('overview')}>Back to organizer view</button>
+            </div>
+          )}
         </div>
       </section>
     </div>

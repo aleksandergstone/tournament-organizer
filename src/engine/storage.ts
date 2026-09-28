@@ -60,7 +60,7 @@ export function log(audit: AuditEntry[], action: string, detail?: string): Audit
 const LS_KEY = 'to:projects';
 const LS_OPEN = 'to:last-open';
 
-export interface StoredProjectMeta { id: string; name: string; updatedAt: string; }
+export interface StoredProjectMeta { id: string; name: string; updatedAt: string; format?: string; participantCount?: number; }
 
 // ---- Persistence adapters ----
 // StorageAdapter is the release seam: the app talks only to this interface.
@@ -110,6 +110,7 @@ export const store = {
   list(): StoredProjectMeta[] {
     return Object.values(store.loadAll()).map(f => ({
       id: f.tournament.id, name: f.tournament.name, updatedAt: f.tournament.updatedAt,
+      format: f.tournament.format, participantCount: f.participants.length,
     })).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   },
 };
@@ -163,6 +164,7 @@ export function createFileAdapter(opts: {
 export function toStoredList(all: Record<string, ProjectFile>): StoredProjectMeta[] {
   return Object.values(all).map(f => ({
     id: f.tournament.id, name: f.tournament.name, updatedAt: f.tournament.updatedAt,
+    format: f.tournament.format, participantCount: f.participants.length,
   })).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 

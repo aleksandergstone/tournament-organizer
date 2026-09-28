@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useApp } from './state/store';
+import { useApp, Screen } from './state/store';
 import { APP_NAME, APP_VERSION } from './version';
 import Home from './ui/Home';
 import Wizard from './ui/Wizard';
@@ -16,15 +16,16 @@ import Display from './ui/Display';
 import Schedule from './ui/Schedule';
 import Codes from './ui/Codes';
 import ErrorBoundary from './ui/ErrorBoundary';
+import { Alert } from './ui/kit';
 import { parseDeepLink, resolveDeepLink } from './engine/deeplink';
 import { nowIso } from './engine/types';
 
-const NAV = [
-  ['home', 'Home'], ['overview', 'Overview'], ['participants', 'Players'],
-  ['rules', 'Rules'], ['bracket', 'Bracket'], ['matches', 'Results'],
-  ['standings', 'Standings'], ['schedule', 'Schedule'], ['display', 'Display'],
-  ['codes', 'QR codes'], ['export', 'Export'],
-] as const;
+// Navigation is grouped by what the organizer is doing, not by feature name.
+const NAV: { items: readonly (readonly [Screen, string])[] }[] = [
+  { items: [['home', 'Home'], ['overview', 'Overview'], ['participants', 'Players'], ['rules', 'Rules']] },
+  { items: [['bracket', 'Bracket'], ['matches', 'Results'], ['standings', 'Standings']] },
+  { items: [['schedule', 'Schedule'], ['display', 'Display'], ['codes', 'QR codes'], ['export', 'Export']] },
+];
 
 // A window opened with #display is a projector: organizer controls are hidden.
 const DISPLAY_WINDOW = typeof window !== 'undefined' && window.location.hash === '#display';
@@ -90,28 +91,40 @@ export default function App() {
     <div>
       <div className="topbar">
         <span className="brand" title={`${APP_NAME} ${APP_VERSION}`}>TO</span>
-        <nav>{NAV.map(([k, label]) => (
-          <button key={k} className={screen === k ? 'on' : ''} onClick={() => go(k as never)} disabled={(k !== 'home' && !hasProject)}>{label}</button>
+        {hasProject && domain.tournament.name ? (
+          <span className="topbar-proj" title="Open tournament">{domain.tournament.name}</span>
+        ) : null}
+        <nav>{NAV.map((group, gi) => (
+          <span className="nav-group" key={gi}>
+            {gi > 0 ? <span className="divider" /> : null}
+            {group.items.map(([k, label]) => (
+              <button key={k} className={screen === k ? 'on' : ''} onClick={() => go(k)} disabled={(k !== 'home' && !hasProject)}>{label}</button>
+            ))}
+          </span>
         ))}</nav>
         <span className="sp" />
         <span className="acts">
-          <button onClick={undo_} disabled={!canUndo} title="Ctrl+Z">Undo</button>
-          <button onClick={redo_} disabled={!canRedo} title="Ctrl+Y">Redo</button>
-          <button onClick={save} title="Ctrl+S">{dirty ? '● Save' : 'Saved'}</button>
-          <span style={{ fontSize: 11, color: '#9ca3af' }}>{lastSaved ? new Date(lastSaved).toLocaleTimeString() : ''}</span>
+          <button onClick={undo_} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">Undo</button>
+          <button onClick={redo_} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">Redo</button>
+          <button onClick={save} title="Save now (Ctrl+S)" className={dirty ? 'primary-save' : ''}>{dirty ? '● Unsaved' : 'Saved'}</button>
+          <span className={'save-state' + (dirty ? ' dirty' : '')}>{lastSaved ? new Date(lastSaved).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+          <span className="divider" />
+          <button onClick={() => go('settings')} title="Settings" aria-label="Settings">Settings</button>
         </span>
       </div>
-      {saveError && (
-        <div className="wrap" style={{ paddingTop: 10, paddingBottom: 0 }}>
-          <div className="err">
-            Could not save to this device ({saveError}). Your changes are kept in memory —
-            use <b>Export → Save .top.json</b> to store a backup file, then free up disk space and try again.
-          </div>
-        </div>
-      )}
-      {linkMsg && (
-        <div className="wrap" style={{ paddingTop: 10, paddingBottom: 0 }}>
-          <div className={linkMsg.kind === 'err' ? 'err' : 'ok'}>{linkMsg.text}</div>
+      {(saveError || linkMsg) && (
+        <div className="wrap" style={{ paddingTop: 14, paddingBottom: 0 }}>
+          {saveError && (
+            <Alert tone="err" title="This project could not be saved to disk">
+              Your work is safe in memory, but free up some disk space and save again.
+              To keep a copy right now use <b>Export → Save project file</b>.
+            </Alert>
+          )}
+          {linkMsg && (
+            <Alert tone={linkMsg.kind === 'err' ? 'err' : 'ok'}>
+              {linkMsg.kind === 'err' ? <b>Code not opened — </b> : null}{linkMsg.text}
+            </Alert>
+          )}
         </div>
       )}
       {screen === 'home' && <Home />}

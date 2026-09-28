@@ -1,103 +1,182 @@
+// The generated structure: bracket columns, group fixtures or a plain list.
+// Read-only by design — results are entered on the Results screen.
 import { useApp } from '../state/store';
 import { Match } from '../engine/types';
+import { describeFormat } from '../engine/generate';
+import { Empty, Meta, Page, Panel, StatusPill } from './kit';
+
+const FINISHED = new Set(['played', 'draw', 'walkover', 'overtime']);
+
+function useNames() {
+  const { domain } = useApp();
+  const names = new Map(domain.participants.map(p => [p.id, p.name]));
+  return (id: string | null) => (id ? names.get(id) ?? 'Unknown' : 'TBD');
+}
 
 export default function Bracket() {
   const { domain, go } = useApp();
-  const names = new Map(domain.participants.map(p => [p.id, p.name]));
-  const pn = (id: string | null) => (id ? names.get(id) ?? 'Unknown (renamed?)' : 'TBD');
-  if (domain.matches.length === 0) return <div className="wrap"><h1>Bracket / schedule</h1><div className="empty">Nothing generated yet. <button className="btn primary" onClick={() => go('rules')}>Go to rules → generate</button></div></div>;
+  const pn = useNames();
   const fmt = domain.tournament.format;
-  if (fmt === 'double-elimination') return <DoubleView names={names} pn={pn} />;
-  if (fmt === 'groups-knockout' && domain.groups.length > 0) return <GroupsKoView pn={pn} />;
-  const rounds = [...new Set(domain.matches.map(m => m.round))].sort((a,b) => a-b);
-  const byR = (r: number) => domain.matches.filter(m => m.round === r);
+
+  if (domain.matches.length === 0) {
+    return (
+      <Page title="Bracket" sub="The structure of the tournament.">
+        <Empty
+          title="Nothing generated yet"
+          hint="Choose a format and generate the matches — you can regenerate at any time before results are entered."
+          action={<button className="btn primary" onClick={() => go('rules')}>Go to rules → generate</button>}
+        />
+      </Page>
+    );
+  }
+
+  const played = domain.matches.filter(m => FINISHED.has(m.result.status)).length;
+  const sub = `${describeFormat(fmt)} · ${played} of ${domain.matches.length} matches played`;
+
+  if (fmt === 'double-elimination') return <DoubleView pn={pn} sub={sub} />;
+  if (fmt === 'groups-knockout' && domain.groups.length > 0) return <GroupsKoView pn={pn} sub={sub} />;
+
+  const rounds = [...new Set(domain.matches.map(m => m.round))].sort((a, b) => a - b);
   const elim = fmt === 'single-elimination';
   return (
-    <div className="wrap">
-      <h1>Bracket / schedule ({domain.matches.length})</h1>
+    <Page title={elim ? 'Bracket' : 'Schedule'} sub={sub}
+      actions={<button className="btn primary" onClick={() => go('matches')}>Enter results</button>}>
       {elim ? (
         <div className="bracket">{rounds.map(r => (
-          <div className="bround" key={r}><h3>{byR(r)[0]?.roundName ?? ('Round '+r)}</h3>
-            {byR(r).map(m => <MCard key={m.id} m={m} pn={pn} />)}
-          </div>))}
-        </div>
+          <div className="bround" key={r}>
+            <h3>{domain.matches.find(m => m.round === r)?.roundName ?? 'Round ' + r}</h3>
+            {domain.matches.filter(m => m.round === r).map(m => <MCard key={m.id} m={m} pn={pn} />)}
+          </div>
+        ))}</div>
       ) : (
-        <div className="card"><table><thead><tr><th>Round</th><th>Home</th><th>Away</th><th>Score</th><th>Status</th></tr></thead>
-        <tbody>{domain.matches.map(m => (
-          <tr key={m.id}><td>{m.roundName}</td><td>{pn(m.homeId)}</td><td>{pn(m.awayId)}</td>
-          <td>{m.result.homeScore ?? '–'} : {m.result.awayScore ?? '–'}</td><td><St m={m} /></td></tr>))}
-        </tbody></table></div>
+        <Panel>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Round</th><th>Home</th><th>Away</th><th className="num">Score</th><th>Status</th></tr></thead>
+              <tbody>{domain.matches.map(m => (
+                <tr key={m.id} className={FINISHED.has(m.result.status) ? '' : 'dim'}>
+                  <td className="muted nowrap">{m.roundName}</td>
+                  <td className="name">{pn(m.homeId)}</td>
+                  <td className="name">{pn(m.awayId)}</td>
+                  <td className="num">{m.result.homeScore ?? '–'} : {m.result.awayScore ?? '–'}</td>
+                  <td><StatusPill status={m.result.status} /></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </Panel>
       )}
-      <div className="row"><button className="btn primary" onClick={() => go('matches')}>Enter results</button><button className="btn" onClick={() => go('standings')}>Standings</button></div>
-    </div>
+      <div className="footbar">
+        <span className="muted">Results are entered on the Results screen — the bracket updates itself.</span>
+        <span className="sp" />
+        <button className="btn" onClick={() => go('standings')}>Standings</button>
+        <button className="btn primary" onClick={() => go('matches')}>Enter results</button>
+      </div>
+    </Page>
   );
 }
-function GroupsKoView({ pn }: { pn: (id: string | null) => string }) {
+
+
+function GroupsKoView({ pn, sub }: { pn: (id: string | null) => string; sub: string }) {
   const { domain, go } = useApp();
   const groupMs = domain.matches.filter(m => m.groupId != null);
   const koMs = domain.matches.filter(m => m.groupId == null);
   const rounds = [...new Set(koMs.map(m => m.round))].sort((a, b) => a - b);
-  const done = groupMs.filter(m => ['played','draw','walkover','overtime'].includes(m.result.status)).length;
+  const total = groupMs.filter(m => m.result.status !== 'bye').length;
+  const done = groupMs.filter(m => FINISHED.has(m.result.status)).length;
   return (
-    <div className="wrap">
-      <h1>Groups → knockout ({domain.matches.length})</h1>
-      <div className="card">
-        <h3>Group stage ({done}/{groupMs.filter(m => m.result.status !== 'bye').length} played)</h3>
-        <table><thead><tr><th>Round</th><th>Group</th><th>Home</th><th>Away</th><th>Score</th><th>Status</th></tr></thead>
-        <tbody>{groupMs.map(m => (
-          <tr key={m.id}><td>{m.roundName}</td><td>{domain.groups.find(g => g.id === m.groupId)?.name ?? ''}</td>
-          <td>{pn(m.homeId)}</td><td>{pn(m.awayId)}</td>
-          <td>{m.result.homeScore ?? '–'} : {m.result.awayScore ?? '–'}</td><td><St m={m} /></td></tr>))}
-        </tbody></table>
-      </div>
+    <Page title="Groups → knockout" sub={sub}
+      actions={<button className="btn primary" onClick={() => go('matches')}>Enter results</button>}>
+      <Meta items={[
+        { label: 'Group matches', value: `${done}/${total}` },
+        { label: 'Knockout matches', value: koMs.length },
+        { label: 'Groups', value: domain.groups.length },
+      ]} />
       {koMs.length === 0 ? (
-        <div className="empty">Knockout stage not seeded yet — finish group matches, then use <b>Standings → Seed knockout from standings</b>.</div>
+        <Empty
+          title="Knockout stage not seeded yet"
+          hint="Finish the group matches, then preview the qualifiers and the bracket on the Standings screen — nothing is created until you confirm."
+          action={<button className="btn primary" onClick={() => go('standings')}>Go to standings</button>}
+        />
       ) : (
         <div className="bracket">{rounds.map(r => (
           <div className="bround" key={r}>
-            <h3>{koMs.find(m => m.round === r)?.roundName ?? ('Round ' + r)}</h3>
+            <h3>{koMs.find(m => m.round === r)?.roundName ?? 'Round ' + r}</h3>
             {koMs.filter(m => m.round === r).map(m => <MCard key={m.id} m={m} pn={pn} />)}
-          </div>))}
-        </div>
+          </div>
+        ))}</div>
       )}
-      <div className="row"><button className="btn primary" onClick={() => go('matches')}>Enter results</button><button className="btn" onClick={() => go('standings')}>Standings</button></div>
+
+      <Panel title="Group stage" sub="Group fixtures stay in the project even after the knockout stage is created.">
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Round</th><th>Group</th><th>Home</th><th>Away</th><th className="num">Score</th><th>Status</th></tr></thead>
+            <tbody>{groupMs.map(m => (
+              <tr key={m.id} className={FINISHED.has(m.result.status) ? '' : 'dim'}>
+                <td className="muted nowrap">{m.roundName}</td>
+                <td className="muted nowrap">{domain.groups.find(g => g.id === m.groupId)?.name ?? ''}</td>
+                <td className="name">{pn(m.homeId)}</td>
+                <td className="name">{pn(m.awayId)}</td>
+                <td className="num">{m.result.homeScore ?? '–'} : {m.result.awayScore ?? '–'}</td>
+                <td><StatusPill status={m.result.status} /></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </Panel>
+      <div className="footbar">
+        <span className="muted">Qualifiers and seeding are managed on the Standings screen.</span>
+        <span className="sp" />
+        <button className="btn" onClick={() => go('standings')}>Standings</button>
+        <button className="btn primary" onClick={() => go('matches')}>Enter results</button>
+      </div>
+    </Page>
+  );
+}
+
+function MCard({ m, pn }: { m: Match; pn: (id: string | null) => string }) {
+  const w = m.result.winnerId;
+  const done = FINISHED.has(m.result.status);
+  return (
+    <div className={'bmatch' + (done ? ' settled' : '')}>
+      <div className="rh"><span>{m.roundName}</span><StatusPill status={m.result.status} /></div>
+      <div className={'nm' + (w === m.homeId ? ' w' : w ? ' l' : '')}>
+        <span>{pn(m.homeId)}</span><b>{m.result.homeScore ?? ''}</b>
+      </div>
+      <div className={'nm' + (w === m.awayId ? ' w' : w ? ' l' : '')}>
+        <span>{pn(m.awayId)}</span><b>{m.result.awayScore ?? ''}</b>
+      </div>
     </div>
   );
 }
 
-function MCard({ m, pn }: { m: Match; pn: (id: string|null) => string }) {
-  const w = m.result.winnerId;
-  return <div className="bmatch"><div className="rh">{m.roundName} · <St m={m} /></div>
-    <div className={'nm'+(w===m.homeId?' w':'') }><span>{pn(m.homeId)}</span><b>{m.result.homeScore ?? ''}</b></div>
-    <div className={'nm'+(w===m.awayId?' w':'') }><span>{pn(m.awayId)}</span><b>{m.result.awayScore ?? ''}</b></div>
-  </div>;
-}
-export function St({ m }: { m: Match }) {
-  const s = m.result.status;
-  const cls = s === 'scheduled' ? '' : s === 'walkover' ? 'wo' : 'played';
-  return <span className={'pill '+cls}>{s}</span>;
-}
-
-function DoubleView({ names: _n, pn }: { names: Map<string, string>; pn: (id: string | null) => string }) {
+function DoubleView({ pn, sub }: { pn: (id: string | null) => string; sub: string }) {
   const { domain, go } = useApp();
   const wb = domain.matches.filter(m => m.bracket?.kind === 'winners').sort((a, b) => a.round - b.round);
   const lb = domain.matches.filter(m => m.bracket?.kind === 'losers').sort((a, b) => a.round - b.round);
-  const gf = domain.matches.filter(m => m.bracket?.kind === 'final' && m.homeId !== null).sort((a, b) => a.round - b.round);
-  const col = (title: string, ms: Match[]) => (
-    <div className="bround" style={{ minWidth: 250 }}><h3>{title} ({ms.length})</h3>
+  const finals = domain.matches.filter(m => m.bracket?.kind === 'final');
+  const gf = finals.filter(m => m.homeId !== null).sort((a, b) => a.round - b.round);
+  const col = (title: string, ms: Match[], hint?: string) => (
+    <div className="bround">
+      <h3>{title} ({ms.length})</h3>
+      {hint ? <p className="f-hint" style={{ margin: '-4px 0 8px' }}>{hint}</p> : null}
       {ms.map(m => <MCard key={m.id} m={m} pn={pn} />)}
     </div>
   );
-  void _n;
   return (
-    <div className="wrap">
-      <h1>Double elimination ({domain.matches.length})</h1>
+    <Page title="Double elimination" sub={sub}
+      actions={<button className="btn primary" onClick={() => go('matches')}>Enter results</button>}>
       <div className="bracket">
-        {col('Winners', wb)}
-        {col('Losers', lb)}
-        {col('Grand final', gf.length ? gf : domain.matches.filter(m => m.bracket?.kind === 'final'))}
+        {col('Winners bracket', wb)}
+        {col('Losers bracket', lb, 'Players drop here after one loss.')}
+        {col('Grand final', gf.length ? gf : finals)}
       </div>
-      <div className="row"><button className="btn primary" onClick={() => go('matches')}>Enter results</button><button className="btn" onClick={() => go('standings')}>Standings</button></div>
-    </div>
+      <div className="footbar">
+        <span className="muted">The losers bracket is filled automatically after every result.</span>
+        <span className="sp" />
+        <button className="btn" onClick={() => go('standings')}>Standings</button>
+        <button className="btn primary" onClick={() => go('matches')}>Enter results</button>
+      </div>
+    </Page>
   );
 }

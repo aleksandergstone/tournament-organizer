@@ -1,34 +1,67 @@
+// Settings — grouped by how often the organizer touches them.
+// Everything here is optional; the app works with the defaults.
 import { useApp } from '../state/store';
 import { describeEdition } from '../engine/features';
 import { APP_NAME, APP_VERSION } from '../version';
+import { Page, Panel, Segmented, Switch } from './kit';
 import SyncPanel from './SyncPanel';
 
 export default function Settings() {
   const { settings, setSettings } = useApp();
   return (
-    <div className="wrap"><h1>Settings</h1>
-      <div className="card">
-        <h3>Preferences</h3>
-        <label className="row"><input type="checkbox" style={{ width: 16 }} checked={settings.autosave} onChange={e => setSettings({ ...settings, autosave: e.target.checked })} /> Autosave (local, ~1s after change)</label>
-        <label className="row"><input type="checkbox" style={{ width: 16 }} checked={settings.confirmDestructive} onChange={e => setSettings({ ...settings, confirmDestructive: e.target.checked })} /> Confirm destructive actions</label>
-        <label className="f" style={{ maxWidth: 240 }}>Theme<select value={settings.theme} onChange={e => setSettings({ ...settings, theme: e.target.value as 'light' | 'dark' })}><option value="light">Light</option><option value="dark">Dark</option></select></label>
-        <p className="muted">Shortcuts: <span className="kbd">Ctrl+Z</span> undo · <span className="kbd">Ctrl+Y</span> redo · <span className="kbd">Ctrl+S</span> save now.</p>
-      </div>
-      <div className="card">
-        <h3>Event operations</h3>
+    <Page title="Settings" sub="Preferences for this computer. Nothing is sent anywhere.">
+      <Panel title="Appearance">
+        <div className="row">
+          <span className="f-label" id="theme-label" style={{ minWidth: 70 }}>Theme</span>
+          <Segmented
+            value={settings.theme}
+            onChange={v => setSettings({ ...settings, theme: v })}
+            options={[{ id: 'light' as const, label: 'Light' }, { id: 'dark' as const, label: 'Dark' }]}
+            label="Theme"
+          />
+          <span className="muted">Dark is easier on the eyes in a dim hall.</span>
+        </div>
+      </Panel>
+
+      <Panel title="Working style">
+        <Switch
+          checked={settings.autosave}
+          onChange={v => setSettings({ ...settings, autosave: v })}
+          label="Autosave on this device"
+          hint="Saves about a second after every change. Recommended — leave this on."
+        />
+        <Switch
+          checked={settings.confirmDestructive}
+          onChange={v => setSettings({ ...settings, confirmDestructive: v })}
+          label="Ask before destructive actions"
+          hint="Confirmation before deleting a project, removing a player or regenerating a bracket."
+        />
+        <p className="table-note">
+          Shortcuts: <span className="kbd">Ctrl+Z</span> undo · <span className="kbd">Ctrl+Y</span> redo ·{' '}
+          <span className="kbd">Ctrl+S</span> save now.
+        </p>
+      </Panel>
+
+      <Panel title="Sharing on the local network" sub="Optional. Keeps everything on your Wi-Fi — no internet, no account.">
         <SyncPanel />
-      </div>
-      <div className="card">
-        <h3>About</h3>
-        <table><tbody>
-          <tr><td className="muted">Application</td><td><b>{APP_NAME}</b></td></tr>
-          <tr><td className="muted">Version</td><td>{APP_VERSION}</td></tr>
-          <tr><td className="muted">Edition</td><td>{describeEdition('free')}</td></tr>
-          <tr><td className="muted">Data</td><td>Stored only on this device — no account, no server, works fully offline.</td></tr>
-          <tr><td className="muted">License</td><td>MIT</td></tr>
-        </tbody></table>
-        <p className="muted">Projects are autosaved locally. Use <b>Export → Save .top.json</b> for backups you can move between computers.</p>
-      </div>
-    </div>
+      </Panel>
+
+      <Panel title="About">
+        <div className="table-wrap">
+          <table>
+            <tbody>
+              <tr><td className="muted">Application</td><td className="name">{APP_NAME}</td></tr>
+              <tr><td className="muted">Version</td><td>{APP_VERSION}</td></tr>
+              <tr><td className="muted">Edition</td><td>{describeEdition('free')}</td></tr>
+              <tr><td className="muted">Data</td><td>Stored only on this device — no account, no server, works fully offline.</td></tr>
+              <tr><td className="muted">License</td><td>MIT</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="table-note">
+          Projects are autosaved locally. Use <b>Export → Save project file</b> for backups you can move between computers.
+        </p>
+      </Panel>
+    </Page>
   );
 }

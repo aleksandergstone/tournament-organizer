@@ -30,6 +30,22 @@ no account, no internet.
 
 ### Changed
 
+- **Interface refresh — one design language across the app.** A shared set of UI
+  primitives (page header, panel, alert, field, toolbar, table, empty state) now backs every
+  screen, so headings, spacing, button styles and status colours are identical everywhere.
+- One clear main action per screen; secondary actions moved into a footer bar or a
+  disclosure. Match entry went from eight controls per match to a score box, one Save and an
+  “Other outcomes” section (draw, extra time, walkover, not finished, interrupted, reset).
+- Match states are now written in plain language (“Played”, “Not finished”, “After extra
+  time”) instead of raw engine values, and a correction announces that later rounds were
+  recomputed.
+- Home got a single dominant action and a scannable project table (format, players, last
+  change); the wizard shows its three steps, groups the inputs and previews the result before
+  creating; Export separates backup, spreadsheet files and printing.
+- Tables are aligned and readable: right-aligned numbers, tabular figures, row hover, clear
+  selected rows, always-visible row actions, visible keyboard focus.
+- Display Mode reads better from a distance and hides organizer controls entirely in the
+  projector window.
 - Project files may contain an optional `resources` list; older files without it open
   unchanged.
 - `Standings` no longer seeds the knockout in one click — it now shows a preview first.
