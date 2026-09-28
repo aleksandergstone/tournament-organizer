@@ -132,12 +132,13 @@
     </p>
   </div>
 
+    <figure><img src="assets/screens/13-bracket-single-elimination.png" alt="Single-elimination bracket drawn as a spider" loading="lazy" />
+      <figcaption>Single elimination — the bracket as a drawing: rounds as columns, lines joining
+      each match to the one it feeds, and the final result on top.</figcaption></figure>
     <figure><img src="assets/screens/11-display.png" alt="Display mode for the hall screen" loading="lazy" />
       <figcaption>Display mode — the screen people watch in the hall.</figcaption></figure>
     <figure><img src="assets/screens/10-schedule.png" alt="Court and station schedule" loading="lazy" />
       <figcaption>Schedule — courts, tables and time slots with conflict checks.</figcaption></figure>
-    <figure><img src="assets/screens/12-qr-codes.png" alt="QR codes for check-in" loading="lazy" />
-      <figcaption>QR codes (1.2) — check-in, match and station. Being reworked; see the note above.</figcaption></figure>
   </div>
 
   <h2 id="events">Run the event, not just the bracket</h2>
@@ -188,8 +189,15 @@
           <td>Open the disk image and drag the app to Applications.</td></tr>
         <tr><td>Linux (x64)</td><td><code>Tournament-Organizer-&lt;version&gt;-linux-x86_64.AppImage</code></td>
           <td>Make it executable (<code>chmod +x</code>) and run it.</td></tr>
+        <tr><td>Android (phone &amp; tablet, 7.0+)</td><td><code>Tournament-Organizer-&lt;version&gt;-android-release.apk</code></td>
+          <td>Copy the APK to the phone, allow installs from your file manager, tap it.</td></tr>
       </tbody>
     </table>
+    <p class="note" style="margin-top:14px">
+      The Android app is <strong>the same program</strong> as the desktop one — same engine, screens,
+      documents and languages, built from the same source. The APK asks for one permission,
+      <em>internet</em>, used only if you sync with a desktop on your own Wi‑Fi.
+    </p>
     <p class="note" style="margin-top:14px">
       <strong>The installers are not code-signed.</strong> Windows shows “Unknown publisher” —
       choose <em>More info → Run anyway</em>. macOS asks you to confirm the first open

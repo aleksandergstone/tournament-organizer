@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app itself is a local bundle and never talks to the internet. Cleartext
+     is permitted only so the optional, organizer-started Wi-Fi sharing can reach
+     a desktop by its local address (http://192.168.x.x:port) — Android blocks
+     plain HTTP by default, and that is the one place the app needs it. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

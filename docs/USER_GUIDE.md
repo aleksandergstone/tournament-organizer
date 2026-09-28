@@ -133,6 +133,31 @@ exact page that gets printed, so what you see is what leaves the app.
 Documents follow the language you selected (see below): headings, column names,
 status words and dates are printed in it.
 
+
+## On the phone (Android)
+
+The Android app is the same program as the desktop one — same formats, same screens, same
+documents, same languages, same version. Install the APK, allow installs from your file
+manager, and it works offline like the desktop build.
+
+Things worth knowing on a phone:
+
+- **Navigation** is a row under the app bar; swipe it sideways. The action buttons sit at the
+  bottom of the screen, under your thumb. The phone's **back button** returns to the previous
+  screen, and at the Home screen it closes the app.
+- **Printing and PDF** use Android's own print dialog. Choose a printer, or *Save as PDF* to
+  write the file to the phone. The document is the same one the desktop prints — same A4
+  layout, same drawn bracket.
+- **Saving a backup or CSV** opens the system file picker, so you choose the folder (Downloads,
+  Drive, a message to a colleague…). **Import** works the same way.
+- **Wi-Fi sharing:** a phone cannot host the share (that needs the desktop app), so
+  *Hosting* is not available here. The phone can still **pull from** and **push to** a desktop
+  that is hosting — put the desktop's address into the field. This is the only use of the
+  app's single internet permission, and only while you do it.
+- **The project lives on the phone.** A tournament made on the phone is a separate project
+  from the one on your laptop until you export a backup file or sync over Wi-Fi — there is no
+  cloud in between.
+
 ## Language (1.3+)
 
 **Settings → Appearance → Language** — *System*, English, Polski, Deutsch or

@@ -98,6 +98,28 @@ human summary. Re-running a failed tag job is safe: artifacts are re-uploaded wi
 Every push and PR also runs `.github/workflows/ci.yml`: version check, tests, typecheck,
 build, plus a Windows package build uploaded as a workflow artifact.
 
+### The Android build (added alongside the desktop ones)
+
+The phone app is **not** produced by the release workflow — it needs the Android toolchain, so
+it is built and attached by hand:
+
+```powershell
+npm.cmd run android:toolchain    # once: JDK 21 + Android SDK into tools/
+npm.cmd run android:apk          # signed APK → release\Tournament-Organizer-<v>-android-release.apk
+gh release upload v1.1.0 release\Tournament-Organizer-1.1.0-android-release.apk --clobber
+```
+
+- `version:check` also reads `android/app/build.gradle`, so the APK can never carry a different
+  version than the installers.
+- Signing uses `android/keystore.properties` + `android/to-release.keystore`, both **outside
+  git**. Back the keystore up: Android only accepts updates to an app signed with the same key.
+  If you ever publish to Google Play, use a Play upload key and keep the app key in a secrets
+  store — and upload an `.aab` (`gradlew bundleRelease`) rather than an APK.
+- The APK is unsigned by Google Play but signed with your own key, so the phone will ask you to
+  allow installs from your file manager the first time. Say so in the release notes.
+- If you have no keystore, `npm run android:apk:debug` produces a debug APK that installs on
+  your own phone just as well — good enough for testing, not for distributing.
+
 ## 5. Manual publish (no CI)
 
 ```powershell

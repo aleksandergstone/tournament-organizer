@@ -10,6 +10,7 @@
 //   2. CHANGELOG.md's top entry matches that version
 //   3. vite.config.ts injects __APP_VERSION__ from package.json (app display)
 //   4. build.artifactName embeds ${version} (release file naming)
+//   5. android/app/build.gradle carries the same versionName (the phone build)
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,9 +51,25 @@ if (!artifactName.includes('${version}')) {
   fail('build.artifactName must include ${version} so release files carry the version');
 }
 
+// The Android build is the same app, so it carries the same version. The file is
+// only checked when the Android project exists (a fresh clone without Capacitor
+// still passes the desktop-only checks).
+let gradle = '';
+try {
+  gradle = read('android/app/build.gradle');
+} catch {
+  gradle = '';
+}
+if (gradle) {
+  const versionName = gradle.match(/versionName\s+"([^"]+)"/)?.[1];
+  if (versionName !== version) {
+    fail(`android/app/build.gradle versionName is ${versionName ?? 'missing'} but package.json is ${version}`);
+  }
+}
+
 if (errors.length) {
   console.error('Version check failed:');
   for (const e of errors) console.error('  ✖ ' + e);
   process.exit(1);
 }
-console.log(`✔ version ${version} is consistent (package.json = CHANGELOG = app build = artifact names)`);
+console.log(`✔ version ${version} is consistent (package.json = CHANGELOG = app build = artifact names${gradle ? ' = android' : ''})`);

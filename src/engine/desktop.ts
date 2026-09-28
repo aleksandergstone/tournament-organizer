@@ -84,7 +84,9 @@ export function lanBase(input: string): string {
 }
 
 export const desktop: DesktopBridge = {
-  available: typeof window !== 'undefined' && !!window.toDesktop,
+  // A getter, not a constant: the Android bridge installs `window.toDesktop`
+  // while the app boots, and the desktop preload may be late as well.
+  get available() { return typeof window !== 'undefined' && !!window.toDesktop; },
   async saveText(filename, text) {
     if (window.toDesktop) {
       const r = await window.toDesktop.saveText(filename, text) as SaveResult | string | null;

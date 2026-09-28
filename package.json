@@ -17,6 +17,10 @@
     "electron": "electron .",
     "version:check": "node scripts/check-version.mjs",
     "release:check": "npm run version:check && npm run test && npm run build",
+    "android:toolchain": "powershell -ExecutionPolicy Bypass -File scripts/setup-android-toolchain.ps1",
+    "android:sync": "npm run build && cap sync android",
+    "android:apk": "powershell -ExecutionPolicy Bypass -File scripts/build-android.ps1",
+    "android:apk:debug": "powershell -ExecutionPolicy Bypass -File scripts/build-android.ps1 -Debug",
     "screenshots": "npm run build && node scripts/make-demo-project.mjs && electron scripts/screenshots.cjs",
     "dist": "npm run release:check && electron-builder --publish never",
     "dist:win": "npm run release:check && electron-builder --win --publish never"
@@ -25,6 +29,7 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -80,5 +85,10 @@
       "category": "Sports",
       "icon": "build/icon.png"
     }
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/core": "^8.5.2"
   }
 }

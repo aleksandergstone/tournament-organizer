@@ -19,6 +19,8 @@ import ErrorBoundary from './ui/ErrorBoundary';
 import { Alert } from './ui/kit';
 import { parseDeepLink, resolveDeepLink } from './engine/deeplink';
 import { hasBracket } from './engine/generate';
+import { isNativeApp } from './engine/mobile-bridge';
+import { App as CapacitorApp } from '@capacitor/app';
 import { nowIso } from './engine/types';
 import { useT, type Dict } from './i18n';
 
@@ -33,10 +35,20 @@ const NAV: { items: readonly (readonly [Screen, keyof Dict])[] }[] = [
 const DISPLAY_WINDOW = typeof window !== 'undefined' && window.location.hash === '#display';
 
 export default function App() {
-  const { screen, go, undo_, redo_, canUndo, canRedo, save, dirty, lastSaved, saveError, hasProject,
+  const { screen, go, back, undo_, redo_, canUndo, canRedo, save, dirty, lastSaved, saveError, hasProject,
     domain, update, setFocusMatch } = useApp();
   const t = useT();
   const [linkMsg, setLinkMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+
+  // On a phone the hardware back button walks out of a screen; at the Home
+  // screen it falls through to Android, which closes the app.
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    let detach: (() => void) | undefined;
+    void CapacitorApp.addListener('backButton', () => { back(); })
+      .then(handle => { detach = () => { void handle.remove(); }; });
+    return () => detach?.();
+  }, [back]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {

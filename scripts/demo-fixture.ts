@@ -1,9 +1,10 @@
 // Demo project generator for launch screenshots.
 //
-// Builds two fully engine-generated, realistic projects so the screenshots show
+// Builds three fully engine-generated, realistic projects so the screenshots show
 // the real app with real data (no hand-written fake state):
 //   1. "City League 2026"   — groups + knockout, group stage finished, KO seeded
 //   2. "Friday Night Cup"   — double elimination in progress
+//   3. "Spring Cup"        — single elimination down to the final (drawn bracket)
 //
 // Not part of the app build. Executed by `npm run screenshots`, which bundles
 // this file with esbuild first (see scripts/make-demo-project.mjs).
@@ -161,10 +162,39 @@ function fridayCup(): ProjectFile {
   };
 }
 
+// ---------------------------------------------------------------------------
+// 3) Spring Cup — single elimination, played down to the final, so the drawn
+//    bracket on the Bracket screen has a champion to show.
+// ---------------------------------------------------------------------------
+function springCup(): ProjectFile {
+  const rnd = mulberry32(31415);
+  const participants = [
+    team('Aurora FC', 1), team('Bramble Rovers', 2), team('Cobalt Athletic', 3), team('Doverhill', 4),
+    team('Eastgate United', 5), team('Ferndale', 6), team('Glenpark', 7), team('Havenwood', 8),
+  ];
+  const tour = tournament('Spring Cup', 'single-elimination', RULES, 'Meadowbank Arena');
+  let matches = recomputeBracket(genSingleElim(participants, RULES).matches);
+  // Quarter-finals and semi-finals decided, final still to be played — the
+  // bracket then shows a real path with a match still open.
+  for (let round = 1; round <= 2; round++) {
+    for (const m of matches.filter(x => x.round === round && x.homeId && x.awayId)) {
+      matches = play(matches, m.id, rnd, RULES, true);
+    }
+  }
+  return {
+    version: 1, app: 'tournament-organizer', tournament: tour, participants,
+    groups: [], matches,
+    audit: [{ id: uid('a'), at: nowIso(), action: 'project.created', detail: 'Spring Cup' }],
+    settings: { ...DEFAULT_SETTINGS },
+  };
+}
+
 const city = cityLeague();
 const friday = fridayCup();
+const spring = springCup();
 const projects: Record<string, ProjectFile> = {};
 projects[city.tournament.id] = city;
 projects[friday.tournament.id] = friday;
+projects[spring.tournament.id] = spring;
 
 console.log(JSON.stringify({ projects }, null, 2));

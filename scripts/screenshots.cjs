@@ -26,11 +26,26 @@ function fail(msg) {
 
 app.on('window-all-closed', () => app.quit());
 
+// Pin the language for the run. The captured screens are the English ones on
+// the launch page, and the app follows the system language by default — on a
+// computer set to another language every screen check would fail.
+app.commandLine.appendSwitch('lang', 'en-US');
+
 app.whenReady().then(async () => {
   if (!fs.existsSync(index)) return fail('dist/index.html missing — run `npm run build` first.');
   if (!fs.existsSync(fixture)) return fail('.cache/demo-projects.json missing — run `node scripts/make-demo-project.mjs` first.');
   fs.mkdirSync(outDir, { recursive: true });
   const projects = fs.readFileSync(fixture, 'utf8');
+  // The captured screens are the English ones published on the launch page, so
+  // the language is pinned here: without it the run follows the machine's own
+  // locale and every screen check fails on a non-English computer.
+  const pinnedProjects = (() => {
+    const all = JSON.parse(projects);
+    for (const file of Object.values(all)) {
+      file.settings = { ...(file.settings || {}), locale: 'en' };
+    }
+    return JSON.stringify(all);
+  })();
 
   win = new BrowserWindow({
     width: 1280, height: 860,
@@ -58,7 +73,7 @@ app.whenReady().then(async () => {
     await delay(800);
     // Seed the demo projects into the app's own storage, then reload so the
     // Home screen shows them exactly as a real user's project list.
-    await js(`localStorage.setItem('to:projects', ${JSON.stringify(projects)}); true`);
+    await js(`localStorage.setItem('to:projects', ${JSON.stringify(pinnedProjects)}); true`);
     await win.reload();
     await delay(1200);
 
@@ -138,7 +153,16 @@ app.whenReady().then(async () => {
     await nav('Bracket', 'Double elimination');
     await shot('08-bracket-double-elimination');
 
-    // 5) Event operations: display mode, venue schedule, QR codes
+    // 4b) Single elimination — the bracket as a drawn spider
+    await nav('Home');
+    await openProject('Spring Cup');
+    await expectH1('Spring Cup');
+    await nav('Bracket', 'Bracket');
+    await shot('13-bracket-single-elimination');
+    await nav('Standings', 'Standings & final ranking');
+    await shot('14-standings-final-result');
+
+    // 5) Event operations: display mode and venue schedule
     await nav('Home');
     await openProject('City League 2026');
     await expectH1('City League 2026');
@@ -149,8 +173,10 @@ app.whenReady().then(async () => {
     await nav('Display', 'City League 2026');
     await shot('11-display');
 
-    await nav('QR codes', 'QR codes');
-    await shot('12-qr-codes');
+    // QR codes are parked in 1.3 (hidden, "coming soon"), so there is no screen
+    // to photograph. When they come back, re-add the two lines below.
+    //   await nav('QR codes', 'QR codes');
+    //   await shot('12-qr-codes');
 
     // 6) Settings / About — version, edition, data statement
     await nav('Home');

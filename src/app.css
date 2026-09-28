@@ -549,6 +549,60 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
   thead th { top: 0; }
 }
 
+/* ------------------------------------------------------------------- phones */
+/* The same screens as on a laptop, sized for thumbs: the navigation becomes a
+   scrollable row, buttons grow to a comfortable target, and the footbar sticks
+   to the bottom so the next step is always under the hand. */
+@media (max-width: 640px) {
+  body { -webkit-tap-highlight-color: transparent; }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    padding: calc(6px + env(safe-area-inset-top)) 10px 0;
+    gap: 6px;
+  }
+  .topbar nav {
+    order: 3; width: 100%; flex-wrap: nowrap; overflow-x: auto;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px; margin-bottom: 2px;
+  }
+  .topbar nav::-webkit-scrollbar { display: none; }
+  .topbar .nav-group { flex: 0 0 auto; }
+  .topbar .nav-group .divider { display: none; }
+  .topbar nav button { min-height: 40px; padding: 0 14px; white-space: nowrap; font-size: 14px; }
+  .topbar .acts button { min-height: 38px; }
+  .topbar .acts .save-state { display: none; }
+
+  .wrap { padding: 14px 12px 96px; }
+  .page-head { margin-bottom: 12px; }
+  h1 { font-size: 20px; }
+
+  .btn { min-height: 42px; padding: 0 14px; }
+  .btn.sm { min-height: 34px; }
+  .page-actions, .panel-actions { gap: 6px; }
+  .page-actions .btn, .panel-actions .btn { flex: 1 1 auto; }
+
+  /* 16px keeps the on-screen keyboard from zooming the layout. */
+  input, select, textarea { font-size: 16px; min-height: 40px; }
+
+  table { font-size: 13px; }
+  th, td { padding: 7px 8px; }
+
+  .footbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
+    flex-wrap: nowrap; overflow-x: auto; gap: 8px;
+    margin: 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: var(--panel); border-top: 1px solid var(--line);
+  }
+  .footbar .sp { display: none; }
+  .footbar .muted { display: none; }
+  .footbar .btn { flex: 0 0 auto; }
+
+  .empty { padding: 28px 16px; }
+  .bracket-svg svg { min-width: 560px; }
+  .hero-steps .card, .grid2 .card { padding: 12px; }
+}
+
 
 /* ------------------------------------------------- output & branding screen */
 

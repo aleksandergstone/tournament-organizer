@@ -30,6 +30,19 @@ connection immediately.
 Apart from that feature — and downloading the installer itself — the app makes no network
 requests while running.
 
+## On Android (1.3+)
+
+The Android app is the same program and keeps every promise above. One difference is worth
+stating plainly, because Android lists permissions where desktop apps do not:
+
+- The APK requests **one** permission: *internet*. It is used for exactly one thing — talking
+  to a computer on your own Wi-Fi when you start sharing, and nothing else. If you never use
+  sharing, the app makes no network request of any kind. The project files themselves are read
+  and written through Android's own file picker, inside the storage you pick, and the app has
+  no access to photos, contacts, location, camera or microphone.
+- Hosting a share (being the server) needs the desktop app; a phone can pull and push to a
+  desktop that is hosting.
+
 ## Your control
 
 - **Back up:** `Output → Save project file…` writes one portable `.top.json` you own. Copy

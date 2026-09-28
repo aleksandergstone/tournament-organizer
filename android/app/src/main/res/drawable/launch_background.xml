@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launch screen: the app's background with the same "TO" mark, drawn as
+     paths so no image files are needed. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launchBackground" />
+    <item
+        android:gravity="center"
+        android:width="132dp"
+        android:height="132dp">
+        <vector
+            android:width="132dp"
+            android:height="132dp"
+            android:viewportHeight="108"
+            android:viewportWidth="108">
+            <path
+                android:fillColor="#1F5EFF"
+                android:pathData="M6,12 h96 v84 a12,12 0 0,1 -12,12 h-72 a12,12 0 0,1 -12,-12 z" />
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M32,38 h20 v8 h-8 v24 h-4 v-24 h-8 z" />
+            <path
+                android:fillColor="#FFFFFF"
+                android:fillType="evenOdd"
+                android:pathData="M56,54 a11,11 0 1,0 22,0 a11,11 0 1,0 -22,0 z M61.5,54 a5.5,5.5 0 1,0 11,0 a5.5,5.5 0 1,0 -11,0 z" />
+        </vector>
+    </item>
+</layer-list>

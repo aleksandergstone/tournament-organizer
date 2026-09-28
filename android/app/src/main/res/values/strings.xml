@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tournament Organizer</string>
+    <string name="title_activity_main">Tournament Organizer</string>
+    <string name="package_name">app.tournamentorganizer</string>
+    <string name="custom_url_scheme">app.tournamentorganizer</string>
+</resources>

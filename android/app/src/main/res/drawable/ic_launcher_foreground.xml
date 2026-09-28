@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The "TO" mark, drawn as paths so the launcher icon stays crisp at every
+     size and needs no image files. Same identity as the in-app brand. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportHeight="108"
+    android:viewportWidth="108">
+    <!-- T -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,36 h24 v9 h-9 v27 h-6 v-27 h-9 z" />
+    <!-- O -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M55.5,54 a12.5,12.5 0 1,0 25,0 a12.5,12.5 0 1,0 -25,0 z M61.5,54 a6.5,6.5 0 1,0 13,0 a6.5,6.5 0 1,0 -13,0 z" />
+</vector>

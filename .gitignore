@@ -31,3 +31,13 @@ desktop.ini
 # NOTE: build/icon.png, build/icon.ico and build/make-icon.ps1 ARE tracked on
 # purpose — the icons are required by electron-builder on Linux/macOS CI
 # runners, where the PowerShell generator cannot run.
+
+# Android build toolchain installed by scripts/setup-android-toolchain.ps1
+tools/
+cap*.log
+t.txt
+v.txt
+b.txt
+p.txt
+tools-setup.log
+tools-setup.err

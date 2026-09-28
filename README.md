@@ -44,6 +44,8 @@ Real screens from the app, generated from a demo tournament — see all nine in 
 | Home — recent projects on this device | Groups + knockout: group results and the seeded KO bracket |
 | ![Standings with qualifiers](site/assets/screens/06-standings.png) | ![Double elimination](site/assets/screens/08-bracket-double-elimination.png) |
 | Standings with tiebreaks and qualifiers | Double elimination: winners, losers and grand final |
+| ![The bracket as a spider](site/assets/screens/13-bracket-single-elimination.png) | ![Final result instead of a table](site/assets/screens/14-standings-final-result.png) |
+| Single elimination, drawn as a bracket spider | A knockout has no points table — here is who is where |
 
 ## Getting started
 
@@ -62,10 +64,27 @@ Full walkthrough: **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)**.
 | Windows (x64) | `Tournament-Organizer-<version>-win-x64.exe` | Run the installer, follow the prompts |
 | macOS (Intel & Apple silicon) | `Tournament-Organizer-<version>-mac-<arch>.dmg` | Open the disk image, drag to Applications |
 | Linux (x64) | `Tournament-Organizer-<version>-linux-x86_64.AppImage` | `chmod +x`, then run it |
+| Android (phone & tablet, Android 7+) | `Tournament-Organizer-<version>-android-release.apk` | Copy the APK to the phone, allow installs from your file manager, tap it |
 
-> **The installers are not code-signed.** Windows shows “Unknown publisher” — choose
+> **The desktop installers are not code-signed.** Windows shows “Unknown publisher” — choose
 > *More info → Run anyway*. macOS needs right-click → *Open* the first time. This is expected
 > for a free, unsigned release and does not affect how the app works.
+
+### The same app on a phone
+
+The Android build is the **same source code**, not a separate app: the same engine, the same
+screens, the same documents, the same four languages, the same version number. It is built by
+wrapping the shared web bundle in a small native shell, and the handful of things a phone
+cannot do are handled by one bridge module (`src/engine/mobile-bridge.ts`):
+
+- **Saving and printing** open Android's own dialogs — *Save as PDF* from the print dialog,
+  the system file picker for backups and CSV.
+- **The hardware back button** walks out of a screen; at the Home screen it closes the app.
+- **Hosting a Wi-Fi share** needs the desktop app (a phone cannot open a listening port), so
+  the phone pulls and pushes to a desktop by its address instead. That is the only thing the
+  APK's single *internet* permission is for, and only when you start it.
+- **Layout** adapts for thumbs: a scrollable navigation row, larger tap targets, and the
+  action bar stuck to the bottom of the screen.
 
 ## Offline by design
 
@@ -146,6 +165,42 @@ npm.cmd run dist:win   # Windows installer only
 Artifacts land in `release/` with the naming convention
 `Tournament-Organizer-<version>-<os>-<arch>.<ext>` (e.g. `Tournament-Organizer-1.0.0-win-x64.exe` NSIS installer).
 See [docs/RELEASE.md](docs/RELEASE.md) for the full version-bump → publish checklist.
+
+### Build the Android APK
+
+One-time toolchain (JDK 21 + Android SDK, installed into `tools/`, nothing system-wide):
+
+```powershell
+npm.cmd run android:toolchain
+```
+
+Then, for every build:
+
+```powershell
+npm.cmd run android:apk          # signed release APK → release\Tournament-Organizer-<version>-android-release.apk
+npm.cmd run android:apk:debug    # debug APK, no signing needed
+```
+
+The script builds the shared web bundle, copies it into `android/` with Capacitor, runs Gradle
+and drops the APK next to the desktop installers. A release build is signed with
+`android/to-release.keystore` — the keystore and `android/keystore.properties` are secrets and
+are **not** in git; to build signed, create your own pair (below). `version:check` verifies that
+`android/app/build.gradle` carries the same `versionName` as `package.json`, so the two builds
+can never be published as different versions.
+
+Without a keystore the release build still runs and produces an unsigned APK; for your own
+phone, a debug APK installs just as well:
+
+```powershell
+# one-time, for your own signing key
+tools\jdk21\bin\keytool.exe -genkeypair -v -keystore android\to-release.keystore `
+  -alias tournament-organizer -keyalg RSA -keysize 2048 -validity 10950
+# then fill android/keystore.properties:
+#   storeFile=to-release.keystore
+#   storePassword=…
+#   keyAlias=tournament-organizer
+#   keyPassword=…
+```
 
 - Version comes from `package.json` and is displayed in the app (Settings → About, Home footer).
   `npm run version:check` fails if package.json, CHANGELOG.md, the app build and artifact

@@ -7,6 +7,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Added
 
+- **The same app on Android.** One codebase, two builds: the Electron app for the desktop and
+  an APK for the phone, carrying the same engine, screens, documents, four languages and
+  version number. The Android project (`android/`, Capacitor) wraps the shared web bundle in a
+  small native shell; `npm run android:apk` produces a signed
+  `release/Tournament-Organizer-1.3.0-android-release.apk`.
+  - Printing and PDF use Android's print dialog (*Save as PDF*), backups and CSV use the
+    system file picker — the same documents as on the desktop.
+  - The hardware back button walks out of a screen; at Home it closes the app.
+  - Phone layout: scrollable navigation row, thumb-sized buttons, action bar pinned to the
+    bottom, safe-area aware.
+  - `version:check` now also verifies `android/app/build.gradle`, so the two builds can never
+    be published as different versions.
 - **The bracket as a drawing.** A single-elimination bracket is now spread out as a
   bracket “spider” — rounds as columns, matches as boxes, connector lines between
   them, the winner marked and the champion called out. The same drawing appears on

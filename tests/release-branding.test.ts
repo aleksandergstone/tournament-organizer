@@ -42,6 +42,26 @@ describe('app identity', () => {
     expect(top?.[1]).toBe(pkg.version);
   });
 
+  it('builds the phone app from the same sources, at the same version', () => {
+    // One codebase, two builds: the Android project wraps the same web bundle,
+    // so its versionName must never drift from package.json.
+    const gradle = read('android/app/build.gradle');
+    expect(gradle.match(/versionName\s+"([^"]+)"/)?.[1]).toBe(pkg.version);
+    expect(read('capacitor.config.ts')).toContain("webDir: 'dist'");
+    // The renderer talks to the phone through the same desktop bridge contract.
+    const bridge = read('src/engine/mobile-bridge.ts');
+    expect(bridge).toContain("registerPlugin<DocumentBridgePlugin>('DocumentBridge')");
+    expect(bridge).toContain('window.toDesktop = {');
+    // …and the native side of that bridge is registered with the shell.
+    expect(read('android/app/src/main/java/app/tournamentorganizer/MainActivity.java'))
+      .toContain('registerPlugin(DocumentBridgePlugin.class)');
+    // Offline by design: the phone build asks for no permission beyond the one
+    // the optional, organizer-started Wi-Fi sharing needs.
+    const manifest = read('android/app/src/main/AndroidManifest.xml');
+    const permissions = [...manifest.matchAll(/uses-permission android:name="([^"]+)"/g)].map(m => m[1]);
+    expect(permissions).toEqual(['android.permission.INTERNET']);
+  });
+
   it('has release notes for this version, as the release process requires', () => {
     expect(() => read(`docs/releases/v${pkg.version}.md`)).not.toThrow();
   });

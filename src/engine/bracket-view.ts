@@ -20,7 +20,9 @@ export interface BracketNode {
   roundName: string;
   home: string;
   away: string;
-  score: string;
+  /** Each side's own goals — printed next to that side, not as a pair. */
+  homeScore: string;
+  awayScore: string;
   homeWon: boolean;
   awayWon: boolean;
   decided: boolean;
@@ -53,10 +55,11 @@ function clip(s: string, max: number): string {
   return s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s;
 }
 
-function scoreOf(m: Match, empty: string): string {
-  if (m.result.status === 'bye') return empty;
-  if (m.result.homeScore === null && m.result.awayScore === null) return '–';
-  return `${m.result.homeScore ?? 0} : ${m.result.awayScore ?? 0}`;
+function scoreOf(m: Match): [string, string] {
+  if (m.result.status === 'bye') return ['–', '–'];
+  const { homeScore, awayScore } = m.result;
+  if (homeScore === null && awayScore === null) return ['–', '–'];
+  return [String(homeScore ?? 0), String(awayScore ?? 0)];
 }
 
 /**
@@ -83,7 +86,7 @@ export function buildBracketTree(
     roundName: m.roundName,
     home: m.homeId ? nameOf(m.homeId) : opts.emptyLabel,
     away: m.awayId ? nameOf(m.awayId) : opts.emptyLabel,
-    score: scoreOf(m, opts.emptyLabel),
+    ...(() => { const [h, a] = scoreOf(m); return { homeScore: h, awayScore: a }; })(),
     homeWon: !!m.result.winnerId && m.result.winnerId === m.homeId,
     awayWon: !!m.result.winnerId && m.result.winnerId === m.awayId,
     decided: FINISHED.has(m.result.status) && !!m.result.winnerId,
@@ -205,15 +208,13 @@ export function bracketSvg(o: BracketSvgOptions): string {
       + `fill="${card}" stroke="${isChamp ? acc : line}" stroke-width="${isChamp ? 2 : 1}"/>`);
     parts.push(`<line x1="${n.x}" y1="${n.y + NODE_H / 2}" x2="${n.x + NODE_W}" `
       + `y2="${n.y + NODE_H / 2}" stroke="${line}" stroke-width="1"/>`);
-    const side = (s: string, won: boolean, y: number) =>
+    const side = (s: string, won: boolean, y: number, goals: string) =>
       `<text x="${n.x + 8}" y="${y}" font-size="11" fill="${won ? acc : ink}" `
-      + `font-weight="${won ? 700 : 400}">${esc(clip(s, 20))}</text>`;
-    parts.push(side(n.home, n.homeWon, n.y + 16));
-    parts.push(side(n.away, n.awayWon, n.y + NODE_H - 8));
-    parts.push(`<text x="${n.x + NODE_W - 8}" y="${n.y + 16}" font-size="11" text-anchor="end" `
-      + `fill="${muted}" font-variant-numeric="tabular-nums">${esc(n.score)}</text>`);
-    parts.push(`<text x="${n.x + NODE_W - 8}" y="${n.y + NODE_H - 8}" font-size="11" `
-      + `text-anchor="end" fill="${muted}" font-variant-numeric="tabular-nums">${esc(n.score)}</text>`);
+      + `font-weight="${won ? 700 : 400}">${esc(clip(s, 19))}</text>`
+      + `<text x="${n.x + NODE_W - 8}" y="${y}" font-size="11" text-anchor="end" `
+      + `fill="${muted}" font-variant-numeric="tabular-nums">${esc(goals)}</text>`;
+    parts.push(side(n.home, n.homeWon, n.y + 16, n.homeScore));
+    parts.push(side(n.away, n.awayWon, n.y + NODE_H - 8, n.awayScore));
     if (isChamp && championLabel) {
       parts.push(`<text x="${n.x + NODE_W / 2}" y="${n.y - 6}" font-size="10" text-anchor="middle" `
         + `fill="${acc}" font-weight="700" letter-spacing="0.5">${esc(championLabel.toUpperCase())}</text>`);

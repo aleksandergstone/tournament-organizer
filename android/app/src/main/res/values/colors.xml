@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#1F5EFF</color>
+    <color name="colorPrimaryDark">#1748C6</color>
+    <color name="colorAccent">#1F5EFF</color>
+    <!-- The launch screen matches the app's own light background. -->
+    <color name="launchBackground">#F4F6F8</color>
+</resources>
