@@ -2,11 +2,14 @@
 import { useApp } from '../state/store';
 import { describeFormat } from '../engine/generate';
 import { Empty, Meta, Page, Panel } from './kit';
+import { useT } from '../i18n';
 
 const FINISHED = new Set(['played', 'draw', 'walkover', 'overtime']);
 
 export default function Overview() {
   const { domain, standings, go } = useApp();
+  // "tr" not "t": the tournament object already owns the letter t in this file.
+  const tr = useT();
   const t = domain.tournament;
   const names = new Map(domain.participants.map(p => [p.id, p.name]));
   const played = domain.matches.filter(m => FINISHED.has(m.result.status)).length;
@@ -15,41 +18,41 @@ export default function Overview() {
 
   // One clear next step, in the order an organizer actually works in.
   const next = !domain.participants.length
-    ? { label: 'Add participants', to: 'participants' as const, why: 'Every tournament starts with a list of players or teams.' }
+    ? { label: tr('overview.nextParticipants'), to: 'participants' as const, why: tr('overview.nextParticipantsWhy') }
     : !hasBracket
-      ? { label: 'Generate the bracket', to: 'rules' as const, why: 'Pick the format and scoring, then create the matches.' }
+      ? { label: tr('overview.nextBracket'), to: 'rules' as const, why: tr('overview.nextBracketWhy') }
       : open > 0
-        ? { label: 'Enter results', to: 'matches' as const, why: `${open} ${open === 1 ? 'match is' : 'matches are'} still open.` }
-        : { label: 'Show the final ranking', to: 'standings' as const, why: 'Everything is played — check the ranking and export it.' };
+        ? { label: tr('overview.nextResults'), to: 'matches' as const, why: open === 1 ? tr('overview.nextResultsWhyOne') : tr('overview.nextResultsWhy', { n: open }) }
+        : { label: tr('overview.nextStandings'), to: 'standings' as const, why: tr('overview.nextStandingsWhy') };
 
   return (
     <Page
-      title={t.name || '(untitled)'}
+      title={t.name || tr('app.untitled')}
       sub={`${t.sport} · ${describeFormat(t.format)}${t.location ? ' · ' + t.location : ''}`}
       actions={<button className="btn primary" onClick={() => go(next.to)}>{next.label}</button>}
     >
       <Panel>
         <Meta items={[
-          { label: 'Players', value: domain.participants.length },
-          { label: 'Matches', value: domain.matches.length },
-          { label: 'Played', value: `${played}/${domain.matches.length}` },
-          { label: 'Open', value: open },
+          { label: tr('common.players'), value: domain.participants.length },
+          { label: tr('common.matches'), value: domain.matches.length },
+          { label: tr('common.played'), value: `${played}/${domain.matches.length}` },
+          { label: tr('common.open'), value: open },
         ]} />
         <p className="table-note">{next.why}</p>
       </Panel>
 
       <div className="grid2">
-        <Panel title="Current ranking" sub="Top 5 — the full table is on the Standings screen.">
+        <Panel title={tr('overview.ranking')} sub={tr('overview.rankingSub')}>
           {standings.length === 0 ? (
             <Empty
-              title="No results yet"
-              hint="The ranking appears as soon as the first result is entered."
-              action={<button className="btn primary" onClick={() => go('matches')}>Enter results</button>}
+              title={tr('overview.noResults')}
+              hint={tr('overview.noResultsHint')}
+              action={<button className="btn primary" onClick={() => go('matches')}>{tr('overview.enterResults')}</button>}
             />
           ) : (
             <div className="table-wrap">
               <table>
-                <thead><tr><th className="rank">#</th><th>Who</th><th className="num">Pts</th></tr></thead>
+                <thead><tr><th className="rank">#</th><th>{tr('st.colWho')}</th><th className="num">{tr('common.points')}</th></tr></thead>
                 <tbody>{standings.slice(0, 5).map(s => (
                   <tr key={s.participantId}>
                     <td className="rank">{s.rank}</td>
@@ -62,27 +65,27 @@ export default function Overview() {
           )}
         </Panel>
 
-        <Panel title="Go to" sub="Everything the organizer uses during an event.">
+        <Panel title={tr('overview.goTo')} sub={tr('overview.goToSub')}>
           <div className="stack">
-            <div className="row"><button className="btn" onClick={() => go('participants')}>Participants</button>
-              <span className="muted">Names, seeding, withdrawals</span></div>
-            <div className="row"><button className="btn" onClick={() => go('rules')}>Format &amp; rules</button>
-              <span className="muted">Scoring, groups, generate</span></div>
-            <div className="row"><button className="btn" onClick={() => go('matches')}>Result entry</button>
-              <span className="muted">{open} open</span></div>
-            <div className="row"><button className="btn" onClick={() => go('schedule')}>Schedule</button>
-              <span className="muted">Courts, tables, times</span></div>
-            <div className="row"><button className="btn" onClick={() => go('display')}>Display</button>
-              <span className="muted">Big screen for the hall</span></div>
-            <div className="row"><button className="btn" onClick={() => go('export')}>Export &amp; print</button>
-              <span className="muted">Backup, CSV, paper</span></div>
+            <div className="row"><button className="btn" onClick={() => go('participants')}>{tr('nav.participants')}</button>
+              <span className="muted">{tr('overview.shortParticipants')}</span></div>
+            <div className="row"><button className="btn" onClick={() => go('rules')}>{tr('nav.rules')}</button>
+              <span className="muted">{tr('overview.shortRules')}</span></div>
+            <div className="row"><button className="btn" onClick={() => go('matches')}>{tr('nav.results')}</button>
+              <span className="muted">{open} {tr('common.open').toLowerCase()}</span></div>
+            <div className="row"><button className="btn" onClick={() => go('schedule')}>{tr('nav.schedule')}</button>
+              <span className="muted">{tr('overview.shortSchedule')}</span></div>
+            <div className="row"><button className="btn" onClick={() => go('display')}>{tr('nav.display')}</button>
+              <span className="muted">{tr('overview.shortDisplay')}</span></div>
+            <div className="row"><button className="btn" onClick={() => go('export')}>{tr('out.title')}</button>
+              <span className="muted">{tr('overview.shortOutput')}</span></div>
           </div>
         </Panel>
       </div>
 
-      <Panel title="History" sub={`Last ${Math.min(20, domain.audit.length)} of ${domain.audit.length} changes — newest first.`}>
+      <Panel title={tr('overview.history')} sub={tr('overview.historySub', { shown: Math.min(20, domain.audit.length), total: domain.audit.length })}>
         {domain.audit.length === 0 ? (
-          <p className="f-hint">Nothing has changed yet in this tournament.</p>
+          <p className="f-hint">{tr('overview.historyEmpty')}</p>
         ) : (
           <div className="table-wrap">
             <table>

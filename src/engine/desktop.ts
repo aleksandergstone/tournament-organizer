@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 // Desktop file bridge: Electron IPC when available, browser fallback otherwise.
 // Renderer must never import 'electron' directly (contextIsolation) — the
 // preload exposes window.toDesktop; in dev-server browsers it is absent.
@@ -133,7 +134,7 @@ export const desktop: DesktopBridge = {
       const r = await window.toDesktop.openText() as OpenResult | null;
       if (!r || 'canceled' in r) return null; // user cancelled
       if (r.error) throw new Error(r.error);
-      if (typeof r.text !== 'string') throw new Error('The file could not be read.');
+      if (typeof r.text !== 'string') throw new Error(t('error.fileRead'));
       return { path: r.path ?? '', text: r.text };
     }
     // browser fallback: <input type=file> picker
@@ -162,7 +163,7 @@ export const desktop: DesktopBridge = {
 
   // ---- LAN sync: host -----------------------------------------------------
   async lanStart() {
-    if (!window.toDesktop) return { ok: false, error: 'Sharing needs the desktop app — a browser cannot open a port.' };
+    if (!window.toDesktop) return { ok: false, error: t('sync.errNoDesktop') };
     const r = await window.toDesktop.lanStart();
     if (r && r.error) throw new Error(r.error);
     return r;
@@ -172,7 +173,7 @@ export const desktop: DesktopBridge = {
     await window.toDesktop.lanStop();
   },
   async lanStatus() {
-    if (!window.toDesktop) return { ok: false, error: 'LAN sync needs the desktop app.' };
+    if (!window.toDesktop) return { ok: false, error: t('sync.errLanDesktop') };
     return window.toDesktop.lanStatus();
   },
   async lanPublish(payload) {
@@ -189,20 +190,20 @@ export const desktop: DesktopBridge = {
   // ---- LAN sync: client (works in browser and desktop) --------------------
   async lanPull(baseUrl) {
     const base = lanBase(baseUrl);
-    if (!base) throw new Error('Enter the address of the device that is sharing.');
+    if (!base) throw new Error(t('sync.errAddress'));
     let res: Response;
     try {
       res = await fetch(`${base}/api/state`, { headers: { Accept: 'application/json' } });
     } catch {
-      throw new Error(`No answer from ${base} — check the address, Wi-Fi and any firewall prompt.`);
+      throw new Error(t('sync.errNoAnswer', { url: base }));
     }
-    if (res.status === 503) throw new Error('That device is not sharing a project yet.');
-    if (!res.ok) throw new Error(`Could not read shared data (HTTP ${res.status}).`);
+    if (res.status === 503) throw new Error(t('sync.errNotSharing'));
+    if (!res.ok) throw new Error(t('sync.errHttp', { code: res.status }));
     return res.json();
   },
   async lanPush(baseUrl, payload) {
     const base = lanBase(baseUrl);
-    if (!base) throw new Error('Enter the address of the device that is sharing.');
+    if (!base) throw new Error(t('sync.errAddress'));
     let res: Response;
     try {
       res = await fetch(`${base}/api/state`, {
@@ -211,8 +212,8 @@ export const desktop: DesktopBridge = {
         body: JSON.stringify(payload),
       });
     } catch {
-      throw new Error(`Could not reach ${base} — check the address, Wi-Fi and any firewall prompt.`);
+      throw new Error(t('sync.errNoSend', { url: base }));
     }
-    if (!res.ok) throw new Error(`The other device refused the update (HTTP ${res.status}).`);
+    if (!res.ok) throw new Error(t('sync.errPush', { code: res.status }));
   },
 };

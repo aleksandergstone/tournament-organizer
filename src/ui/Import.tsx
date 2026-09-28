@@ -4,17 +4,19 @@ import { useState } from 'react';
 import { useApp } from '../state/store';
 import { desktop } from '../engine/desktop';
 import { Alert, Page, Panel } from './kit';
+import { useT } from '../i18n';
 
 export default function Import() {
+  const t = useT();
   const { importJson, importFile, go } = useApp();
   const [text, setText] = useState('');
   const [err, setErr] = useState('');
   const [warn, setWarn] = useState<string[]>([]);
   const doImport = () => {
     setErr('');
-    if (!text.trim()) { setErr('Paste the project JSON first, or use the file button above.'); return; }
+    if (!text.trim()) { setErr(t('imp.errEmpty')); return; }
     try { setWarn(importJson(text)); }
-    catch (e) { setErr(e instanceof Error ? e.message : 'That file could not be opened.'); }
+    catch (e) { setErr(e instanceof Error ? e.message : t('error.fileOpen')); }
   };
   const fromFile = async () => {
     setErr(''); setWarn([]);
@@ -23,32 +25,32 @@ export default function Import() {
       if (!f) return;
       if ((f as { error?: string }).error) { setErr('That file could not be read: ' + (f as { error?: string }).error); return; }
       setWarn(importFile(f.text, f.path));
-    } catch (e) { setErr(e instanceof Error ? e.message : 'That file could not be opened.'); }
+    } catch (e) { setErr(e instanceof Error ? e.message : t('error.fileOpen')); }
   };
   return (
-    <Page title="Import / recovery" sub="Open a project file exported earlier — after a crash, or to move to another computer.">
-      {err && <Alert tone="err" title="Nothing was changed">{err}</Alert>}
+    <Page title={t('imp.title')} sub={t('imp.sub')}>
+      {err && <Alert tone="err" title={t('imp.nothingChanged')}>{err}</Alert>}
       {warn.length > 0 && (
-        <Alert tone="warn" title="The file was opened, with notes">
+        <Alert tone="warn" title={t('imp.openedWithNotes')}>
           <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
             {warn.map((w, i) => <li key={i}>{w}</li>)}
           </ul>
         </Alert>
       )}
 
-      <Panel title="Open a project file" sub="The normal way to restore a backup.">
+      <Panel title={t('imp.openPanel')} sub={t('imp.openPanelSub')}>
         <div className="row">
-          <button className="btn primary" onClick={fromFile}>Choose .top.json file{desktop.available ? '…' : ''}</button>
-          <span className="muted">Checked before anything is overwritten — a damaged file never replaces your work.</span>
+          <button className="btn primary" onClick={fromFile}>{t('imp.chooseFileShort')}{desktop.available ? '…' : ''}</button>
+          <span className="muted">{t('imp.checkedHint')}</span>
         </div>
       </Panel>
 
-      <Panel title="Or paste project JSON" sub="For example the contents of a backup copied from another machine.">
-        <textarea rows={8} value={text} onChange={e => setText(e.target.value)} placeholder='Paste .top.json content here' />
+      <Panel title={t('imp.pastePanel')} sub={t('imp.pastePanelSub')}>
+        <textarea rows={8} value={text} onChange={e => setText(e.target.value)} placeholder={t('imp.pastePlaceholder')} />
         <div className="row" style={{ marginTop: 10 }}>
-          <button className="btn primary" onClick={doImport} disabled={!text.trim()}>Validate &amp; open</button>
-          <button className="btn" onClick={() => go('home')}>Back to projects</button>
-          <span className="muted">Corrupted files are rejected with an explicit reason.</span>
+          <button className="btn primary" onClick={doImport} disabled={!text.trim()}>{t('imp.validate')}</button>
+          <button className="btn" onClick={() => go('home')}>{t('imp.backToProjects')}</button>
+          <span className="muted">{t('imp.corruptHint')}</span>
         </div>
       </Panel>
     </Page>

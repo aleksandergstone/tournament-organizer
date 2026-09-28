@@ -7,6 +7,7 @@ import { computeStandings } from '../engine/standings';
 import { StandingRow } from '../engine/types';
 import { parseProject } from '../engine/storage';
 import { ProjectFile } from '../engine/types';
+import { t, resolveLocale, setLocale } from '../i18n';
 export type Screen = 'home'|'wizard'|'overview'|'participants'|'rules'|'bracket'|'matches'|'standings'|'export'|'settings'|'import'|'display'|'schedule'|'codes';
 interface Ctx { domain: Domain; settings: AppSettings; screen: Screen; go(s: Screen): void;
 update(fn: (d: Domain) => Domain, msg?: string): void; setSettings(s: AppSettings): void;
@@ -47,6 +48,10 @@ export function Provider({ children }: { children: React.ReactNode }) {
   const sr = useRef(settings); sr.current = settings;
   // Theme preference takes effect immediately (data-theme on <html>).
   useEffect(() => { document.documentElement.dataset.theme = settings.theme; }, [settings.theme]);
+  // Language does the same: the active locale is module state in src/i18n, so
+  // every `useT()` re-renders at once — no reload, and "system" is re-checked
+  // whenever the preference changes.
+  useEffect(() => { setLocale(resolveLocale(settings.locale)); }, [settings.locale]);
   const persist = useCallback((d: Domain, s: AppSettings) => {
     if (!d.tournament.name) return;
     try {
@@ -91,7 +96,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
       setS({ ...DEFAULT_SETTINGS, ...file.settings }); setDirty(true); setHas(true); setScreen('overview'); return warnings; },
     importFile: (text, path) => { const { file, warnings } = parseProject(text);
       const all = [...warnings];
-      if (file.tournament.name === '' || file.tournament.name === '(untitled)') all.push(`Opened ${path} — project has no name yet.`);
+      if (file.tournament.name === '' || file.tournament.name === '(untitled)') all.push(t('store.openedNoName', { path }));
       else all.push(`Opened ${path}.`);
       setHist(initHistory({ ...fromFile(file), audit: [...file.audit, { id: uid('a'), at: nowIso(), action: 'project.opened-file', detail: path }] }));
       setS({ ...DEFAULT_SETTINGS, ...file.settings }); setDirty(true); setHas(true); setScreen('overview'); return all; },

@@ -1,5 +1,6 @@
 import { Match, Participant } from './types';
 import { mkMatch } from './pairings';
+import { t } from '../i18n';
 
 // Swiss pairing from live points. Deterministic: sort by (points desc, seed,
 // name), then greedily pair top-down preferring closest score without rematch.
@@ -44,13 +45,13 @@ export function swissPairings(
     const opp = fresh[0] ?? candidates.sort((x, y) => scored(x) - scored(y))[0];
     if (opp) {
       used.add(opp.id);
-      const m = mkMatch(round, 'Swiss R' + round, p.id, opp.id);
+      const m = mkMatch(round, t('round.swiss', { n: round }), p.id, opp.id);
       m.bracket = { kind: 'swiss', manual: true };
       out.push(m);
     }
   }
   if (bye) {
-    const m = mkMatch(round, 'Swiss R' + round, bye.id, null);
+    const m = mkMatch(round, t('round.swiss', { n: round }), bye.id, null);
     m.bracket = { kind: 'swiss', manual: true };
     out.push(m);
   }

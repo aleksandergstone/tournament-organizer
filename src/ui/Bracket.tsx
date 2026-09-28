@@ -4,34 +4,37 @@ import { useApp } from '../state/store';
 import { Match } from '../engine/types';
 import { describeFormat } from '../engine/generate';
 import { Empty, Meta, Page, Panel, StatusPill } from './kit';
+import { useT } from '../i18n';
 
 const FINISHED = new Set(['played', 'draw', 'walkover', 'overtime']);
 
 function useNames() {
+  const t = useT();
   const { domain } = useApp();
   const names = new Map(domain.participants.map(p => [p.id, p.name]));
-  return (id: string | null) => (id ? names.get(id) ?? 'Unknown' : 'TBD');
+  return (id: string | null) => (id ? names.get(id) ?? t('common.unknown') : 'TBD');
 }
 
 export default function Bracket() {
+  const t = useT();
   const { domain, go } = useApp();
   const pn = useNames();
   const fmt = domain.tournament.format;
 
   if (domain.matches.length === 0) {
     return (
-      <Page title="Bracket" sub="The structure of the tournament.">
+      <Page title={t('bracket.title')} sub={t('bracket.sub')}>
         <Empty
-          title="Nothing generated yet"
-          hint="Choose a format and generate the matches — you can regenerate at any time before results are entered."
-          action={<button className="btn primary" onClick={() => go('rules')}>Go to rules → generate</button>}
+          title={t('bracket.emptyTitle')}
+          hint={t('bracket.emptyHint')}
+          action={<button className="btn primary" onClick={() => go('rules')}>{t('bracket.goRules')}</button>}
         />
       </Page>
     );
   }
 
   const played = domain.matches.filter(m => FINISHED.has(m.result.status)).length;
-  const sub = `${describeFormat(fmt)} · ${played} of ${domain.matches.length} matches played`;
+  const sub = t('bracket.subPlayed', { format: describeFormat(fmt), played, total: domain.matches.length });
 
   if (fmt === 'double-elimination') return <DoubleView pn={pn} sub={sub} />;
   if (fmt === 'groups-knockout' && domain.groups.length > 0) return <GroupsKoView pn={pn} sub={sub} />;
@@ -39,8 +42,8 @@ export default function Bracket() {
   const rounds = [...new Set(domain.matches.map(m => m.round))].sort((a, b) => a - b);
   const elim = fmt === 'single-elimination';
   return (
-    <Page title={elim ? 'Bracket' : 'Schedule'} sub={sub}
-      actions={<button className="btn primary" onClick={() => go('matches')}>Enter results</button>}>
+    <Page title={elim ? t('bracket.title') : t('bracket.scheduleTitle')} sub={sub}
+      actions={<button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>}>
       {elim ? (
         <div className="bracket">{rounds.map(r => (
           <div className="bround" key={r}>
@@ -52,7 +55,7 @@ export default function Bracket() {
         <Panel>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Round</th><th>Home</th><th>Away</th><th className="num">Score</th><th>Status</th></tr></thead>
+              <thead><tr><th>{t('common.round')}</th><th>{t('nav.home')}</th><th>{t('common.away')}</th><th className="num">{t('common.score')}</th><th>{t('common.status')}</th></tr></thead>
               <tbody>{domain.matches.map(m => (
                 <tr key={m.id} className={FINISHED.has(m.result.status) ? '' : 'dim'}>
                   <td className="muted nowrap">{m.roundName}</td>
@@ -67,10 +70,10 @@ export default function Bracket() {
         </Panel>
       )}
       <div className="footbar">
-        <span className="muted">Results are entered on the Results screen — the bracket updates itself.</span>
+        <span className="muted">{t('bracket.updateNote')}</span>
         <span className="sp" />
-        <button className="btn" onClick={() => go('standings')}>Standings</button>
-        <button className="btn primary" onClick={() => go('matches')}>Enter results</button>
+        <button className="btn" onClick={() => go('standings')}>{t('nav.standings')}</button>
+        <button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>
       </div>
     </Page>
   );
@@ -78,6 +81,7 @@ export default function Bracket() {
 
 
 function GroupsKoView({ pn, sub }: { pn: (id: string | null) => string; sub: string }) {
+  const t = useT();
   const { domain, go } = useApp();
   const groupMs = domain.matches.filter(m => m.groupId != null);
   const koMs = domain.matches.filter(m => m.groupId == null);
@@ -85,18 +89,18 @@ function GroupsKoView({ pn, sub }: { pn: (id: string | null) => string; sub: str
   const total = groupMs.filter(m => m.result.status !== 'bye').length;
   const done = groupMs.filter(m => FINISHED.has(m.result.status)).length;
   return (
-    <Page title="Groups → knockout" sub={sub}
-      actions={<button className="btn primary" onClick={() => go('matches')}>Enter results</button>}>
+    <Page title={t('bracket.groupsKo')} sub={sub}
+      actions={<button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>}>
       <Meta items={[
         { label: 'Group matches', value: `${done}/${total}` },
         { label: 'Knockout matches', value: koMs.length },
-        { label: 'Groups', value: domain.groups.length },
+        { label: t('common.groups'), value: domain.groups.length },
       ]} />
       {koMs.length === 0 ? (
         <Empty
-          title="Knockout stage not seeded yet"
-          hint="Finish the group matches, then preview the qualifiers and the bracket on the Standings screen — nothing is created until you confirm."
-          action={<button className="btn primary" onClick={() => go('standings')}>Go to standings</button>}
+          title={t('bracket.koNotSeeded')}
+          hint={t('bracket.koNotSeededHint')}
+          action={<button className="btn primary" onClick={() => go('standings')}>{t('bracket.goStandings')}</button>}
         />
       ) : (
         <div className="bracket">{rounds.map(r => (
@@ -107,10 +111,10 @@ function GroupsKoView({ pn, sub }: { pn: (id: string | null) => string; sub: str
         ))}</div>
       )}
 
-      <Panel title="Group stage" sub="Group fixtures stay in the project even after the knockout stage is created.">
+      <Panel title={t('bracket.groupStage')} sub={t('bracket.groupStageSub')}>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Round</th><th>Group</th><th>Home</th><th>Away</th><th className="num">Score</th><th>Status</th></tr></thead>
+            <thead><tr><th>{t('common.round')}</th><th>{t('common.group')}</th><th>{t('nav.home')}</th><th>{t('common.away')}</th><th className="num">{t('common.score')}</th><th>{t('common.status')}</th></tr></thead>
             <tbody>{groupMs.map(m => (
               <tr key={m.id} className={FINISHED.has(m.result.status) ? '' : 'dim'}>
                 <td className="muted nowrap">{m.roundName}</td>
@@ -125,10 +129,10 @@ function GroupsKoView({ pn, sub }: { pn: (id: string | null) => string; sub: str
         </div>
       </Panel>
       <div className="footbar">
-        <span className="muted">Qualifiers and seeding are managed on the Standings screen.</span>
+        <span className="muted">{t('bracket.qualifierNote')}</span>
         <span className="sp" />
-        <button className="btn" onClick={() => go('standings')}>Standings</button>
-        <button className="btn primary" onClick={() => go('matches')}>Enter results</button>
+        <button className="btn" onClick={() => go('standings')}>{t('nav.standings')}</button>
+        <button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>
       </div>
     </Page>
   );
@@ -151,6 +155,7 @@ function MCard({ m, pn }: { m: Match; pn: (id: string | null) => string }) {
 }
 
 function DoubleView({ pn, sub }: { pn: (id: string | null) => string; sub: string }) {
+  const t = useT();
   const { domain, go } = useApp();
   const wb = domain.matches.filter(m => m.bracket?.kind === 'winners').sort((a, b) => a.round - b.round);
   const lb = domain.matches.filter(m => m.bracket?.kind === 'losers').sort((a, b) => a.round - b.round);
@@ -164,18 +169,18 @@ function DoubleView({ pn, sub }: { pn: (id: string | null) => string; sub: strin
     </div>
   );
   return (
-    <Page title="Double elimination" sub={sub}
-      actions={<button className="btn primary" onClick={() => go('matches')}>Enter results</button>}>
+    <Page title={t('bracket.doubleTitle')} sub={sub}
+      actions={<button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>}>
       <div className="bracket">
-        {col('Winners bracket', wb)}
-        {col('Losers bracket', lb, 'Players drop here after one loss.')}
-        {col('Grand final', gf.length ? gf : finals)}
+        {col(t('bracket.winners'), wb)}
+        {col(t('bracket.losers'), lb, t('bracket.losersHint'))}
+        {col(t('bracket.grandFinal'), gf.length ? gf : finals)}
       </div>
       <div className="footbar">
-        <span className="muted">The losers bracket is filled automatically after every result.</span>
+        <span className="muted">{t('bracket.losersAuto')}</span>
         <span className="sp" />
-        <button className="btn" onClick={() => go('standings')}>Standings</button>
-        <button className="btn primary" onClick={() => go('matches')}>Enter results</button>
+        <button className="btn" onClick={() => go('standings')}>{t('nav.standings')}</button>
+        <button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>
       </div>
     </Page>
   );

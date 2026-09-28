@@ -17,6 +17,7 @@
 // leave a stale pairing behind.
 import { ProjectFile } from './types';
 import { recomputeBracket } from './recompute';
+import { t } from '../i18n';
 
 export const SYNC_KIND = 'tournament-organizer-state';
 export const SYNC_VERSION = 1;
@@ -36,14 +37,14 @@ export function makePayload(project: ProjectFile, at: string = new Date().toISOS
 export type ParsedPayload = { ok: true; payload: SyncPayload } | { ok: false; error: string };
 
 export function parsePayload(raw: unknown): ParsedPayload {
-  if (typeof raw !== 'object' || raw === null) return { ok: false, error: 'Empty or malformed sync data.' };
+  if (typeof raw !== 'object' || raw === null) return { ok: false, error: t('sync.errEmptyData') };
   const p = raw as Record<string, unknown>;
-  if (p['app'] !== 'tournament-organizer') return { ok: false, error: 'That device is not running Tournament Organizer.' };
-  if (p['kind'] !== SYNC_KIND) return { ok: false, error: 'Unsupported sync data type.' };
+  if (p['app'] !== 'tournament-organizer') return { ok: false, error: t('sync.errNoApp') };
+  if (p['kind'] !== SYNC_KIND) return { ok: false, error: t('sync.errKind') };
   const project = p['project'] as ProjectFile | undefined;
-  if (!project || typeof project !== 'object') return { ok: false, error: 'Sync data has no project.' };
+  if (!project || typeof project !== 'object') return { ok: false, error: t('sync.errNoProject') };
   if (!Array.isArray(project.matches) || !Array.isArray(project.participants))
-    return { ok: false, error: 'Sync data is incomplete (matches/participants missing).' };
+    return { ok: false, error: t('sync.errIncomplete') };
   return { ok: true, payload: raw as unknown as SyncPayload };
 }
 
@@ -64,11 +65,11 @@ export function mergeProjects(local: ProjectFile, remote: ProjectFile): MergeRes
     ok: true, merged: local, fromRemote: [], keptLocal: [],
     structureFromRemote: false, conflicts: [], note: '',
   };
-  if (!local || !remote) return { ...base, ok: false, conflicts: ['missing-state'], note: 'Nothing to merge.' };
+  if (!local || !remote) return { ...base, ok: false, conflicts: ['missing-state'], note: t('sync.nothingToMerge') };
   if (local.tournament?.id !== remote.tournament?.id) {
     return {
       ...base, ok: false, conflicts: ['other-project'],
-      note: 'These two devices hold different tournaments — sync only copies of the same project.',
+      note: t('sync.differentProjects'),
     };
   }
 
@@ -112,10 +113,10 @@ export function mergeProjects(local: ProjectFile, remote: ProjectFile): MergeRes
   catch { /* keep merged order if the combination is not re-derivable */ }
 
   const parts = [
-    fromRemote.length ? `${fromRemote.length} match(es) updated from the other device` : '',
-    keptLocal.length ? `${keptLocal.length} kept local (newer or unchanged)` : '',
-    structureFromRemote ? 'participants and groups taken from the other device' : '',
+    fromRemote.length ? t('sync.updatedFrom', { n: fromRemote.length }) : '',
+    keptLocal.length ? t('sync.keptLocal', { n: keptLocal.length }) : '',
+    structureFromRemote ? t('sync.tookParticipants') : '',
   ].filter(Boolean);
 
-  return { ok: true, merged, fromRemote, keptLocal, structureFromRemote, conflicts: [], note: parts.join(' · ') || 'Already up to date.' };
+  return { ok: true, merged, fromRemote, keptLocal, structureFromRemote, conflicts: [], note: parts.join(' · ') || t('sync.upToDate') };
 }

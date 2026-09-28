@@ -5,6 +5,7 @@
 // printToPDF in an offscreen window, and (c) printed from a browser. What the
 // organizer previews is exactly what comes out of the printer.
 import { Report, Section } from './output';
+import { t } from '../i18n';
 
 export function escapeHtml(v: string): string {
   return v.replace(/[&<>"']/g, ch => (
@@ -134,7 +135,7 @@ export function renderReportHtml(report: Report): string {
     </div>
     ${sponsor ? `<img class="sponsor" src="${sponsor}" alt="" />` : ''}
   </div>
-  ${body || '<p class="empty">There is nothing to show in this report yet.</p>'}
+  ${body || '<p class="empty">' + t('doc.empty') + '</p>'}
   ${notes}
   ${foot ? `<div class="foot">${foot}</div>` : ''}
 </body></html>`;

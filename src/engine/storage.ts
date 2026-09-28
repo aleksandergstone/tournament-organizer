@@ -1,5 +1,6 @@
 import { AppSettings, AuditEntry, DEFAULT_SETTINGS, Group, Match, Participant, ProjectFile, Tournament, VenueResource, nowIso, uid } from './types';
 import { migrateProject, sanitizeImport } from './validate';
+import { t } from '../i18n';
 import { recomputeBracket } from './recompute';
 
 export const CURRENT_VERSION = 1 as const;
@@ -27,16 +28,16 @@ export function serializeProject(p: {
 export function parseProject(json: string): { file: ProjectFile; warnings: string[] } {
   let raw: unknown;
   try { raw = JSON.parse(json); }
-  catch { throw new Error('File is not valid JSON.'); }
+  catch { throw new Error(t('engine.badJson')); }
   const { ok, errors } = sanitizeImport(raw);
-  if (!ok) throw new Error('Corrupted import: ' + errors.join(' '));
+  if (!ok) throw new Error(t('engine.corrupt', { errors: errors.join(' ') }));
   const migrated = migrateProject(raw as Record<string, unknown>) as unknown as ProjectFile;
   const warnings: string[] = [];
   const origV = (raw as { version: number }).version;
   // v0 files predate bracket provenance: rebuild structure lazily is out of
   // scope, so warn that brackets recompute from results on next edit.
-  if (origV === 0) warnings.push('Migrated v0 file: bracket links rebuilt on next result edit.');
-  else if (origV !== 1) warnings.push(`Migrated from version ${origV} to 1.`);
+  if (origV === 0) warnings.push(t('engine.migrateV0'));
+  else if (origV !== 1) warnings.push(t('engine.migrateV', { v: origV }));
   // Defensive: never import dangling references — drop matches pointing at
   // unknown participants (kept count in warning) rather than crashing.
   const ids = new Set(migrated.participants.map(p => p.id));
@@ -44,7 +45,7 @@ export function parseProject(json: string): { file: ProjectFile; warnings: strin
   migrated.matches = migrated.matches.filter(m =>
     (!m.homeId || ids.has(m.homeId)) && (!m.awayId || ids.has(m.awayId)));
   if (migrated.matches.length < before)
-    warnings.push(`Dropped ${before - migrated.matches.length} match(es) with unknown participants.`);
+    warnings.push(t('engine.droppedMatches', { n: before - migrated.matches.length }));
   // Re-derive bracket slots from provenance so an old edited file can never
   // reopen with stale downstream pairings.
   try { migrated.matches = recomputeBracket(migrated.matches); }

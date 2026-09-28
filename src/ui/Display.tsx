@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../state/store';
 import { buildDisplay, DisplayMatch } from '../engine/display';
 import { desktop } from '../engine/desktop';
+import { useT } from '../i18n';
 import { statusLabel } from './kit';
 
 function clockText(d: Date): string {
@@ -35,6 +36,7 @@ function BigMatch({ label, m }: { label: string; m: DisplayMatch | null }) {
 }
 
 export default function Display() {
+  const t = useT();
   const { domain, standings, go } = useApp();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -44,7 +46,7 @@ export default function Display() {
 
   const names = useMemo(() => new Map(domain.participants.map(p => [p.id, p.name])), [domain.participants]);
   const model = buildDisplay({
-    tournamentName: domain.tournament.name || '(untitled)',
+    tournamentName: domain.tournament.name || t('app.untitled'),
     matches: domain.matches,
     names,
     standings,
@@ -67,7 +69,7 @@ export default function Display() {
         <div>
           <h1>{model.tournamentName}</h1>
           <div className="muted">
-            {domain.tournament.location || 'Venue not set'} · {domain.participants.length} participants
+            {domain.tournament.location || t('disp.noVenue')} · {domain.participants.length} participants
             {model.top.length ? ` · leader ${names.get(model.top[0].participantId) ?? '?'}` : ''}
           </div>
         </div>
@@ -78,15 +80,15 @@ export default function Display() {
       </header>
 
       <section className="display-main">
-        <BigMatch label="Playing now" m={model.current} />
-        <BigMatch label="Up next" m={model.next} />
+        <BigMatch label={t('disp.playingNow')} m={model.current} />
+        <BigMatch label={t('disp.upNext')} m={model.next} />
       </section>
 
       <section className="display-bottom">
         <div className="display-standings">
-          <div className="display-label">Standings</div>
+          <div className="display-label">{t('disp.standings')}</div>
           {model.top.length === 0
-            ? <div className="display-none">No results yet.</div>
+            ? <div className="display-none">{t('disp.noResults')}</div>
             : (
               <table>
                 <tbody>
@@ -105,12 +107,12 @@ export default function Display() {
         </div>
         <div className="display-meta">
           <div>{model.playedCount}/{model.totalCount} matches played · {model.openCount} open</div>
-          {!kiosk && <div className="muted">Updates automatically as results are entered.</div>}
+          {!kiosk && <div className="muted">{t('disp.updates')}</div>}
           {!kiosk && (
             <div className="row" style={{ marginTop: 12 }}>
-              <button className="btn sm" onClick={() => void desktop.openDisplay()}>Open on second screen</button>
-              <button className="btn sm" onClick={fullscreen}>Full screen</button>
-              <button className="btn sm" onClick={() => go('overview')}>Back to organizer view</button>
+              <button className="btn sm" onClick={() => void desktop.openDisplay()}>{t('disp.openSecond')}</button>
+              <button className="btn sm" onClick={fullscreen}>{t('disp.fullscreen')}</button>
+              <button className="btn sm" onClick={() => go('overview')}>{t('disp.backToApp')}</button>
             </div>
           )}
         </div>

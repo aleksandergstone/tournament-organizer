@@ -19,12 +19,13 @@ import ErrorBoundary from './ui/ErrorBoundary';
 import { Alert } from './ui/kit';
 import { parseDeepLink, resolveDeepLink } from './engine/deeplink';
 import { nowIso } from './engine/types';
+import { useT, type Dict } from './i18n';
 
 // Navigation is grouped by what the organizer is doing, not by feature name.
-const NAV: { items: readonly (readonly [Screen, string])[] }[] = [
-  { items: [['home', 'Home'], ['overview', 'Overview'], ['participants', 'Players'], ['rules', 'Rules']] },
-  { items: [['bracket', 'Bracket'], ['matches', 'Results'], ['standings', 'Standings']] },
-  { items: [['schedule', 'Schedule'], ['display', 'Display'], ['codes', 'QR codes'], ['export', 'Output']] },
+const NAV: { items: readonly (readonly [Screen, keyof Dict])[] }[] = [
+  { items: [['home', 'nav.home'], ['overview', 'nav.overview'], ['participants', 'nav.participants'], ['rules', 'nav.rules']] },
+  { items: [['bracket', 'nav.bracket'], ['matches', 'nav.results'], ['standings', 'nav.standings']] },
+  { items: [['schedule', 'nav.schedule'], ['display', 'nav.display'], ['codes', 'nav.codes'], ['export', 'nav.output']] },
 ];
 
 // A window opened with #display is a projector: organizer controls are hidden.
@@ -33,6 +34,7 @@ const DISPLAY_WINDOW = typeof window !== 'undefined' && window.location.hash ===
 export default function App() {
   const { screen, go, undo_, redo_, canUndo, canRedo, save, dirty, lastSaved, saveError, hasProject,
     domain, update, setFocusMatch } = useApp();
+  const t = useT();
   const [linkMsg, setLinkMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export default function App() {
     const parsed = parseDeepLink(raw);
     if (!parsed.ok) { setLinkMsg({ kind: 'err', text: parsed.error }); return; }
     if (!hasProject) {
-      setLinkMsg({ kind: 'err', text: 'Open the project this code belongs to, then scan the code again.' });
+      setLinkMsg({ kind: 'err', text: t('link.projectMissing') });
       return;
     }
     const action = resolveDeepLink(parsed.link, {
@@ -70,14 +72,14 @@ export default function App() {
         participants: d.participants.map(x => (x.id === action.participantId
           ? { ...x, active: true, withdrawnRound: null, modifiedAt: nowIso() } : x)),
       }), `checkin ${p?.name ?? action.participantId}`);
-      setLinkMsg({ kind: 'ok', text: `${p?.name ?? 'Participant'} checked in.` });
+      setLinkMsg({ kind: 'ok', text: t('link.checkedIn', { name: p?.name ?? t('common.unknown') }) });
       go('participants');
     } else if (action.kind === 'match') {
       setFocusMatch(action.matchId);
-      setLinkMsg({ kind: 'ok', text: 'Opened the match from the code.' });
+      setLinkMsg({ kind: 'ok', text: t('link.matchOpened') });
       go('matches');
     } else {
-      setLinkMsg({ kind: 'ok', text: 'Opened the schedule — showing this place first.' });
+      setLinkMsg({ kind: 'ok', text: t('link.scheduleOpened') });
       setFocusMatch(null);
       go('schedule');
     }
@@ -92,37 +94,36 @@ export default function App() {
       <div className="topbar">
         <span className="brand" title={`${APP_NAME} ${APP_VERSION}`}>TO</span>
         {hasProject && domain.tournament.name ? (
-          <span className="topbar-proj" title="Open tournament">{domain.tournament.name}</span>
+          <span className="topbar-proj" title={t('nav.openTournament')}>{domain.tournament.name}</span>
         ) : null}
         <nav>{NAV.map((group, gi) => (
           <span className="nav-group" key={gi}>
             {gi > 0 ? <span className="divider" /> : null}
             {group.items.map(([k, label]) => (
-              <button key={k} className={screen === k ? 'on' : ''} onClick={() => go(k)} disabled={(k !== 'home' && !hasProject)}>{label}</button>
+              <button key={k} className={screen === k ? 'on' : ''} onClick={() => go(k)} disabled={(k !== 'home' && !hasProject)}>{t(label)}</button>
             ))}
           </span>
         ))}</nav>
         <span className="sp" />
         <span className="acts">
-          <button onClick={undo_} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">Undo</button>
-          <button onClick={redo_} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">Redo</button>
-          <button onClick={save} title="Save now (Ctrl+S)" className={dirty ? 'primary-save' : ''}>{dirty ? '● Unsaved' : 'Saved'}</button>
+          <button onClick={undo_} disabled={!canUndo} title={t('nav.undo') + ' (Ctrl+Z)'} aria-label={t('nav.undo')}>{t('nav.undo')}</button>
+          <button onClick={redo_} disabled={!canRedo} title={t('nav.redo') + ' (Ctrl+Y)'} aria-label={t('nav.redo')}>{t('nav.redo')}</button>
+          <button onClick={save} title={t('nav.saveNow')} className={dirty ? 'primary-save' : ''}>{dirty ? t('common.unsaved') : t('common.saved')}</button>
           <span className={'save-state' + (dirty ? ' dirty' : '')}>{lastSaved ? new Date(lastSaved).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
           <span className="divider" />
-          <button onClick={() => go('settings')} title="Settings" aria-label="Settings">Settings</button>
+          <button onClick={() => go('settings')} title={t('nav.settings')} aria-label={t('nav.settings')}>{t('nav.settings')}</button>
         </span>
       </div>
       {(saveError || linkMsg) && (
         <div className="wrap" style={{ paddingTop: 14, paddingBottom: 0 }}>
           {saveError && (
-            <Alert tone="err" title="This project could not be saved to disk">
-              Your work is safe in memory, but free up some disk space and save again.
-              To keep a copy right now use <b>Export → Save project file</b>.
+            <Alert tone="err" title={t('error.save.title')}>
+              {t('error.save.body', { action: t('error.save.action') })}
             </Alert>
           )}
           {linkMsg && (
             <Alert tone={linkMsg.kind === 'err' ? 'err' : 'ok'}>
-              {linkMsg.kind === 'err' ? <b>Code not opened — </b> : null}{linkMsg.text}
+              {linkMsg.kind === 'err' ? <b>{t('link.failed')}</b> : null}{linkMsg.text}
             </Alert>
           )}
         </div>

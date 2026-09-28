@@ -3,6 +3,39 @@
 All notable changes to Tournament Organizer.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semver.
 
+## [1.3.0] — 2026-09-28
+
+### Added
+
+- **Four languages — English, Polish, German, Spanish.** The whole interface, every
+  message the engine produces (validation, import, LAN sharing, deep links) and
+  every printed document now speak the selected language.
+- **Language switch** in Settings → Appearance, with “System” plus the four
+  languages by endonym. The choice is saved with the project preferences, applies
+  immediately (no restart, no internet) and is used for documents and exports
+  as well.
+- **Localized dates** in every document: month and weekday names, date order and
+  separators follow the language. English stays day-first (“14 Mar 2026”).
+
+### Changed
+
+- One dictionary (`src/i18n/`) is the single source of truth: `en` is canonical
+  and the other three are typed against it, so a missing or misspelled key fails
+  the build instead of leaking a raw key into the UI.
+- Tables that used to hold ready-made English text (place types, document kinds,
+  status words, tie-break names) now hold dictionary keys and are translated at
+  render time, so they follow a language switch made in the same session.
+- Round names are written in the language active when the bracket is generated —
+  they are project data, stored in the file and printed on paper. The grand final
+  is identified by its round number, so no engine logic depends on a name.
+
+### Known limitations
+
+- The project history (the audit log at the bottom of the Overview screen) keeps
+  its technical entries, e.g. `result.edit Anna-Bob`; they are a log, not copy.
+- Round names and group names created in an earlier version keep the language
+  they were generated in until the bracket is generated again.
+
 ## [1.2.0] — 2026-09-28
 
 Tournament paperwork: branded, print-ready documents instead of a generic summary

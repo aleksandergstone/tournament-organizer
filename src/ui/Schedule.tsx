@@ -6,10 +6,13 @@ import { resourcesOf } from '../engine/model';
 import { detectConflicts, suggestSlots, toEntries, DEFAULT_DURATION_MIN } from '../engine/schedule';
 import { ResourceKind, uid } from '../engine/types';
 import { Alert, Empty, Field, Page, Panel, Segmented } from './kit';
+import { useT, type Dict } from '../i18n';
 
 const KINDS: ResourceKind[] = ['court', 'table', 'station', 'board', 'lane', 'other'];
-const KIND_LABELS: Record<string, string> = {
-  court: 'Court', table: 'Table', station: 'Station', board: 'Scoreboard', lane: 'Lane', other: 'Other',
+/** Labels are looked up per render, so they follow the chosen language. */
+const KIND_KEYS: Record<ResourceKind, keyof Dict> = {
+  court: 'sch.kindCourt', table: 'sch.kindTable', station: 'sch.kindStation',
+  board: 'sch.kindBoard', lane: 'sch.kindLane', other: 'sch.kindOther',
 };
 
 function toLocalInput(iso: string | null | undefined): string {
@@ -19,10 +22,11 @@ function toLocalInput(iso: string | null | undefined): string {
 }
 
 export default function Schedule() {
+  const t = useT();
   const { domain, update, go, settings } = useApp();
   const resources = useMemo(() => resourcesOf(domain), [domain]);
   const names = useMemo(() => new Map(domain.participants.map(p => [p.id, p.name])), [domain.participants]);
-  const pn = (id: string | null) => (id ? names.get(id) ?? 'Unknown' : 'TBD');
+  const pn = (id: string | null) => (id ? names.get(id) ?? t('common.unknown') : t('common.tbd'));
 
   const [name, setName] = useState('');
   const [kind, setKind] = useState<ResourceKind>('court');
@@ -40,15 +44,15 @@ export default function Schedule() {
 
   const addResource = () => {
     const n = name.trim();
-    if (!n) { setErr('Give the place a name, e.g. "Court 1".'); return; }
-    if (resources.some(r => r.name.toLowerCase() === n.toLowerCase())) { setErr(`"${n}" already exists.`); return; }
+    if (!n) { setErr(t('sch.errName')); return; }
+    if (resources.some(r => r.name.toLowerCase() === n.toLowerCase())) { setErr(t('sch.errExists', { name: n })); return; }
     setErr('');
     update(d => ({ ...d, resources: [...(d.resources ?? []), { id: uid('r'), name: n, kind }] }), `resource.add ${n}`);
     setName('');
   };
   const removeResource = (id: string, n: string) => {
     // Matches keep their time but lose the assignment — never silently kept.
-    if (settings.confirmDestructive && !window.confirm(`Remove the place "${n}"?\n\nMatches assigned to it stay in the schedule, but without a place.`)) return;
+    if (settings.confirmDestructive && !window.confirm(t('sch.removePlaceConfirm', { name: n }))) return;
     update(d => ({
       ...d,
       resources: (d.resources ?? []).filter(r => r.id !== id),
@@ -79,7 +83,7 @@ export default function Schedule() {
       defaultDurationMin: DEFAULT_DURATION_MIN,
     });
     if (plan.length === 0) { setErr('No free slot found — add more places or start later in the day.'); return; }
-    setErr(''); setMsg(`Planned ${plan.length} match${plan.length > 1 ? 'es' : ''} without overlaps.`);
+    setErr(''); setMsg(t(plan.length === 1 ? 'sch.autofilledOne' : 'sch.autofilled', { n: plan.length }));
     update(d => ({
       ...d,
       matches: d.matches.map(m => {
@@ -92,45 +96,45 @@ export default function Schedule() {
 
   return (
     <Page
-      title="Schedule — courts, tables, stations"
-      sub="Give every match a place and a time. Double-booking is reported, never hidden."
+      title={t('sch.titleFull')}
+      sub={t('sch.sub')}
     >
-      {msg && <Alert tone="ok" title="Schedule updated">{msg}</Alert>}
-      {err && <Alert tone="err" title="Nothing was changed">{err}</Alert>}
+      {msg && <Alert tone="ok" title={t('sch.updated')}>{msg}</Alert>}
+      {err && <Alert tone="err" title={t('common.nothingChanged')}>{err}</Alert>}
 
       {conflicts.length > 0 && (
-        <Alert tone="err" title={`${conflicts.length} scheduling conflict${conflicts.length > 1 ? 's' : ''}`}>
+        <Alert tone="err" title={t(conflicts.length === 1 ? 'sch.conflictCountOne' : 'sch.conflictCount', { n: conflicts.length })}>
           <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
             {conflicts.map((c, i) => <li key={i}>{c.message}</li>)}
           </ul>
         </Alert>
       )}
 
-      <Panel title="Places" sub="The courts, tables or stations this venue uses.">
+      <Panel title={t('sch.places')} sub={t('sch.placesSub')}>
         <div className="row">
           <input className="search" style={{ maxWidth: 240 }} value={name} onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addResource()} placeholder="Court 1, Table 2…" aria-label="New place name" />
-          <select style={{ maxWidth: 150 }} value={kind} onChange={e => setKind(e.target.value as ResourceKind)} aria-label="Place type">
-            {KINDS.map(k => <option key={k} value={k}>{KIND_LABELS[k] ?? k}</option>)}
+            onKeyDown={e => e.key === 'Enter' && addResource()} placeholder={t('sch.placePlaceholder')} aria-label={t('sch.placeName')} />
+          <select style={{ maxWidth: 150 }} value={kind} onChange={e => setKind(e.target.value as ResourceKind)} aria-label={t('sch.placeType')}>
+            {KINDS.map(k => <option key={k} value={k}>{t(KIND_KEYS[k])}</option>)}
           </select>
-          <button className="btn primary" onClick={addResource}>Add place</button>
+          <button className="btn primary" onClick={addResource}>{t('sch.addPlace')}</button>
         </div>
         {resources.length === 0 ? (
           <Empty
-            title="No places yet"
-            hint="Add the courts, tables or stations first — matches can then be assigned a place and a time."
+            title={t('sch.noPlaces')}
+            hint={t('sch.noPlacesHint')}
           />
         ) : (
           <div className="table-wrap" style={{ marginTop: 12 }}>
             <table>
-              <thead><tr><th>Place</th><th>Type</th><th className="num">Matches</th><th /></tr></thead>
+              <thead><tr><th>{t('common.place')}</th><th>{t('sch.colType')}</th><th className="num">{t('common.matches')}</th><th /></tr></thead>
               <tbody>{resources.map(r => (
                 <tr key={r.id}>
                   <td className="name">{r.name}</td>
-                  <td className="muted">{KIND_LABELS[r.kind] ?? r.kind}</td>
+                  <td className="muted">{t(KIND_KEYS[r.kind])}</td>
                   <td className="num muted">{domain.matches.filter(m => m.resourceId === r.id).length}</td>
                   <td className="actions">
-                    <button className="btn sm quiet" onClick={() => removeResource(r.id, r.name)}>Remove</button>
+                    <button className="btn sm quiet" onClick={() => removeResource(r.id, r.name)}>{t('common.remove')}</button>
                   </td>
                 </tr>
               ))}</tbody>
@@ -140,55 +144,55 @@ export default function Schedule() {
       </Panel>
 
       {resources.length > 0 && (
-        <Panel title="Plan the day" sub={`${DEFAULT_DURATION_MIN} minutes per match — never two matches at once on one place.`}>
+        <Panel title={t('sch.planned')} sub={t('sch.minutesPerMatch', { n: DEFAULT_DURATION_MIN })}>
           <div className="row">
-            <Field label="Day starts at">
+            <Field label={t('sch.dayStart')}>
               <input type="datetime-local" value={dayStart} onChange={e => setDayStart(e.target.value)} />
             </Field>
             <span className="sp" />
             <button className="btn primary" onClick={autoFill} disabled={unscheduled.length === 0}>
-              Fill free slots ({unscheduled.length} without a time)
+              {t('sch.fillSlots', { n: unscheduled.length })}
             </button>
 
 
           </div>
           <p className="table-note">
             {unscheduled.length === 0
-              ? 'Every match already has a place and a time.'
-              : `${unscheduled.length} of ${playable.length} matches still need a time. The planner fills them in order, skipping busy places.`}
+              ? t('sch.allHaveTime')
+              : t('sch.pending', { n: unscheduled.length, total: playable.length })}
           </p>
         </Panel>
       )}
       <Panel
-        title="Matches"
-        sub="Pick a place and a time for each match. Times are optional."
+        title={t('common.matches')}
+        sub={t('sch.assignmentsSub')}
         actions={playable.length > 0 ? (
           <Segmented
             value={onlyFree ? 'free' : 'all'}
             onChange={v => setOnlyFree(v === 'free')}
-            options={[{ id: 'all', label: 'All' }, { id: 'free', label: `Without a time (${unscheduled.length})` }]}
-            label="Match filter"
+            options={[{ id: 'all', label: t('res.all') }, { id: 'free', label: t('sch.noTime', { n: unscheduled.length }) }]}
+            label={t('common.matchFilter')}
           />
         ) : undefined}
       >
         {playable.length === 0 ? (
           <Empty
-            title="No matches yet"
-            hint="Generate the bracket first, then every match can get a place and a time here."
-            action={<button className="btn primary" onClick={() => go('rules')}>Go to rules → generate</button>}
+            title={t('sch.noMatches')}
+            hint={t('sch.noMatchesHint')}
+            action={<button className="btn primary" onClick={() => go('rules')}>{t('bracket.goRules')}</button>}
           />
         ) : (
           <div className="table-wrap">
             <table>
               <thead><tr>
-                <th>Match</th><th style={{ width: 170 }}>Place</th><th style={{ width: 210 }}>Start</th>
-                <th className="num" style={{ width: 80 }}>Min</th><th />
+                <th>{t('sch.matchCol')}</th><th style={{ width: 170 }}>{t('common.place')}</th><th style={{ width: 210 }}>{t('sch.startCol')}</th>
+                <th className="num" style={{ width: 80 }}>{t('sch.minCol')}</th><th />
               </tr></thead>
               <tbody>{rows.map(m => (
                 <tr key={m.id}>
                   <td className="name">{m.roundName}: {pn(m.homeId)} vs {pn(m.awayId)}</td>
                   <td>
-                    <select value={m.resourceId ?? ''} aria-label={`Place for ${pn(m.homeId)} against ${pn(m.awayId)}`}
+                    <select value={m.resourceId ?? ''} aria-label={t('sch.placeFor', { home: pn(m.homeId), away: pn(m.awayId) })}
                       onChange={ev => {
                         const v = ev.target.value;
                         if (!v) { patch(m.id, { resourceId: null }, `schedule.unassign ${m.id}`); return; }
@@ -201,7 +205,7 @@ export default function Schedule() {
                     </select>
                   </td>
                   <td>
-                    <input type="datetime-local" aria-label={`Start time for ${pn(m.homeId)} against ${pn(m.awayId)}`}
+                    <input type="datetime-local" aria-label={t('sch.startFor', { home: pn(m.homeId), away: pn(m.awayId) })}
                       value={m.scheduledAt ? toLocalInput(m.scheduledAt) : ''}
                       onChange={ev => {
                         if (!ev.target.value) { patch(m.id, { scheduledAt: null }, `schedule.time ${m.id}`); return; }
@@ -211,14 +215,14 @@ export default function Schedule() {
                       }} />
                   </td>
                   <td className="num">
-                    <input type="number" min={5} step={5} style={{ width: 72, textAlign: 'right' }} aria-label="Duration in minutes"
+                    <input type="number" min={5} step={5} style={{ width: 72, textAlign: 'right' }} aria-label={t('common.duration')}
                       value={m.durationMin ?? DEFAULT_DURATION_MIN}
                       onChange={ev => patch(m.id, { durationMin: Number(ev.target.value) || DEFAULT_DURATION_MIN }, `schedule.duration ${m.id}`)} />
                   </td>
                   <td className="actions">
                     {scheduledById.has(m.id)
-                      ? <button className="btn sm quiet" onClick={() => clearSlot(m.id)}>Clear time</button>
-                      : <span className="muted" style={{ fontSize: 12 }}>not scheduled</span>}
+                      ? <button className="btn sm quiet" onClick={() => clearSlot(m.id)}>{t('sch.clearTime')}</button>
+                      : <span className="muted" style={{ fontSize: 12 }}>{t('sch.notScheduled')}</span>}
                   </td>
                 </tr>
               ))}</tbody>
@@ -228,10 +232,10 @@ export default function Schedule() {
       </Panel>
 
       {entries.length > 0 && (
-        <Panel title="Order of play" sub="What the hall marshals should call out.">
+        <Panel title={t('sch.orderOfPlay')} sub={t('sch.orderOfPlaySub')}>
           <div className="table-wrap">
             <table>
-              <thead><tr><th style={{ width: 100 }}>Time</th><th style={{ width: 170 }}>Place</th><th>Match</th><th className="num">Min</th></tr></thead>
+              <thead><tr><th style={{ width: 100 }}>{t('common.time')}</th><th style={{ width: 170 }}>{t('common.place')}</th><th>{t('sch.matchCol')}</th><th className="num">{t('sch.minCol')}</th></tr></thead>
               <tbody>{entries.map(e => {
                 const m = domain.matches.find(x => x.id === e.matchId);
                 if (!m) return null;

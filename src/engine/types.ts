@@ -1,5 +1,6 @@
 // Domain model — pure types, no UI, no I/O. Serializable to local .top.json file.
 import type { Branding } from './branding';
+import type { LocalePreference } from '../i18n';
 export type Id = string;
 
 export type CompetitionFormat =
@@ -192,6 +193,8 @@ export interface AppSettings {
   autosave: boolean;
   confirmDestructive: boolean;
   theme: 'light' | 'dark';
+  /** Absent or "system" = follow the computer's language. Added after v1.2. */
+  locale?: LocalePreference;
   lastOpenedAt?: string | null;
 }
 

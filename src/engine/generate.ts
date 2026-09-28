@@ -1,5 +1,6 @@
 import { Group, Match, Participant, RuleSet } from './types';
 import { mkMatch, orderParticipants } from './pairings';
+import { t, type Dict } from '../i18n';
 
 function tagRR(m: Match, groupId: string | null, kind: 'group' | 'league'): Match {
   m.bracket = { kind, manual: true };
@@ -19,7 +20,7 @@ export function genRoundRobin(ps: Participant[], rules: RuleSet, groupId: string
   for (let r = 0; r < rounds; r++) {
     for (let i = 0; i < n / 2; i++) {
       const a = arr[i], b = arr[n - 1 - i];
-      const rn = groupName ? groupName + ' R' + (r + 1) : 'Round ' + (r + 1);
+      const rn = groupName ? `${groupName} ${t('round.r', { n: r + 1 })}` : t('round.n', { n: r + 1 });
       if (a && b) out.push(tagRR(mkMatch(r + 1, rn, r % 2 === 0 ? a.id : b.id, r % 2 === 0 ? b.id : a.id, groupId), groupId, groupId ? 'group' : 'league'));
       else out.push(tagRR(mkMatch(r + 1, rn, a ? a.id : null, b ? b.id : null, groupId), groupId, groupId ? 'group' : 'league'));
     }
@@ -28,7 +29,7 @@ export function genRoundRobin(ps: Participant[], rules: RuleSet, groupId: string
   }
   if (rules.homeAway) {
     const second = out.filter(m => m.result.status !== 'bye').map(m =>
-      tagRR(mkMatch(m.round + rounds, (groupName ? groupName + ' ' : '') + 'R' + (m.round + rounds), m.awayId, m.homeId, groupId), groupId, groupId ? 'group' : 'league'));
+      tagRR(mkMatch(m.round + rounds, (groupName ? groupName + ' ' : '') + t('round.r', { n: m.round + rounds }), m.awayId, m.homeId, groupId), groupId, groupId ? 'group' : 'league'));
     out.push(...second);
   }
   return out;
@@ -39,7 +40,7 @@ export function splitGroups(ps: Participant[], groupCount: number, rules: RuleSe
   const n = Math.max(1, groupCount);
   const groups: Group[] = Array.from({ length: n }, (_, i) => ({
     id: 'g' + i + '_' + Math.random().toString(36).slice(2, 6),
-    name: 'Group ' + String.fromCharCode(65 + i),
+    name: t('round.group', { group: String.fromCharCode(65 + i) }),
     participantIds: [],
   }));
   active.forEach((p, i) => {
@@ -147,12 +148,19 @@ export function seedKnockout(picks: QualifierPick[], participants: Participant[]
   return out;
 }
 
-export function describeFormat(f: string): string {
-  const m: Record<string, string> = {
-    'single-elimination': 'Single elimination', 'double-elimination': 'Double elimination',
-    'round-robin': 'Round robin', 'swiss': 'Swiss', 'groups-knockout': 'Groups + knockout',
-    'league': 'League season', 'team-match': 'Team match event',
-    'individual-match': 'Individual match event', 'custom': 'Custom',
+/** The dictionary key for a competition format, so callers can translate. */
+export function formatKey(f: string): keyof Dict | null {
+  const m: Record<string, keyof Dict> = {
+    'single-elimination': 'format.single-elimination', 'double-elimination': 'format.double-elimination',
+    'round-robin': 'format.round-robin', 'swiss': 'format.swiss',
+    'groups-knockout': 'format.groups-knockout', 'league': 'format.league',
+    'team-match': 'format.team-match', 'individual-match': 'format.individual-match',
+    'custom': 'format.custom',
   };
-  return m[f] ?? f;
+  return m[f] ?? null;
+}
+
+export function describeFormat(f: string): string {
+  const k = formatKey(f);
+  return k ? t(k) : f;
 }

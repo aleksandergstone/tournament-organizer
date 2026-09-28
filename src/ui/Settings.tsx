@@ -3,64 +3,81 @@
 import { useApp } from '../state/store';
 import { describeEdition } from '../engine/features';
 import { APP_NAME, APP_VERSION } from '../version';
+import { LOCALES, LOCALE_NAMES, resolveLocale, useT } from '../i18n';
+import type { LocalePreference } from '../i18n';
 import { Page, Panel, Segmented, Switch } from './kit';
 import SyncPanel from './SyncPanel';
 
 export default function Settings() {
   const { settings, setSettings } = useApp();
+  const t = useT();
+  const pref: LocalePreference = settings.locale ?? 'system';
+  const effective = resolveLocale(pref);
   return (
-    <Page title="Settings" sub="Preferences for this computer. Nothing is sent anywhere.">
-      <Panel title="Appearance">
+    <Page title={t('settings.title')} sub={t('settings.sub')}>
+      <Panel title={t('settings.appearance')}>
         <div className="row">
-          <span className="f-label" id="theme-label" style={{ minWidth: 70 }}>Theme</span>
+          <span className="f-label" id="theme-label" style={{ minWidth: 70 }}>{t('settings.theme')}</span>
           <Segmented
             value={settings.theme}
             onChange={v => setSettings({ ...settings, theme: v })}
-            options={[{ id: 'light' as const, label: 'Light' }, { id: 'dark' as const, label: 'Dark' }]}
-            label="Theme"
+            options={[{ id: 'light' as const, label: t('settings.light') }, { id: 'dark' as const, label: t('settings.dark') }]}
+            label={t('settings.theme')}
           />
-          <span className="muted">Dark is easier on the eyes in a dim hall.</span>
+          <span className="muted">{t('settings.themeHint')}</span>
         </div>
+        <div className="row" style={{ marginTop: 12 }}>
+          <span className="f-label" id="lang-label" style={{ minWidth: 70 }}>{t('language.title')}</span>
+          <Segmented
+            value={pref}
+            onChange={v => setSettings({ ...settings, locale: v })}
+            options={[
+              { id: 'system' as const, label: t('language.system') },
+              ...LOCALES.map(l => ({ id: l as LocalePreference, label: LOCALE_NAMES[l] })),
+            ]}
+            label={t('language.title')}
+          />
+          <span className="muted">{pref === 'system' ? t('language.systemHint') : t('language.sub')}</span>
+        </div>
+        <p className="table-note">{t('language.restart')} ({LOCALE_NAMES[effective]})</p>
       </Panel>
 
-      <Panel title="Working style">
+      <Panel title={t('settings.working')}>
         <Switch
           checked={settings.autosave}
           onChange={v => setSettings({ ...settings, autosave: v })}
-          label="Autosave on this device"
-          hint="Saves about a second after every change. Recommended — leave this on."
+          label={t('settings.autosave')}
+          hint={t('settings.autosaveHint')}
         />
         <Switch
           checked={settings.confirmDestructive}
           onChange={v => setSettings({ ...settings, confirmDestructive: v })}
-          label="Ask before destructive actions"
-          hint="Confirmation before deleting a project, removing a player or regenerating a bracket."
+          label={t('settings.confirm')}
+          hint={t('settings.confirmHint')}
         />
         <p className="table-note">
-          Shortcuts: <span className="kbd">Ctrl+Z</span> undo · <span className="kbd">Ctrl+Y</span> redo ·{' '}
-          <span className="kbd">Ctrl+S</span> save now.
+          {t('settings.shortcuts', { undo: 'Ctrl+Z', redo: 'Ctrl+Y', save: 'Ctrl+S' })}
         </p>
       </Panel>
 
-      <Panel title="Sharing on the local network" sub="Optional. Keeps everything on your Wi-Fi — no internet, no account.">
+      <Panel title={t('sync.title')} sub={t('sync.sub')}>
         <SyncPanel />
       </Panel>
 
-      <Panel title="About">
+      <Panel title={t('settings.about')}>
         <div className="table-wrap">
           <table>
             <tbody>
-              <tr><td className="muted">Application</td><td className="name">{APP_NAME}</td></tr>
-              <tr><td className="muted">Version</td><td>{APP_VERSION}</td></tr>
-              <tr><td className="muted">Edition</td><td>{describeEdition('free')}</td></tr>
-              <tr><td className="muted">Data</td><td>Stored only on this device — no account, no server, works fully offline.</td></tr>
-              <tr><td className="muted">License</td><td>MIT</td></tr>
+              <tr><td className="muted">{t('settings.aboutApp')}</td><td className="name">{APP_NAME}</td></tr>
+              <tr><td className="muted">{t('settings.aboutVersion')}</td><td>{APP_VERSION}</td></tr>
+              <tr><td className="muted">{t('settings.aboutEdition')}</td><td>{describeEdition('free')}</td></tr>
+              <tr><td className="muted">{t('language.title')}</td><td>{LOCALE_NAMES[effective]}</td></tr>
+              <tr><td className="muted">{t('settings.aboutDataLabel')}</td><td>{t('settings.aboutData')}</td></tr>
+              <tr><td className="muted">{t('settings.aboutLicense')}</td><td>MIT</td></tr>
             </tbody>
           </table>
         </div>
-        <p className="table-note">
-          Projects are autosaved locally. Use <b>Export → Save project file</b> for backups you can move between computers.
-        </p>
+        <p className="table-note">{t('settings.aboutNote', { action: t('settings.aboutAction') })}</p>
       </Panel>
     </Page>
   );

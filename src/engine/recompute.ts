@@ -1,5 +1,6 @@
 import { Match, MatchResult } from './types';
 import { decidedWinner, decidedLoser } from './pairings';
+import { GF_ROUND, GF_RESET_ROUND } from './double';
 
 // Deterministic full recompute of derived bracket slots.
 // Rules:
@@ -40,7 +41,7 @@ export function recomputeBracket(matches: Match[]): Match[] {
   for (const m of matches) {
     const b = m.bracket;
     if (!b || b.manual) continue;
-    if (b.kind === 'final' && m.roundName === 'Grand Final Reset') {
+    if (b.kind === 'final' && m.round === GF_RESET_ROUND) {
       resolveReset(m, byId);
       continue;
     }
@@ -135,7 +136,7 @@ function setDerivedSlot(m: Match, h: string | null, a: string | null): void {
 }
 
 function resolveReset(reset: Match, byId: Map<string, Match>): void {
-  const gf = [...byId.values()].find(m => m.roundName === 'Grand Final');
+  const gf = [...byId.values()].find(m => m.round === GF_ROUND);
   if (!gf) { reset.homeId = reset.awayId = null; reset.result = { homeScore: null, awayScore: null, winnerId: null, status: 'scheduled' }; return; }
   const w = decidedWinner(gf);
   if (!w) { reset.homeId = reset.awayId = null; reset.result = { homeScore: null, awayScore: null, winnerId: null, status: 'scheduled' }; return; }

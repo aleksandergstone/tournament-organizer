@@ -11,26 +11,28 @@
 //   3. Nothing else changes: the engine, import/export and all core
 //      workflows stay fully functional on the free tier, offline.
 
+import { t, type Dict } from '../i18n';
+
 export type Tier = 'free' | 'pro';
 
 export interface FeatureDef {
   id: string;
-  label: string;
+  labelKey: keyof Dict;  // translated by the UI, never frozen at load time
   tier: Tier;        // lowest tier that includes the feature
 }
 
 // Register features here. Core workflow features MUST stay 'free'.
 export const FEATURES: readonly FeatureDef[] = [
-  { id: 'project.create',     label: 'Create & edit tournaments',   tier: 'free' },
-  { id: 'project.import',     label: 'Import / recovery',           tier: 'free' },
-  { id: 'project.export',     label: 'Export project & CSV',        tier: 'free' },
-  { id: 'results.entry',      label: 'Result entry & undo/redo',    tier: 'free' },
-  { id: 'standings.view',     label: 'Standings & tiebreaks',       tier: 'free' },
-  { id: 'print.summary',      label: 'Print summary',               tier: 'free' },
+  { id: 'project.create',     labelKey: 'feat.project.create',   tier: 'free' },
+  { id: 'project.import',     labelKey: 'feat.project.import',   tier: 'free' },
+  { id: 'project.export',     labelKey: 'feat.project.export',   tier: 'free' },
+  { id: 'results.entry',      labelKey: 'feat.results.entry',    tier: 'free' },
+  { id: 'standings.view',     labelKey: 'feat.standings.view',   tier: 'free' },
+  { id: 'print.summary',      labelKey: 'feat.print.summary',    tier: 'free' },
   // Reserved for a future Pro edition — referenced by nothing yet, so they
   // cannot block or break the current offline workflow.
-  { id: 'export.pdf',         label: 'PDF bracket export',          tier: 'pro' },
-  { id: 'templates.saved',    label: 'Saved tournament templates',  tier: 'pro' },
+  { id: 'export.pdf',         labelKey: 'feat.export.pdf',         tier: 'pro' },
+  { id: 'templates.saved',    labelKey: 'feat.templates.saved',    tier: 'pro' },
 ];
 
 export const DEFAULT_TIER: Tier = 'free';
@@ -59,5 +61,5 @@ export function availableFeatures(tier: Tier = DEFAULT_TIER): string[] {
 
 /** Human-readable edition name for Settings/About. */
 export function describeEdition(tier: Tier = DEFAULT_TIER): string {
-  return tier === 'pro' ? 'Pro' : 'Free — all core features included';
+  return t(tier === 'pro' ? 'feat.tierPro' : 'feat.tierFree');
 }

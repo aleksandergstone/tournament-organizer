@@ -6,10 +6,12 @@ import { pickQualifiers, describeFormat } from '../engine/generate';
 import { planKnockout, applyPlan, KnockoutPlan } from '../engine/ko-plan';
 import { uid } from '../engine/types';
 import { Alert, Empty, Field, Page, Panel, StatusPill } from './kit';
+import { useT } from '../i18n';
 
 const FINISHED = new Set(['played', 'draw', 'walkover', 'overtime']);
 
 export default function Standings() {
+  const t = useT();
   const { domain, standings, update, go, settings } = useApp();
   const names = new Map(domain.participants.map(p => [p.id, p.name]));
   const isGroups = domain.tournament.format === 'groups-knockout' && domain.groups.length > 0;
@@ -75,20 +77,20 @@ export default function Standings() {
 
   return (
     <Page
-      title="Standings & final ranking"
-      sub={`${describeFormat(domain.tournament.format)} · ${played} of ${domain.matches.length} matches played`}
+      title={t('st.titlePage')}
+      sub={t('bracket.subPlayed', { format: describeFormat(domain.tournament.format), played, total: domain.matches.length })}
       actions={domain.tournament.archived
-        ? <span className="pill pill-info">Finished — still editable</span>
-        : <button className="btn" onClick={finish}>Finish tournament</button>}
+        ? <span className="pill pill-info">{t('st.archivedPill')}</span>
+        : <button className="btn" onClick={finish}>{t('st.finish')}</button>}
     >
-      {err && <Alert tone="err" title="Knockout stage not created">{err}</Alert>}
+      {err && <Alert tone="err" title={t('st.koNotCreated')}>{err}</Alert>}
 
       {isGroups && (
         <Panel
-          title="Group stage → knockout"
-          sub="Choose who advances, preview the bracket, then confirm. Nothing is created before you confirm."
+          title={t('st.groupsKo')}
+          sub={t('st.planSub')}
           actions={<button className="btn primary" onClick={buildPlan} disabled={preview.length < 2}
-            title={preview.length < 2 ? 'At least 2 qualifiers are needed' : undefined}>Preview knockout stage</button>}
+            title={preview.length < 2 ? t('st.needTwoQualifiers') : undefined}>{t('st.createKo')}</button>}
         >
           <div className="grid2">
             <div>
@@ -100,8 +102,8 @@ export default function Standings() {
                   </div>
                   <div className="table-wrap">
                     <table>
-                      <thead><tr><th className="rank">#</th><th>Who</th><th className="num">P</th>
-                        <th className="num">W-D-L</th><th className="num">±</th><th className="num">Pts</th><th /></tr></thead>
+                      <thead><tr><th className="rank">#</th><th>{t('st.colWho')}</th><th className="num">P</th>
+                        <th className="num">W-D-L</th><th className="num">±</th><th className="num">{t('st.colPts')}</th><th /></tr></thead>
                       <tbody>{(groupTables.get(g.id) ?? []).map(s => (
                         <tr key={s.participantId} className={preview.some(q => q.participantId === s.participantId) ? 'selected' : ''}>
                           <td className="rank">{s.rank}</td>
@@ -111,7 +113,7 @@ export default function Standings() {
                           <td className="num">{s.diff}</td>
                           <td className="num"><b>{s.points}</b></td>
                           <td>{preview.some(q => q.participantId === s.participantId)
-                            ? <span className="pill pill-ok">Advances</span> : null}</td>
+                            ? <span className="pill pill-ok">{t('st.advances')}</span> : null}</td>
                         </tr>
                       ))}</tbody>
                     </table>
@@ -121,17 +123,17 @@ export default function Standings() {
             </div>
             <div>
               <div className="grid2" style={{ gap: 10 }}>
-                <Field label="Advance per group" hint="0 means the whole group.">
+                <Field label={t('st.perGroup')} hint={t('st.perGroupHint')}>
                   <input type="number" min={0} max={8} value={perGroup} onChange={e => setPerGroup(Number(e.target.value))} />
                 </Field>
-                <Field label="Wildcards" hint="Best remaining teams.">
+                <Field label={t('st.wildcards')} hint={t('st.wildcardsHint')}>
                   <input type="number" min={0} max={8} value={wildcards} onChange={e => setWildcards(Number(e.target.value))} />
                 </Field>
               </div>
               <div style={{ marginTop: 12 }}>
-                <h4>Qualifiers ({preview.length})</h4>
+                <h4>{t('st.qualifiers')} ({preview.length})</h4>
                 {preview.length === 0
-                  ? <p className="f-hint">No qualifiers yet — set “advance per group” above.</p>
+                  ? <p className="f-hint">{t('st.needQualifiers')}</p>
                   : <ol style={{ paddingLeft: 18, margin: '6px 0 0', fontSize: 13 }}>
                     {preview.map(q => <li key={q.participantId}>{names.get(q.participantId)} <span className="muted">({q.points} pts)</span></li>)}
                   </ol>}
@@ -144,16 +146,16 @@ export default function Standings() {
 
       {plan && (
         <Panel
-          title="Knockout preview"
-          sub="Nothing is saved yet — review the qualifiers and the bracket, then confirm."
+          title={t('st.koTitle')}
+          sub={t('st.koSub')}
           actions={<div className="row">
-            <button className="btn" onClick={() => setPlan(null)}>Cancel</button>
-            <button className="btn primary" onClick={confirmPlan}>Create knockout stage</button>
+            <button className="btn" onClick={() => setPlan(null)}>{t('common.cancel')}</button>
+            <button className="btn primary" onClick={confirmPlan}>{t('st.confirmKo')}</button>
           </div>}
         >
           {plan.droppedKoMatches > 0 && (
-            <Alert tone="warn" title="This replaces existing knockout matches">
-              {plan.droppedKoMatches} knockout match(es) will be recreated. Group results are never touched.
+            <Alert tone="warn" title={t('st.replacesKo')}>
+              {t('st.replacesKoBody', { n: plan.droppedKoMatches })}
             </Alert>
           )}
           <div className="grid2">
@@ -161,7 +163,7 @@ export default function Standings() {
               <h4>Who advances ({plan.qualifiers.length})</h4>
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th className="num">Seed</th><th>Who</th><th>From</th><th className="num">Pts</th></tr></thead>
+                  <thead><tr><th className="num">{t('common.seed')}</th><th>{t('st.colWho')}</th><th>{t('st.from')}</th><th className="num">{t('st.colPts')}</th></tr></thead>
                   <tbody>{plan.qualifiers.map(q => (
                     <tr key={q.participantId}>
                       <td className="num">#{q.seed}</td>
@@ -177,16 +179,16 @@ export default function Standings() {
               </p>
             </div>
             <div>
-              <h4>Bracket that will be created</h4>
-              {rounds.length === 0 && <p className="f-hint">No rounds.</p>}
+              <h4>{t('st.bracketToCreate')}</h4>
+              {rounds.length === 0 && <p className="f-hint">{t('st.noRounds')}</p>}
               {rounds.map(r => (
                 <div key={r} style={{ marginBottom: 12 }}>
-                  <b>{plan.matches.find(m => m.round === r)?.roundName ?? `KO round ${r}`}</b>
+                  <b>{plan.matches.find(m => m.round === r)?.roundName ?? t('bracket.koRoundN', { n: r })}</b>
                   {plan.matches.filter(m => m.round === r).map(m => (
                     <div className="bmatch" key={m.id}>
                       <div className="nm">
-                        <span>{m.homeId ? names.get(m.homeId) ?? 'Unknown' : 'TBD'}</span>
-                        <span>{m.awayId ? names.get(m.awayId) ?? 'Unknown' : 'TBD'}</span>
+                        <span>{m.homeId ? names.get(m.homeId) ?? t('common.unknown') : 'TBD'}</span>
+                        <span>{m.awayId ? names.get(m.awayId) ?? t('common.unknown') : 'TBD'}</span>
                       </div>
                     </div>
                   ))}
@@ -197,22 +199,22 @@ export default function Standings() {
         </Panel>
       )}
 
-      <Panel title="Ranking" sub="Sorted by the tiebreak order in Format & rules.">
+      <Panel title={t('st.ranking')} sub={t('st.rankingSub')}>
         {standings.length === 0 ? (
           <Empty
-            title="No standings yet"
-            hint="Standings appear as soon as the first result is entered."
-            action={<button className="btn primary" onClick={() => go('matches')}>Go to result entry</button>}
+            title={t('st.emptyTitle')}
+            hint={t('st.emptyHint')}
+            action={<button className="btn primary" onClick={() => go('matches')}>{t('st.goResults')}</button>}
           />
         ) : (
           <div className="table-wrap">
             <table>
               <thead><tr>
-                <th className="rank">#</th><th>Who</th>
-                <th className="num" title="Played">P</th><th className="num" title="Wins">W</th>
-                <th className="num" title="Draws">D</th><th className="num" title="Losses">L</th>
-                <th className="num" title="Goals scored">+</th><th className="num" title="Goals conceded">−</th>
-                <th className="num" title="Goal difference">±</th><th className="num">Pts</th>
+                <th className="rank">#</th><th>{t('st.colWho')}</th>
+                <th className="num" title={t('st.colPlayed')}>P</th><th className="num" title={t('st.colWins')}>W</th>
+                <th className="num" title={t('st.colDraws')}>D</th><th className="num" title={t('st.colLosses')}>L</th>
+                <th className="num" title={t('st.colScored')}>+</th><th className="num" title={t('st.colConceded')}>−</th>
+                <th className="num" title={t('st.colDiff')}>±</th><th className="num">{t('st.colPts')}</th>
               </tr></thead>
               <tbody>{standings.map(s => (
                 <tr key={s.participantId}>
@@ -232,13 +234,13 @@ export default function Standings() {
       <div className="footbar">
         <span className="muted">
           {domain.tournament.archived
-            ? 'This tournament is marked as finished — everything stays editable.'
-            : 'Marking a tournament as finished never locks it; you can keep editing.'}
+            ? t('st.archivedNote')
+            : t('st.finishedNote')}
         </span>
         <span className="sp" />
-        <button className="btn" onClick={() => go('matches')}>Result entry</button>
-        {!domain.tournament.archived && <button className="btn" onClick={finish}>Finish tournament</button>}
-        <button className="btn primary" onClick={() => go('export')}>Export & print</button>
+        <button className="btn" onClick={() => go('matches')}>{t('st.entry')}</button>
+        {!domain.tournament.archived && <button className="btn" onClick={finish}>{t('st.finish')}</button>}
+        <button className="btn primary" onClick={() => go('export')}>{t('st.exportPrint')}</button>
       </div>
     </Page>
   );

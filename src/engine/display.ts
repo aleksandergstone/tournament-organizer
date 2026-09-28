@@ -1,6 +1,7 @@
 // Display Mode model — what a projector / hall screen should show right now.
 // Pure: takes the current state, returns exactly what to render. No I/O, no timers.
 import { Match, StandingRow } from './types';
+import { t } from '../i18n';
 
 export type DisplayStatus = 'live' | 'waiting' | 'complete';
 
@@ -77,17 +78,17 @@ export function buildDisplay(input: {
   let statusLabel: string;
   if (order.length > 0) {
     status = 'live';
-    statusLabel = order[0].result.status === 'scheduled' ? 'Up next' : 'In progress';
+    statusLabel = order[0].result.status === 'scheduled' ? t('disp.statusUpNext') : t('disp.statusInProgress');
   } else if (totalCount > 0 && playedCount >= totalCount) {
     status = 'complete';
-    statusLabel = 'All matches played';
+    statusLabel = t('disp.statusComplete');
   } else {
     status = 'waiting';
-    statusLabel = 'Waiting for results';
+    statusLabel = t('disp.statusWaiting');
   }
 
   return {
-    tournamentName: input.tournamentName || 'Tournament',
+    tournamentName: input.tournamentName || t('app.untitled'),
     status,
     statusLabel,
     current: order[0] ? toCard(order[0], names) : null,

@@ -1,4 +1,5 @@
 import { Group, Match, Participant, RuleSet, Tournament, uid } from './types';
+import { t } from '../i18n';
 
 export function rng(seed: number) {
   let a = seed >>> 0;
@@ -76,8 +77,8 @@ export function decidedWinner(m: Match): string | null {
 
 export function roundNameElim(r: number, total: number): string {
   const rem = total - r + 1;
-  if (rem === 1) return 'Final';
-  if (rem === 2) return 'Semifinal';
-  if (rem === 3) return 'Quarterfinal';
-  return 'Round of ' + Math.pow(2, rem);
+  if (rem === 1) return t('round.final');
+  if (rem === 2) return t('round.semi');
+  if (rem === 3) return t('round.quarter');
+  return t('round.of', { n: Math.pow(2, rem) });
 }

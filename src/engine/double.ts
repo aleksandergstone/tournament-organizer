@@ -1,11 +1,16 @@
 import { Match, MatchResult, Participant, RuleSet, Id, SlotSource } from './types';
 import { mkMatch, nextPow2, orderParticipants, decidedWinner } from './pairings';
+import { t } from '../i18n';
+
+/** Stable ids for the grand final pair, so no logic has to read a round *name*. */
+export const GF_ROUND = 900;
+export const GF_RESET_ROUND = 901;
 
 export function wName(r: number, total: number): string {
   const rem = total - r + 1;
-  if (rem === 1) return 'WB Final';
-  if (rem === 2) return 'WB Semifinal';
-  return 'WB Round ' + r;
+  if (rem === 1) return t('round.wbFinal');
+  if (rem === 2) return t('round.wbSemi');
+  return t('round.wbRound', { n: r });
 }
 
 // Real double elimination, Winners-bracket-first design:
@@ -79,7 +84,7 @@ export function genDoubleElim(ps: Participant[], rules: RuleSet): DoubleElimPlan
   const lByRound: Match[][] = [];
   const maxL = W > 1 ? 2 * (W - 1) : 0;
   const lRoundOf = (lr: number) => 100 + lr;
-  const lName = (lr: number) => 'LB Round ' + lr;
+  const lName = (lr: number) => t('round.lbRound', { n: lr });
   // WB matches that can still produce a loser. Derived rounds always qualify
   // (their slots resolve from winners once played); round-1 manual byes do
   // not — a bye advances a player without a loss.
@@ -127,12 +132,12 @@ export function genDoubleElim(ps: Participant[], rules: RuleSet): DoubleElimPlan
   // --- grand final (+ conditional reset) ---
   const wChamp = wByRound[W]?.[0];
   const lChamp = lByRound[maxL]?.[0];
-  const gf = mkMatch(900, 'Grand Final', null, null);
+  const gf = mkMatch(GF_ROUND, t('round.grandFinal'), null, null);
   // W=1 (two players) has no LB — fall back to the WB-final loser so the GF
   // resolves as a rematch instead of a permanently-TBD slot.
   gf.bracket = { kind: 'final', srcHome: wChamp ? { w: wChamp.id } : null, srcAway: lChamp ? { w: lChamp.id } : (wChamp ? { l: wChamp.id } : null) };
   matches.push(gf);
-  const reset = mkMatch(901, 'Grand Final Reset', null, null);
+  const reset = mkMatch(GF_RESET_ROUND, t('round.grandFinalReset'), null, null);
   reset.bracket = { kind: 'final', srcHome: null, srcAway: null }; // resolved only if L-side wins GF1
   matches.push(reset);
   void decidedWinner;

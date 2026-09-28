@@ -4,21 +4,25 @@ import { useState } from 'react';
 import { validateTournament, ValidationIssue } from '../engine/validate';
 import { uid, nowIso } from '../engine/types';
 import { Alert, Field, Page, Panel, StepBar } from './kit';
+import { useT } from '../i18n';
+import type { Dict } from '../i18n';
 
-const FORMATS: { v: CompetitionFormat; label: string; hint: string }[] = [
-  { v: 'single-elimination', label: 'Single elimination', hint: 'Lose once and you are out. Fastest for one-day cups.' },
-  { v: 'double-elimination', label: 'Double elimination', hint: 'Two lives: winners + losers bracket, grand final (+reset).' },
-  { v: 'round-robin', label: 'Round robin', hint: 'Everyone plays everyone. Best for small leagues.' },
-  { v: 'swiss', label: 'Swiss', hint: 'Fixed rounds, paired by points. No elimination.' },
-  { v: 'groups-knockout', label: 'Groups + knockout', hint: 'Group stage first, then top teams advance to KO bracket.' },
-  { v: 'league', label: 'League season', hint: 'Full season table, optionally home & away.' },
-  { v: 'team-match', label: 'Team match event', hint: 'Single team-vs-team fixture list.' },
-  { v: 'individual-match', label: 'Individual match event', hint: 'Single player-vs-player fixture list.' },
-  { v: 'custom', label: 'Custom', hint: 'Free schedule, manual structure.' },
+type Key = keyof Dict & string;
+const FORMATS: { v: CompetitionFormat; key: Key; hint: Key }[] = [
+  { v: 'single-elimination', key: 'format.single-elimination', hint: 'format.hint.single-elimination' },
+  { v: 'double-elimination', key: 'format.double-elimination', hint: 'format.hint.double-elimination' },
+  { v: 'round-robin', key: 'format.round-robin', hint: 'format.hint.round-robin' },
+  { v: 'swiss', key: 'format.swiss', hint: 'format.hint.swiss' },
+  { v: 'groups-knockout', key: 'format.groups-knockout', hint: 'format.hint.groups-knockout' },
+  { v: 'league', key: 'format.league', hint: 'format.hint.league' },
+  { v: 'team-match', key: 'format.team-match', hint: 'format.hint.team-match' },
+  { v: 'individual-match', key: 'format.individual-match', hint: 'format.hint.individual-match' },
+  { v: 'custom', key: 'format.custom', hint: 'format.hint.custom' },
 ];
 
 export default function Wizard() {
   const { domain, newProject, go } = useApp();
+  const t = useT();
   const [f, setF] = useState({ ...domain.tournament, name: domain.tournament.name || '', sport: domain.tournament.sport || 'Football' });
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const set = (k: string, v: unknown) => setF(s => ({ ...s, [k]: v }));
@@ -32,68 +36,68 @@ export default function Wizard() {
     newProject(t);
   };
   return (
-    <Page title="New tournament" sub="Step 1 of 3 — details, then players, then the bracket.">
-      <StepBar items={['Details', 'Players', 'Generate']} current={0} />
+    <Page title={t('wizard.title')} sub={t('wizard.sub')}>
+      <StepBar items={[t('wizard.stepDetails'), t('wizard.stepPlayers'), t('wizard.stepGenerate')]} current={0} />
 
       {others.length > 0 && (
-        <Alert tone="err" title="Fix this before creating the tournament">
+        <Alert tone="err" title={t('wizard.fixFirst')}>
           {others.map(i => <div key={i.field}>{i.message}</div>)}
         </Alert>
       )}
 
-      <Panel title="Basics">
+      <Panel title={t('wizard.basics')}>
         <div className="grid2">
-          <Field label="Tournament name" required error={errOf('name')}>
-            <input value={f.name} onChange={e => set('name', e.target.value)} placeholder="Friday Cup" autoFocus />
+          <Field label={t('wizard.name')} required error={errOf('name')}>
+            <input value={f.name} onChange={e => set('name', e.target.value)} placeholder={t('wizard.namePlaceholder')} autoFocus />
           </Field>
-          <Field label="Sport or game" required error={errOf('sport')} hint="Shown on the display screen and in exports.">
+          <Field label={t('wizard.sport')} required error={errOf('sport')} hint={t('wizard.sportHint')}>
             <input value={f.sport} onChange={e => set('sport', e.target.value)} />
           </Field>
-          <Field label="Competing as" hint="Sets the wording used everywhere else.">
+          <Field label={t('wizard.competingAs')} hint={t('wizard.competingHint')}>
             <select value={f.individualOrTeam} onChange={e => set('individualOrTeam', e.target.value)}>
-              <option value="team">Teams</option>
-              <option value="individual">Individual players</option>
+              <option value="team">{t('wizard.teams')}</option>
+              <option value="individual">{t('wizard.individual')}</option>
             </select>
           </Field>
-          <Field label="Expected number of players" hint="Optional — helps you plan courts and rounds.">
+          <Field label={t('wizard.expected')} hint={t('wizard.expectedHint')}>
             <input type="number" min={2} value={f.participantCountExpected ?? ''}
               onChange={e => set('participantCountExpected', e.target.value ? Number(e.target.value) : null)} />
           </Field>
         </div>
       </Panel>
 
-      <Panel title="Format" sub="You can change this any time on the Rules screen.">
+      <Panel title={t('wizard.format')} sub={t('wizard.formatSub')}>
         <div className="grid2">
-          <Field label="Competition format">
+          <Field label={t('wizard.format')}>
             <select value={f.format} onChange={e => set('format', e.target.value)}>
-              {FORMATS.map(x => <option key={x.v} value={x.v}>{x.label}</option>)}
+              {FORMATS.map(x => <option key={x.v} value={x.v}>{t(x.key)}</option>)}
             </select>
           </Field>
-          <div className="f-hint" style={{ alignSelf: 'end', paddingBottom: 8 }}>{format.hint}</div>
+          <div className="f-hint" style={{ alignSelf: 'end', paddingBottom: 8 }}>{t(format.hint)}</div>
         </div>
       </Panel>
 
-      <Panel title="When and where" sub="Optional — used on the display screen and printouts.">
+      <Panel title={t('wizard.whenWhere')} sub={t('wizard.whenWhereSub')}>
         <div className="grid3">
-          <Field label="Start date" error={errOf('dates')}>
+          <Field label={t('wizard.startDate')} error={errOf('dates')}>
             <input type="date" value={f.dates.start ?? ''} onChange={e => set('dates', { ...f.dates, start: e.target.value || null })} />
           </Field>
-          <Field label="End date">
+          <Field label={t('wizard.endDate')}>
             <input type="date" value={f.dates.end ?? ''} onChange={e => set('dates', { ...f.dates, end: e.target.value || null })} />
           </Field>
-          <Field label="Venue">
-            <input value={f.location ?? ''} onChange={e => set('location', e.target.value)} placeholder="Sports hall, 4 courts" />
+          <Field label={t('wizard.venue')}>
+            <input value={f.location ?? ''} onChange={e => set('location', e.target.value)} placeholder={t('wizard.venuePlaceholder')} />
           </Field>
         </div>
       </Panel>
 
       <div className="footbar">
         <span className="muted">
-          Creates an empty <b>{f.name.trim() || 'new tournament'}</b> ({format.label.toLowerCase()}) — you add the players next.
+          {t('wizard.creates', { name: f.name.trim() || t('wizard.newTournament'), format: t(format.key) })}
         </span>
         <span className="sp" />
-        <button className="btn" onClick={() => go('home')}>Cancel</button>
-        <button className="btn primary" onClick={submit}>Create tournament</button>
+        <button className="btn" onClick={() => go('home')}>{t('common.cancel')}</button>
+        <button className="btn primary" onClick={submit}>{t('wizard.create')}</button>
       </div>
     </Page>
   );

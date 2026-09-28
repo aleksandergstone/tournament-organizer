@@ -1,4 +1,5 @@
 import { Match, MatchResult, MatchStatus, RuleSet } from './types';
+import { t } from '../i18n';
 import { validateMatch } from './validate';
 import { recomputeBracket, stampVs } from './recompute';
 
@@ -21,9 +22,9 @@ export function recordResult(
   opts?: { knockout?: boolean }
 ): { matches: Match[]; issues: string[] } {
   const m = matches.find(x => x.id === matchId);
-  if (!m) return { matches, issues: ['Match not found.'] };
+  if (!m) return { matches, issues: [t('engine.matchNotFound')] };
   if (m.result.status === 'bye' && (spec.status ?? 'bye') === 'bye') {
-    return { matches, issues: ['Bye advances automatically — no result needed.'] };
+    return { matches, issues: [t('engine.bye')] };
   }
   let r: MatchResult = { ...m.result };
   if (spec.homeScore !== undefined) r.homeScore = spec.homeScore;
@@ -56,7 +57,7 @@ export function recordResult(
     if (r.status === 'overtime') r.overtime = true;
   }
   if ((r.homeScore ?? 0) < 0 || (r.awayScore ?? 0) < 0)
-    return { matches, issues: ['Scores cannot be negative.'] };
+    return { matches, issues: [t('engine.negativeScores')] };
   const probe: Match = { ...m, result: r };
   const v = validateMatch(probe);
   // knockout draws already handled above; surface remaining validation softly
@@ -71,7 +72,7 @@ export function recordResult(
 }
 
 function knockoutMsg(roundName: string): string {
-  return `Draws are not valid in a knockout match (${roundName}). Enter a winner, walkover, or mark unfinished.`;
+  return t('engine.noDraw', { round: roundName });
 }
 
 // Recompute helper for non-result structural changes (withdrawal, seeding,

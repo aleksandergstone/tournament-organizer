@@ -4,6 +4,8 @@
 // and empty states look and behave the same everywhere. Nothing here knows
 // about tournament rules — presentation only.
 import type { ReactNode } from 'react';
+import { t } from '../i18n';
+import type { Dict } from '../i18n';
 
 export type Tone = 'neutral' | 'ok' | 'warn' | 'err' | 'info';
 
@@ -29,7 +31,7 @@ export function Page({ title, sub, actions, children }: {
 /** Simple "step 1 of 3" progress for the creation flow. */
 export function StepBar({ items, current }: { items: string[]; current: number }) {
   return (
-    <ol className="steps" aria-label="Progress">
+    <ol className="steps" aria-label={t('nav.progress')}>
       {items.map((label, i) => (
         <li key={label} className={i === current ? 'on' : i < current ? 'done' : ''}>
           <span className="step-n">{i < current ? '\u2713' : i + 1}</span>{label}
@@ -139,18 +141,24 @@ export function Segmented<T extends string>({ value, onChange, options, label }:
 
 /* ------------------------------------------------------------- status pill */
 
-const STATUS: Record<string, { label: string; tone: Tone }> = {
-  scheduled:   { label: 'Scheduled',        tone: 'neutral' },
-  played:      { label: 'Played',           tone: 'ok' },
-  draw:        { label: 'Draw',             tone: 'ok' },
-  overtime:    { label: 'After extra time', tone: 'ok' },
-  walkover:    { label: 'Walkover',         tone: 'warn' },
-  unfinished:  { label: 'Not finished',     tone: 'warn' },
-  interrupted: { label: 'Interrupted',      tone: 'warn' },
-  bye:         { label: 'Bye',              tone: 'neutral' },
+// Statuses are a fixed, small set: the tone decides the colour, the key is
+// translated — a new language never needs a new engine value.
+const STATUS: Record<string, { key: keyof Dict & string; tone: Tone }> = {
+  scheduled:   { key: 'status.scheduled',   tone: 'neutral' },
+  played:      { key: 'status.played',      tone: 'ok' },
+  draw:        { key: 'status.draw',        tone: 'ok' },
+  overtime:    { key: 'status.overtime',    tone: 'ok' },
+  walkover:    { key: 'status.walkover',    tone: 'warn' },
+  unfinished:  { key: 'status.unfinished',  tone: 'warn' },
+  interrupted: { key: 'status.interrupted', tone: 'warn' },
+  bye:         { key: 'status.bye',         tone: 'neutral' },
 };
 
-export function statusLabel(status: string): string { return STATUS[status]?.label ?? status; }
+/** Human-readable match state in the active language — never the engine value. */
+export function statusLabel(status: string): string {
+  const s = STATUS[status];
+  return s ? t(s.key) : status;
+}
 export function statusTone(status: string): Tone { return STATUS[status]?.tone ?? 'neutral'; }
 
 /** Human-readable match state — never the raw engine value. */

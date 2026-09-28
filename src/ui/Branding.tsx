@@ -7,6 +7,7 @@
 import { useRef, useState } from 'react';
 import { Branding, DEFAULT_BRANDING, MAX_LOGO_BYTES, isHexColor } from '../engine/branding';
 import { Field, Switch } from './kit';
+import { useT } from '../i18n';
 
 const LOGO_TYPES = /^image\/(png|jpeg|webp|gif)$/;
 
@@ -45,6 +46,7 @@ export async function readLogoFile(file: File): Promise<string> {
 function LogoField({ label, hint, value, onChange }: {
   label: string; hint: string; value: string; onChange: (v: string) => void;
 }) {
+  const t = useT();
   const input = useRef<HTMLInputElement>(null);
   const [err, setErr] = useState('');
   const pick = async (file?: File) => {
@@ -58,12 +60,12 @@ function LogoField({ label, hint, value, onChange }: {
       <div className="logo-row">
         {value
           ? <img className="logo-preview" src={value} alt="" />
-          : <span className="logo-empty">No logo</span>}
+          : <span className="logo-empty">{t('brand.noLogo')}</span>}
         <div className="row">
           <button type="button" className="btn" onClick={() => input.current?.click()}>
-            {value ? 'Replace' : 'Choose image'}
+            {value ? t('brand.replace') : t('brand.choose')}
           </button>
-          {value ? <button type="button" className="btn ghost" onClick={() => onChange('')}>Remove</button> : null}
+          {value ? <button type="button" className="btn ghost" onClick={() => onChange('')}>{t('common.remove')}</button> : null}
         </div>
         <input ref={input} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden
           onChange={e => { void pick(e.target.files?.[0]); e.target.value = ''; }} />
@@ -76,6 +78,7 @@ function LogoField({ label, hint, value, onChange }: {
 export function BrandingForm({ branding, onChange }: {
   branding: Branding; onChange: (b: Branding) => void;
 }) {
+  const t = useT();
   const set = <K extends keyof Branding>(key: K, value: Branding[K]) => onChange({ ...branding, [key]: value });
   const text = (key: keyof Branding, label: string, hint?: string, placeholder?: string) => (
     <Field key={key} label={label} hint={hint}>
@@ -86,12 +89,12 @@ export function BrandingForm({ branding, onChange }: {
   return (
     <div className="stack">
       <div className="grid2">
-        {text('eventTitle', 'Event title', 'Leave empty to use the tournament name.', 'e.g. Winter Cup')}
-        {text('subtitle', 'Competition line', 'e.g. City Chess Championship', 'Optional second line')}
-        {text('edition', 'Season / edition', 'e.g. 2026/27 · Season 3 · Play-offs', 'Optional')}
-        <Field label="Accent colour" hint="Used for headings, rules and table headers.">
+        {text('eventTitle', t('brand.eventTitle'), t('brand.eventTitleHint'), t('brand.eventTitlePlaceholder'))}
+        {text('subtitle', t('brand.subtitle'), t('brand.subtitlePlaceholder'), 'Optional second line')}
+        {text('edition', t('brand.edition'), t('brand.editionPlaceholder'), 'Optional')}
+        <Field label={t('brand.accent')} hint={t('brand.accentHint')}>
           <div className="row">
-            <input type="color" className="color-input" aria-label="Accent colour"
+            <input type="color" className="color-input" aria-label={t('brand.accent')}
               value={isHexColor(branding.accent) ? branding.accent : DEFAULT_BRANDING.accent}
               onChange={e => set('accent', e.target.value)} />
             <input className="hex-input" value={branding.accent} aria-label="Accent colour hex value"
@@ -99,23 +102,23 @@ export function BrandingForm({ branding, onChange }: {
           </div>
         </Field>
       </div>
-      {text('headerNote', 'Header line', 'Small line under the title, e.g. the organiser or a contact.', 'Organised by …')}
-      {text('footerNote', 'Footer text', 'Repeated at the bottom of every page.', 'e.g. Results are provisional until confirmed.')}
-      <Field label="Notes / disclaimer" hint="Printed in their own block at the end of the document.">
-        <textarea rows={3} value={branding.notes} placeholder="e.g. Ties are broken by head-to-head, then by wins."
+      {text('headerNote', t('brand.headerNote'), t('brand.headerNoteHint'), t('brand.headerNotePlaceholder'))}
+      {text('footerNote', t('brand.footerNote'), t('brand.footerNoteHint'), t('brand.footerNotePlaceholder'))}
+      <Field label={t('brand.notes')} hint={t('brand.notesHint')}>
+        <textarea rows={3} value={branding.notes} placeholder={t('brand.notesPlaceholder')}
           onChange={e => set('notes', e.target.value)} />
       </Field>
-      <LogoField label="Event logo" hint="Shown at the top of every page." value={branding.logoDataUrl}
+      <LogoField label={t('brand.logo')} hint={t('brand.logoHint')} value={branding.logoDataUrl}
         onChange={v => set('logoDataUrl', v)} />
-      <LogoField label="Sponsor logo" hint="Optional. Shown opposite the event logo." value={branding.sponsorDataUrl}
+      <LogoField label={t('brand.sponsor')} hint={t('brand.sponsorHint')} value={branding.sponsorDataUrl}
         onChange={v => set('sponsorDataUrl', v)} />
       <div className="stack">
-        <Switch checked={branding.showVenueDate} label="Show venue and dates"
-          hint="Adds the tournament dates and location under the title." onChange={v => set('showVenueDate', v)} />
-        <Switch checked={branding.showAdvancedStats} label="Extra statistics"
-          hint="Adds the Buchholz tie-break column to standings." onChange={v => set('showAdvancedStats', v)} />
-        <Switch checked={branding.compactStandings} label="Compact table"
-          hint="Fewer columns — fits narrow paper and quick one-off events." onChange={v => set('compactStandings', v)} />
+        <Switch checked={branding.showVenueDate} label={t('brand.showVenue')}
+          hint={t('brand.showVenueHint')} onChange={v => set('showVenueDate', v)} />
+        <Switch checked={branding.showAdvancedStats} label={t('brand.advanced')}
+          hint={t('brand.advancedHint')} onChange={v => set('showAdvancedStats', v)} />
+        <Switch checked={branding.compactStandings} label={t('brand.compact')}
+          hint={t('brand.compactHint')} onChange={v => set('compactStandings', v)} />
       </div>
     </div>
   );

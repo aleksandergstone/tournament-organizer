@@ -14,16 +14,18 @@ import { describeFormat, pickQualifiers } from './generate';
 import { decidedWinner } from './pairings';
 import { computeStandings } from './standings';
 import { Group, Match, Participant, StandingRow, Tournament, VenueResource } from './types';
+import { t, getLocale, INTL_LOCALES, type Dict } from '../i18n';
 
 export type ReportKind = 'standings' | 'matches' | 'schedule' | 'bracket' | 'groups' | 'pack';
 
-export const REPORT_KINDS: { kind: ReportKind; label: string; hint: string }[] = [
-  { kind: 'standings', label: 'Standings', hint: 'The table after the last round — for players and officials.' },
-  { kind: 'matches', label: 'Match list', hint: 'Every match with number, round, result, time and court.' },
-  { kind: 'schedule', label: 'Schedule', hint: 'Timetable by time and court for venue staff.' },
-  { kind: 'bracket', label: 'Bracket', hint: 'Knockout rounds with winners carried through.' },
-  { kind: 'groups', label: 'Groups', hint: 'A table and match list per group, plus qualifiers.' },
-  { kind: 'pack', label: 'Organizer pack', hint: 'Everything in one document, ready to print.' },
+/** Labels and hints are dictionary keys: the Output screen translates them. */
+export const REPORT_KINDS: { kind: ReportKind; label: keyof Dict; hint: keyof Dict }[] = [
+  { kind: 'standings', label: 'out.kind.standings', hint: 'out.kind.standingsHint' },
+  { kind: 'matches', label: 'out.kind.matches', hint: 'out.kind.matchesHint' },
+  { kind: 'schedule', label: 'out.kind.schedule', hint: 'out.kind.scheduleHint' },
+  { kind: 'bracket', label: 'out.kind.bracket', hint: 'out.kind.bracketHint' },
+  { kind: 'groups', label: 'out.kind.groups', hint: 'out.kind.groupsHint' },
+  { kind: 'pack', label: 'out.kind.pack', hint: 'out.kind.packHint' },
 ];
 
 export interface ReportInput {
@@ -74,16 +76,16 @@ export interface Report { kind: ReportKind; meta: ReportMeta; sections: Section[
 
 // ---- Formatting (locale-independent on purpose) ---------------------------
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
 /** Engine-owned status wording. Kept short so it fits a printed column. */
-const STATUS_LABEL: Record<string, string> = {
-  scheduled: 'Scheduled', played: 'Played', walkover: 'Walkover', draw: 'Draw',
-  overtime: 'AET', interrupted: 'Interrupted', unfinished: 'Unfinished', bye: 'Bye',
+const STATUS_KEYS: Record<string, keyof Dict> = {
+  scheduled: 'doc.scheduled', played: 'doc.played', walkover: 'doc.walkover', draw: 'doc.draw',
+  overtime: 'doc.oet', interrupted: 'doc.interrupted', unfinished: 'doc.unfinished', bye: 'doc.bye',
 };
 
-export function matchStatusLabel(status: string): string { return STATUS_LABEL[status] ?? status; }
+export function matchStatusLabel(status: string): string {
+  const k = STATUS_KEYS[status];
+  return k ? t(k) : status;
+}
 
 function asDate(iso?: string | null): Date | null {
   if (!iso) return null;
@@ -91,17 +93,19 @@ function asDate(iso?: string | null): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** "14 Mar 2026" — day first, unambiguous, no locale surprises. */
+/** Dates follow the active language — Intl knows the order and the names. */
 export function fmtDate(iso?: string | null): string {
   const d = asDate(iso);
   if (!d) return '';
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return new Intl.DateTimeFormat(INTL_LOCALES[getLocale()], { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
 }
 
 export function fmtDateFull(iso?: string | null): string {
   const d = asDate(iso);
   if (!d) return '';
-  return `${DAYS[d.getDay()]} ${fmtDate(iso)}`;
+  return new Intl.DateTimeFormat(INTL_LOCALES[getLocale()], {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+  }).format(d);
 }
 
 /** 24-hour "14:30" — the notation referees and venue sheets expect. */
@@ -143,14 +147,14 @@ interface Ctx {
 function isPlayable(m: Match): boolean { return m.result.status !== 'bye'; }
 
 function buildContext(input: ReportInput): Ctx {
-  const t = input.tournament;
-  const b = brandingOf(input.branding ? { name: t.name, branding: input.branding } : t);
+  const tour = input.tournament;
+  const b = brandingOf(input.branding ? { name: tour.name, branding: input.branding } : tour);
   const ordered = [...input.matches].sort((x, y) =>
     x.round - y.round ||
     (x.scheduledAt ?? '').localeCompare(y.scheduledAt ?? '') ||
     (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
   return {
-    t, b,
+    t: tour, b,
     groups: input.groups,
     names: new Map(input.participants.map(p => [p.id, p.name])),
     participants: new Map(input.participants.map(p => [p.id, p])),
@@ -162,7 +166,7 @@ function buildContext(input: ReportInput): Ctx {
   };
 }
 
-const nameOf = (c: Ctx, id?: string | null): string => (id ? c.names.get(id) ?? 'Unknown' : '—');
+const nameOf = (c: Ctx, id?: string | null): string => (id ? c.names.get(id) ?? t('common.unknown') : '—');
 
 function courtOf(c: Ctx, m: Match): string {
   if (m.resourceId) return c.resources.get(m.resourceId)?.name ?? m.venue ?? '';
@@ -188,15 +192,16 @@ function statusOf(c: Ctx, m: Match): string {
 
 // ---- Standings ------------------------------------------------------------
 
-const TIEBREAK_LABEL: Record<string, string> = {
-  points: 'points', wins: 'wins', diff: 'goal difference', scored: 'goals scored',
-  buchholz: 'Buchholz', seed: 'seed', name: 'name',
+const TIEBREAK_KEYS: Record<string, keyof Dict> = {
+  points: 'doc.tiebreak.points', wins: 'doc.tiebreak.wins', diff: 'doc.tiebreak.diff',
+  scored: 'doc.tiebreak.scored', buchholz: 'doc.tiebreak.buchholz',
+  seed: 'doc.tiebreak.seed', name: 'doc.tiebreak.name',
 };
 
 /** Printed so a dispute can be settled from the paper, not from memory. */
-function tiebreakNote(t: Tournament): string {
-  const order = (t.rules.tiebreakOrder ?? []).map(k => TIEBREAK_LABEL[k] ?? k);
-  return order.length ? `Tie-breaks in order: ${order.join(' → ')}.` : '';
+function tiebreakNote(tour: Tournament): string {
+  const order = (tour.rules.tiebreakOrder ?? []).map(k => { const key = TIEBREAK_KEYS[k]; return key ? t(key) : k; });
+  return order.length ? t('doc.tiebreaks', { order: order.join(' → ') }) : '';
 }
 
 /** Columns and rows are produced together so they can never drift apart. */
@@ -204,23 +209,23 @@ function standingTable(c: Ctx, rows: StandingRow[]): { columns: Column[]; rows: 
   const b = c.b;
   const columns: Column[] = [
     { key: 'rank', label: '#', align: 'center' },
-    { key: 'name', label: c.t.individualOrTeam === 'team' ? 'Team' : 'Player' },
-    { key: 'played', label: 'P', align: 'right' },
-    { key: 'wins', label: 'W', align: 'right' },
+    { key: 'name', label: c.t.individualOrTeam === 'team' ? t('doc.team') : t('doc.player') },
+    { key: 'played', label: t('doc.colP'), align: 'right' },
+    { key: 'wins', label: t('doc.colW'), align: 'right' },
   ];
   if (!b.compactStandings) {
-    columns.push({ key: 'draws', label: 'D', align: 'right' }, { key: 'losses', label: 'L', align: 'right' });
+    columns.push({ key: 'draws', label: t('doc.colD'), align: 'right' }, { key: 'losses', label: t('doc.colL'), align: 'right' });
   }
-  columns.push({ key: 'points', label: 'Pts', align: 'right' });
+  columns.push({ key: 'points', label: t('doc.colPts'), align: 'right' });
   if (!b.compactStandings) {
-    columns.push({ key: 'scored', label: 'Scored', align: 'right' }, { key: 'diff', label: 'Diff', align: 'right' });
+    columns.push({ key: 'scored', label: t('doc.colScored'), align: 'right' }, { key: 'diff', label: t('doc.colDiff'), align: 'right' });
   }
-  if (b.showAdvancedStats) columns.push({ key: 'buchholz', label: 'Buchholz', align: 'right' });
+  if (b.showAdvancedStats) columns.push({ key: 'buchholz', label: t('doc.tiebreak.buchholz'), align: 'right' });
 
   const body: Cell[][] = rows.map(r => {
     const p = c.participants.get(r.participantId);
-    const label = c.names.get(r.participantId) ?? 'Unknown';
-    const row: Cell[] = [r.rank, p && p.active === false ? `${label} (WD)` : label, r.played, r.wins];
+    const label = c.names.get(r.participantId) ?? t('common.unknown');
+    const row: Cell[] = [r.rank, p && p.active === false ? `${label}${t('doc.withdrawnMark')}` : label, r.played, r.wins];
     if (!b.compactStandings) row.push(r.draws, r.losses);
     row.push(r.points);
     if (!b.compactStandings) row.push(r.scored, fmtSigned(r.diff));
@@ -236,7 +241,7 @@ function standingsSection(c: Ctx, id: string, title: string, sub: string, rows: 
 }
 
 function overallStandings(c: Ctx): Section {
-  return standingsSection(c, 'standings', 'Standings', 'Overall table',
+  return standingsSection(c, 'standings', t('doc.standingsTitle'), t('doc.standingsSub'),
     computeStandings([...c.participants.values()], c.ordered, c.t.rules));
 }
 
@@ -252,12 +257,12 @@ function qualifiersSection(c: Ctx, tables: Map<string, StandingRow[]>): Section 
   const picks = pickQualifiers(c.groups, tables, { perGroup });
   const groupName = new Map(c.groups.map(g => [g.id, g.name]));
   return {
-    id: 'qualifiers', title: 'Qualifiers',
-    sub: perGroup > 0 ? `Top ${perGroup} in each group advance to the next stage.` : '',
+    id: 'qualifiers', title: t('doc.qualifiers'),
+    sub: perGroup > 0 ? t('doc.qualifiersSub', { n: perGroup }) : '',
     columns: [
-      { key: 'group', label: 'Group' }, { key: 'pos', label: 'Pos', align: 'center' },
-      { key: 'name', label: c.t.individualOrTeam === 'team' ? 'Team' : 'Player' },
-      { key: 'points', label: 'Pts', align: 'right' }, { key: 'diff', label: 'Diff', align: 'right' },
+      { key: 'group', label: t('common.group') }, { key: 'pos', label: t('doc.pos'), align: 'center' },
+      { key: 'name', label: c.t.individualOrTeam === 'team' ? t('doc.team') : t('doc.player') },
+      { key: 'points', label: t('doc.colPts'), align: 'right' }, { key: 'diff', label: t('doc.colDiff'), align: 'right' },
     ],
     rows: picks.map(p => [
       groupName.get(p.fromGroupId) ?? '—', p.groupRank,
@@ -286,12 +291,12 @@ function groupSections(c: Ctx): Section[] {
 // ---- Match list -----------------------------------------------------------
 
 function matchListColumns(c: Ctx): Column[] {
-  const cols: Column[] = [{ key: 'no', label: 'No.', align: 'right' }];
-  if (c.groups.length > 0) cols.push({ key: 'group', label: 'Group' });
-  cols.push({ key: 'round', label: 'Round' }, { key: 'home', label: 'Home' },
-    { key: 'score', label: 'Score', align: 'center' }, { key: 'away', label: 'Away' },
-    { key: 'status', label: 'Status' }, { key: 'time', label: 'Time', align: 'right' },
-    { key: 'court', label: 'Court / table' });
+  const cols: Column[] = [{ key: 'no', label: t('doc.no'), align: 'right' }];
+  if (c.groups.length > 0) cols.push({ key: 'group', label: t('common.group') });
+  cols.push({ key: 'round', label: t('common.round') }, { key: 'home', label: t('common.home') },
+    { key: 'score', label: t('common.score'), align: 'center' }, { key: 'away', label: t('common.away') },
+    { key: 'status', label: t('common.status') }, { key: 'time', label: t('common.time'), align: 'right' },
+    { key: 'court', label: t('doc.courtTable') });
   return cols;
 }
 
@@ -300,7 +305,7 @@ function matchListRows(c: Ctx, matches: Match[]): Cell[][] {
   return matches.map(m => {
     const row: Cell[] = [c.noOf.get(m.id) ?? ''];
     if (c.groups.length > 0) row.push(m.groupId ? groupName.get(m.groupId) ?? '—' : '—');
-    row.push(m.roundName || `Round ${m.round}`, nameOf(c, m.homeId), scoreOf(m), nameOf(c, m.awayId),
+    row.push(m.roundName || t('round.n', { n: m.round }), nameOf(c, m.homeId), scoreOf(m), nameOf(c, m.awayId),
       statusOf(c, m), m.scheduledAt ? fmtTime(m.scheduledAt) : '', courtOf(c, m));
     return row;
   });
@@ -310,8 +315,8 @@ function matchListSection(c: Ctx, opts?: { id: string; title: string; matches: M
   // Byes are dropped: a sheet a referee works from must only list real pairings.
   const matches = (opts?.matches ?? c.ordered).filter(isPlayable);
   return {
-    id: opts?.id ?? 'matches', title: opts?.title ?? 'Match list',
-    sub: opts ? '' : `${matches.length} match${matches.length === 1 ? '' : 'es'}, in playing order.`,
+    id: opts?.id ?? 'matches', title: opts?.title ?? t('doc.matchList'),
+    sub: opts ? '' : t(matches.length === 1 ? 'doc.matchListSubOne' : 'doc.matchListSub', { n: matches.length }),
     columns: matchListColumns(c), rows: matchListRows(c, matches),
   };
 }
@@ -322,14 +327,14 @@ function scheduleSections(c: Ctx): Section[] {
   const rows = c.ordered.filter(m => !!m.scheduledAt && !!m.homeId && !!m.awayId);
   if (!rows.length) return [];
   const columns: Column[] = [
-    { key: 'time', label: 'Time', align: 'right' },
-    { key: 'court', label: 'Court / table' },
-    { key: 'no', label: 'Match', align: 'right' },
-    { key: 'round', label: 'Round' },
-    { key: 'home', label: 'Home' },
-    { key: 'score', label: 'Score', align: 'center' },
-    { key: 'away', label: 'Away' },
-    { key: 'status', label: 'Status' },
+    { key: 'time', label: t('common.time'), align: 'right' },
+    { key: 'court', label: t('doc.courtTable') },
+    { key: 'no', label: t('doc.matchCol'), align: 'right' },
+    { key: 'round', label: t('common.round') },
+    { key: 'home', label: t('common.home') },
+    { key: 'score', label: t('common.score'), align: 'center' },
+    { key: 'away', label: t('common.away') },
+    { key: 'status', label: t('common.status') },
   ];
   // A multi-day event gets one timetable per day; a single-day one gets a table.
   const days: string[] = [];
@@ -343,8 +348,8 @@ function scheduleSections(c: Ctx): Section[] {
     (c.noOf.get(a.id) ?? '').localeCompare(c.noOf.get(b.id) ?? '', 'en', { numeric: true });
   return days.map((day, i) => ({
     id: `schedule-${i + 1}`,
-    title: days.length > 1 ? `Timetable — ${fmtDateFull(day)}` : 'Timetable',
-    sub: `${rows.filter(m => sameDay(m.scheduledAt!, day)).length} matches. Times are local to the venue.`,
+    title: days.length > 1 ? t('doc.timetableDay', { day: fmtDateFull(day) }) : t('doc.timetable'),
+    sub: t('doc.timetableSub', { n: rows.filter(m => sameDay(m.scheduledAt!, day)).length }),
     columns,
     rows: rows.filter(m => sameDay(m.scheduledAt!, day)).sort(byTime).map(m => [
       fmtTime(m.scheduledAt), courtOf(c, m), c.noOf.get(m.id) ?? '',
@@ -382,8 +387,8 @@ function bracketSections(c: Ctx): Section[] {
   const matches = knockoutMatches(c);
   if (!matches.length) return [];
   const out: Section[] = [{
-    id: 'bracket', title: 'Knockout bracket',
-    sub: 'Rounds in playing order; winners carry through to the next round.',
+    id: 'bracket', title: t('doc.knockout'),
+    sub: t('doc.knockoutSub'),
     rounds: bracketRounds(c, matches),
   }];
   // The final is the highest round present; decided means a champion exists.
@@ -391,11 +396,11 @@ function bracketSections(c: Ctx): Section[] {
   const champ = last ? decidedWinner(last) : null;
   if (champ) {
     out.push({
-      id: 'champion', title: 'Result',
+      id: 'champion', title: t('doc.result'),
       columns: [{ key: 'label', label: '' }, { key: 'name', label: '' }],
       rows: [
-        ['Champion', nameOf(c, champ)],
-        ['Decided in', last.roundName || `Round ${last.round}`],
+        [t('doc.champion'), nameOf(c, champ)],
+        [t('doc.decidedIn'), last.roundName || t('round.n', { n: last.round })],
       ],
     });
   }
@@ -407,28 +412,33 @@ function bracketSections(c: Ctx): Section[] {
 const FINISHED: ReadonlySet<Match['result']['status']> =
   new Set(['played', 'draw', 'walkover', 'overtime']);
 
+const SEEDING_KEYS: Record<string, keyof Dict> = {
+  seeded: 'rules.seedingSeeded', random: 'rules.seedingRandom', manual: 'rules.seedingManual',
+};
+
 function overviewSection(c: Ctx): Section {
-  const t = c.t;
+  // The tournament object is `c.t`; the translator is the module-level `t`.
+  const tour = c.t;
   const played = c.ordered.filter(m => FINISHED.has(m.result.status)).length;
-  const dates = [fmtDate(t.dates?.start), fmtDate(t.dates?.end)].filter(Boolean);
+  const dates = [fmtDate(tour.dates?.start), fmtDate(tour.dates?.end)].filter(Boolean);
   const rules: Cell[] = [
-    `Win ${t.rules.winPoints} / draw ${t.rules.drawPoints} / loss ${t.rules.lossPoints} points`,
-    t.rules.allowDraws ? 'Draws allowed' : 'Draws not allowed',
-    t.rules.homeAway ? 'Home and away' : 'Single round-robin',
+    t('doc.pointsRule', { win: tour.rules.winPoints, draw: tour.rules.drawPoints, loss: tour.rules.lossPoints }),
+    t(tour.rules.allowDraws ? 'doc.drawsAllowed' : 'doc.drawsNotAllowed'),
+    t(tour.rules.homeAway ? 'doc.homeAwayOn' : 'doc.homeAwayOff'),
   ];
-  if ((t.rules.tiebreakOrder ?? []).includes('buchholz')) rules.push('Buchholz tie-break');
+  if ((tour.rules.tiebreakOrder ?? []).includes('buchholz')) rules.push(t('doc.buchholzRule'));
   return {
-    id: 'overview', title: 'Tournament information',
-    columns: [{ key: 'field', label: 'Field' }, { key: 'value', label: 'Value' }],
+    id: 'overview', title: t('doc.information'),
+    columns: [{ key: 'field', label: t('doc.field') }, { key: 'value', label: t('doc.value') }],
     rows: [
-      ['Format', describeFormat(t.format)],
-      [t.individualOrTeam === 'team' ? 'Teams' : 'Participants', String(c.participants.size)],
-      ['Rounds', String(c.ordered.length ? Math.max(...c.ordered.map(m => m.round)) : 0)],
-      ['Matches played', `${played} of ${c.ordered.filter(m => m.result.status !== 'bye').length}`],
-      ['Dates', dates.length > 1 && dates[0] !== dates[1] ? dates.join(' – ') : (dates[0] || '—')],
-      ['Venue', t.location || '—'],
-      ['Rules', rules.join(' · ')],
-      ['Seeding', t.rules.seeding],
+      [t('doc.format'), describeFormat(tour.format)],
+      [t(tour.individualOrTeam === 'team' ? 'doc.teams' : 'doc.participants'), String(c.participants.size)],
+      [t('common.rounds'), String(c.ordered.length ? Math.max(...c.ordered.map(m => m.round)) : 0)],
+      [t('doc.matchesPlayed'), `${played} of ${c.ordered.filter(m => m.result.status !== 'bye').length}`],
+      [t('doc.dates'), dates.length > 1 && dates[0] !== dates[1] ? dates.join(' – ') : (dates[0] || '—')],
+      [t('common.venue'), tour.location || '—'],
+      [t('doc.rules'), rules.join(' · ')],
+      [t('doc.seeding'), t(SEEDING_KEYS[tour.rules.seeding] ?? 'rules.seedingManual')],
     ],
   };
 }
@@ -447,16 +457,16 @@ function packSections(c: Ctx): Section[] {
 // ---- Report ---------------------------------------------------------------
 
 function buildMeta(c: Ctx, generatedAt?: string): ReportMeta {
-  const t = c.t, b = c.b;
+  const tour = c.t, b = c.b;
   const bits: string[] = [];
   if (b.showVenueDate) {
-    const start = fmtDate(t.dates?.start), end = fmtDate(t.dates?.end);
+    const start = fmtDate(tour.dates?.start), end = fmtDate(tour.dates?.end);
     if (start && end && start !== end) bits.push(`${start} – ${end}`);
     else if (start || end) bits.push(start || end);
-    if (t.location) bits.push(t.location);
+    if (tour.location) bits.push(tour.location);
   }
   return {
-    title: b.eventTitle || t.name || 'Tournament',
+    title: b.eventTitle || tour.name || t('doc.tournament'),
     subtitle: b.subtitle, edition: b.edition, headerNote: b.headerNote,
     contextLine: bits.join('  ·  '),
     generatedLine: generatedAt ? `Generated ${fmtDateFull(generatedAt)} at ${fmtTime(generatedAt)}` : '',
@@ -493,7 +503,7 @@ export function reportRows(report: Report): { title: string; cells: string[] }[]
       for (const r of s.rows) out.push({ title: s.title, cells: r.map(v => String(v)) });
     } else if (s.rounds) {
       for (const rd of s.rounds) {
-        out.push({ title: rd.name, cells: ['No.', 'Home', 'Score', 'Away', 'Status'] });
+        out.push({ title: rd.name, cells: [t('doc.no'), t('common.home'), t('common.score'), t('common.away'), t('common.status')] });
         for (const m of rd.rows) out.push({ title: rd.name, cells: [m.no, m.home, m.score, m.away, m.status] });
       }
     }

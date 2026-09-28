@@ -1,6 +1,7 @@
 // Venue scheduling — assign matches to courts/tables/stations and time slots.
 // Pure and deterministic: the same input always produces the same plan.
 import { Match, VenueResource } from './types';
+import { t } from '../i18n';
 
 export const DEFAULT_DURATION_MIN = 30;
 
@@ -71,10 +72,10 @@ export function detectConflicts(matches: Match[], resources: VenueResource[]): S
       conflicts.push({
         kind: 'unknown-resource',
         resourceId: e.resourceId,
-        resourceName: e.resourceName || '(removed resource)',
+        resourceName: e.resourceName || t('sch.resourceGone'),
         matchIds: [e.matchId],
         start: e.start!, end: e.end!,
-        message: `Match is assigned to "${e.resourceName || 'a removed resource'}" which no longer exists.`,
+        message: t('engine.conflictUnknown', { place: e.resourceName || t('sch.resourceGonePhrase') }),
       });
     }
   }
@@ -99,7 +100,7 @@ export function detectConflicts(matches: Match[], resources: VenueResource[]): S
           matchIds: [prev.matchId, cur.matchId],
           start: cur.start!,
           end: prev.end!,
-          message: `"${prev.resourceName}": two matches overlap (${fmtTime(cur.start!)}–${fmtTime(prev.end!)}).`,
+          message: t('sch.conflictOverlap', { place: prev.resourceName, from: fmtTime(cur.start!), to: fmtTime(prev.end!) }),
         });
       }
     }

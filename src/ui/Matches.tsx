@@ -11,11 +11,13 @@ import { recordResult, EditSpec } from '../engine/result';
 import { swissPairings } from '../engine/swiss';
 import { computeStandings } from '../engine/standings';
 import { Alert, Empty, KeyHint, Page, Segmented, StatusPill, Toolbar } from './kit';
+import { useT } from '../i18n';
 
 const KNOCKOUT = new Set(['single-elimination', 'double-elimination']);
 const FINISHED = new Set(['played', 'draw', 'walkover', 'overtime']);
 
 export default function Matches() {
+  const t = useT();
   const { domain, update, go, focusMatch, setFocusMatch } = useApp();
   const [q, setQ] = useState('');
   const [onlyOpen, setOnlyOpen] = useState(true);
@@ -24,7 +26,7 @@ export default function Matches() {
   const [sel, setSel] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
   const names = useMemo(() => new Map(domain.participants.map(p => [p.id, p.name])), [domain.participants]);
-  const pn = (id: string | null) => (id ? names.get(id) ?? 'Unknown' : 'TBD');
+  const pn = (id: string | null) => (id ? names.get(id) ?? t('common.unknown') : t('common.tbd'));
   const knockout = KNOCKOUT.has(domain.tournament.format);
   const isKoMatch = (m: Match) => knockout || m.bracket?.eliminatedOnLoss === true;
   let list = domain.matches;
@@ -69,56 +71,54 @@ export default function Matches() {
 
   return (
     <Page
-      title="Result entry"
-      sub={`${openCount} open of ${domain.matches.length} matches`}
+      title={t('res.title')}
+      sub={t('res.openOf', { open: openCount, total: domain.matches.length })}
       actions={domain.tournament.format === 'swiss'
-        ? <button className="btn" onClick={nextSwiss}>Generate next round</button>
+        ? <button className="btn" onClick={nextSwiss}>{t('res.nextRoundGo')}</button>
         : undefined}
     >
       <div onKeyDown={onKey}>
-      {err && <Alert tone="err" title="Result not saved">{err} Enter both scores, or use Walkover / Not finished instead.</Alert>}
+      {err && <Alert tone="err" title={t('res.notSaved')}>{err} {t('engine.scorePair')}</Alert>}
       {corrected && (
-        <Alert tone="ok" title="Result corrected"
-          actions={<button className="btn sm quiet" onClick={() => setCorrected(null)}>Dismiss</button>}>
+        <Alert tone="ok" title={t('res.corrected')}
+          actions={<button className="btn sm quiet" onClick={() => setCorrected(null)}>{t('common.dismiss')}</button>}>
           {(() => { const m = domain.matches.find(x => x.id === corrected);
-            return m ? `${pn(m.homeId)} vs ${pn(m.awayId)} was updated — every later round was recomputed from the new result.` : 'The match was updated.'; })()}
+            return m ? t('res.correctedBody', { home: pn(m.homeId), away: pn(m.awayId) }) : t('res.correctedOne'); })()}
         </Alert>
       )}
       {focusM && (
-        <Alert tone="ok" title="Match from the QR code"
-          actions={<button className="btn sm quiet" onClick={() => setFocusMatch(null)}>Clear</button>}>
-          {pn(focusM.homeId)} vs {pn(focusM.awayId)} is pinned to the top of this list.
+        <Alert tone="ok" title={t('res.fromCode')}
+          actions={<button className="btn sm quiet" onClick={() => setFocusMatch(null)}>{t('common.clear')}</button>}>
+          {t('res.pinned', { home: pn(focusM.homeId), away: pn(focusM.awayId) })}
         </Alert>
       )}
 
       {domain.matches.length === 0 ? (
         <Empty
-          title="No matches to fill in yet"
-          hint="Generate the bracket first — pick a format, then create the matches for your participants."
-          action={<button className="btn primary" onClick={() => go('rules')}>Go to rules → generate</button>}
+          title={t('res.emptyFill')}
+          hint={t('res.emptyFillHint')}
+          action={<button className="btn primary" onClick={() => go('rules')}>{t('bracket.goRules')}</button>}
         />
       ) : (
         <>
           <Toolbar>
             <input className="search" ref={searchRef} type="search" value={q} onChange={e => setQ(e.target.value)}
-              placeholder="Filter by name or round" aria-label="Filter matches" />
+              placeholder={t('res.filter')} aria-label={t('res.filterLabel')} />
             <Segmented
               value={onlyOpen ? 'open' : 'all'}
               onChange={v => setOnlyOpen(v === 'open')}
-              options={[{ id: 'open', label: 'Open only' }, { id: 'all', label: 'All matches' }]}
-              label="Match filter"
+              options={[{ id: 'open', label: t('res.onlyOpen') }, { id: 'all', label: t('res.allMatches') }]}
+              label={t('common.matchFilter')}
             />
             <span className="sp" />
-            <span className="count">{shown.length} shown</span>
+            <span className="count">{t('res.shownCount', { n: shown.length })}</span>
           </Toolbar>
 
           {shown.length === 0 && (
             <Empty
-              title={q ? 'Nothing matches that filter' : 'Everything here is finished'}
-              hint={q
-                ? 'Try a shorter name, or clear the filter to see every match.'
-                : 'Switch to “All matches” to review or correct results that are already in.'}
-              action={<button className="btn" onClick={() => { setQ(''); setOnlyOpen(false); }}>Show all matches</button>}
+              title={q ? t('res.nothingFound', { q }) : t('res.allDone')}
+              hint={q ? t('res.tryShorter') : t('res.allDoneHint')}
+              action={<button className="btn" onClick={() => { setQ(''); setOnlyOpen(false); }}>{t('res.showAll')}</button>}
             />
           )}
 
@@ -155,23 +155,23 @@ export default function Matches() {
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitPlayed(m); } e.stopPropagation(); }} />
                   </div>
                   <button className={'btn' + (i === sel && !done ? ' primary' : '')} onClick={() => commitPlayed(m)}>
-                    {done ? 'Correct result' : 'Save'}
+                    {done ? t('res.correct') : 'Save'}
                   </button>
                 </div>
                 <div className="mcard-extra" onClick={e => e.stopPropagation()}>
                   <details className="disclosure">
-                    <summary>Other outcomes</summary>
+                    <summary>{t('res.otherOutcomes')}</summary>
                     <div className="row" style={{ marginTop: 8 }}>
-                      {!isKoMatch(m) && <button className="btn sm" onClick={() => commitPlayed(m, 'draw')}>Draw</button>}
-                      {domain.tournament.rules.overtimeAllowed && <button className="btn sm" onClick={() => commitPlayed(m, 'overtime')}>After extra time</button>}
-                      <button className="btn sm" onClick={() => setStatus(m, 'unfinished')}>Not finished</button>
-                      <button className="btn sm" onClick={() => setStatus(m, 'interrupted')}>Interrupted</button>
-                      <select value={m.result.walkoverWinnerId ?? m.homeId ?? ''} aria-label="Walkover winner"
+                      {!isKoMatch(m) && <button className="btn sm" onClick={() => commitPlayed(m, 'draw')}>{t('status.draw')}</button>}
+                      {domain.tournament.rules.overtimeAllowed && <button className="btn sm" onClick={() => commitPlayed(m, 'overtime')}>{t('status.overtime')}</button>}
+                      <button className="btn sm" onClick={() => setStatus(m, 'unfinished')}>{t('res.notFinished')}</button>
+                      <button className="btn sm" onClick={() => setStatus(m, 'interrupted')}>{t('res.interrupted')}</button>
+                      <select value={m.result.walkoverWinnerId ?? m.homeId ?? ''} aria-label={t('res.walkoverWinner')}
                         onChange={e => setStatus(m, 'walkover', e.target.value)}>
                         <option value={m.homeId ?? ''}>Walkover: {pn(m.homeId)}</option>
                         <option value={m.awayId ?? ''}>Walkover: {pn(m.awayId)}</option>
                       </select>
-                      {done && <button className="btn sm quiet" onClick={() => setStatus(m, 'scheduled')}>Reset to unplayed</button>}
+                      {done && <button className="btn sm quiet" onClick={() => setStatus(m, 'scheduled')}>{t('res.reset')}</button>}
                     </div>
                   </details>
                 </div>

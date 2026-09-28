@@ -8,6 +8,7 @@ import { genSingleElim } from './elim';
 import { recomputeBracket } from './recompute';
 import { Domain } from './model';
 import { Group, Match, Participant, RuleSet, StandingRow } from './types';
+import { t } from '../i18n';
 
 export interface KnockoutQualifier {
   participantId: string;
@@ -46,12 +47,12 @@ export function planKnockout(input: {
     groupMatchCount, droppedKoMatches: existingKo, reason,
   });
 
-  if (input.groups.length === 0) return fail('This tournament has no groups yet.');
-  if (groupMatchCount === 0) return fail('Generate the group stage before seeding a knockout.');
+  if (input.groups.length === 0) return fail(t('st.planNoGroups'));
+  if (groupMatchCount === 0) return fail(t('st.planNoGroupMatches'));
 
   const picks = pickQualifiers(input.groups, input.standingsByGroup, input.options);
-  if (picks.length < 2) return fail('At least 2 qualifiers are needed to build a knockout stage.');
-  if (picks.length % 2 !== 0) return fail(`${picks.length} qualifiers cannot form a bracket — change the count so it is even.`);
+  if (picks.length < 2) return fail(t('st.planNeedTwo'));
+  if (picks.length % 2 !== 0) return fail(t('st.planOddCount', { n: picks.length }));
 
   const seeded = seedKnockout(picks, input.participants);
   const ko = genSingleElim(seeded, input.rules, { order: 'given' });
