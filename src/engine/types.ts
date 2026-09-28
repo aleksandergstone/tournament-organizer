@@ -1,4 +1,5 @@
 // Domain model — pure types, no UI, no I/O. Serializable to local .top.json file.
+import type { Branding } from './branding';
 export type Id = string;
 
 export type CompetitionFormat =
@@ -150,6 +151,8 @@ export interface Tournament {
   updatedAt: string;
   archived: boolean;
   notes?: string;
+  /** Document branding for exported sheets/PDFs. Optional: added after v1.0. */
+  branding?: Branding;
 }
 
 export interface StandingRow {

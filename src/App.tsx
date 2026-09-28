@@ -9,7 +9,7 @@ import Rules from './ui/Rules';
 import Bracket from './ui/Bracket';
 import Matches from './ui/Matches';
 import Standings from './ui/Standings';
-import Export from './ui/Export';
+import Output from './ui/Output';
 import Settings from './ui/Settings';
 import Import from './ui/Import';
 import Display from './ui/Display';
@@ -24,7 +24,7 @@ import { nowIso } from './engine/types';
 const NAV: { items: readonly (readonly [Screen, string])[] }[] = [
   { items: [['home', 'Home'], ['overview', 'Overview'], ['participants', 'Players'], ['rules', 'Rules']] },
   { items: [['bracket', 'Bracket'], ['matches', 'Results'], ['standings', 'Standings']] },
-  { items: [['schedule', 'Schedule'], ['display', 'Display'], ['codes', 'QR codes'], ['export', 'Export']] },
+  { items: [['schedule', 'Schedule'], ['display', 'Display'], ['codes', 'QR codes'], ['export', 'Output']] },
 ];
 
 // A window opened with #display is a projector: organizer controls are hidden.
@@ -138,7 +138,7 @@ export default function App() {
       {screen === 'schedule' && (hasProject ? <Schedule /> : <Home />)}
       {screen === 'display' && (hasProject ? <Display /> : <Home />)}
       {screen === 'codes' && (hasProject ? <Codes /> : <Home />)}
-      {screen === 'export' && (hasProject ? <Export /> : <Home />)}
+      {screen === 'export' && (hasProject ? <Output /> : <Home />)}
       {screen === 'settings' && <Settings />}
       {screen === 'import' && <Import />}
     </div>

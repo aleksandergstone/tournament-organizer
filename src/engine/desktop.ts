@@ -9,6 +9,10 @@
 export interface DesktopBridge {
   readonly available: boolean;
   saveText(filename: string, text: string): Promise<string | null>;
+  /** Renders a self-contained HTML document to a PDF file (desktop only). */
+  savePdf(filename: string, html: string): Promise<string | null>;
+  /** Opens the system print dialog for a self-contained HTML document. */
+  printHtml(html: string): Promise<boolean>;
   openText(): Promise<{ path: string; text: string } | null>;
   /** Opens the read-only Display Mode in a second window (desktop only). */
   openDisplay(fullscreen?: boolean): Promise<boolean>;
@@ -37,6 +41,8 @@ type OpenResult = { path?: string; text?: string; canceled?: true; error?: strin
 declare global {
   interface Window { toDesktop?: {
     saveText(f: string, t: string): Promise<SaveResult | string | null>;
+    savePdf(f: string, html: string): Promise<SaveResult | string | null>;
+    printHtml(html: string): Promise<{ ok?: boolean; error?: string }>;
     openText(): Promise<OpenResult | { path: string; text: string } | null>;
     openDisplay(fullscreen?: boolean): Promise<{ ok?: boolean; error?: string }>;
     lanStart(): Promise<LanInfo>;
@@ -45,6 +51,27 @@ declare global {
     lanPublish(payload: unknown): Promise<{ ok: boolean }>;
     lanInbox(): Promise<{ items: { receivedAt: string; payload: unknown }[] }>;
   }; }
+}
+
+/**
+ * Browser-only print path: the report HTML in a hidden iframe, so the page's own
+ * styles can never leak into (or be lost by) the printed document.
+ */
+function printViaHiddenFrame(html: string): void {
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.cssText = 'position:fixed;left:0;top:0;width:210mm;height:297mm;border:0;visibility:hidden';
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument;
+  if (!doc) { frame.remove(); return; }
+  doc.open(); doc.write(html); doc.close();
+  const go = () => {
+    try { frame.contentWindow?.focus(); frame.contentWindow?.print(); }
+    catch { /* the browser blocked printing — nothing else to try here */ }
+    setTimeout(() => frame.remove(), 1000);
+  };
+  // Give the iframe a tick to lay out (logos decode) before opening the dialog.
+  setTimeout(go, 300);
 }
 
 /** Normalizes a LAN address typed by the user (adds scheme, strips trailing /). */
@@ -73,6 +100,34 @@ export const desktop: DesktopBridge = {
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     return filename;
   },
+  /**
+   * Desktop: Electron prints the document offscreen and writes a PDF. Browser:
+   * there is no way to write a PDF from a page, so the same document goes to the
+   * browser's print dialog and the organizer picks "Save as PDF" there.
+   */
+  async savePdf(filename, html) {
+    if (window.toDesktop) {
+      const r = await window.toDesktop.savePdf(filename, html) as SaveResult | string | null;
+      if (r === null || (typeof r === 'object' && r !== null && 'canceled' in r)) return null;
+      if (typeof r === 'string') return r;
+      if (typeof r === 'object' && r.error) throw new Error(r.error);
+      return typeof r === 'object' && r.path ? r.path : filename;
+    }
+    printViaHiddenFrame(html);
+    return filename;
+  },
+
+  /** System print dialog for the report — identical output on both platforms. */
+  async printHtml(html) {
+    if (window.toDesktop) {
+      const r = await window.toDesktop.printHtml(html);
+      if (r && r.error) throw new Error(r.error);
+      return !!(r && r.ok);
+    }
+    printViaHiddenFrame(html);
+    return true;
+  },
+
   async openText() {
     if (window.toDesktop) {
       const r = await window.toDesktop.openText() as OpenResult | null;

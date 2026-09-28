@@ -128,7 +128,7 @@ app.whenReady().then(async () => {
     await nav('Standings', 'Standings');
     await shot('06-standings');
 
-    await nav('Export', 'Export');
+    await nav('Output', 'Output & branding');
     await shot('07-export');
 
     // 4) Double elimination bracket

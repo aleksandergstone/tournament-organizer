@@ -448,8 +448,8 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
 .appfoot { text-align: center; font-size: var(--fs-xs); color: var(--muted); margin-top: 26px; }
 
 /* ------------------------------------------------------------------- print */
-
-.print-head h2 { font-size: 19px; }
+/* Printing the app itself is a last resort: the Output screen prints a real,
+   branded document instead. These rules just keep a stray Ctrl+P tidy. */
 @media print {
   .topbar, .page-actions, .footbar, .toolbar, .btn, .seg, .disclosure, .keyhint, .no-print { display: none !important; }
   body { background: #fff; }
@@ -549,3 +549,35 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
   thead th { top: 0; }
 }
 
+
+/* ------------------------------------------------- output & branding screen */
+
+/* One card per document type: label first, plain-language hint under it. */
+.variants { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.variant {
+  text-align: left; background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: var(--r); padding: 10px 12px; cursor: pointer; font: inherit;
+  display: flex; flex-direction: column; gap: 2px; transition: border-color var(--t-fast), background var(--t-fast);
+}
+.variant strong { font-size: var(--fs-body); color: var(--ink); }
+.variant span { font-size: var(--fs-xs); color: var(--muted); line-height: 1.35; }
+.variant:hover { border-color: var(--line-2); background: var(--panel); }
+.variant.on { border-color: var(--acc); background: var(--acc-soft); box-shadow: inset 0 0 0 1px var(--acc); }
+.variant.on span { color: var(--ink-2); }
+.variant:focus-visible { outline: none; box-shadow: var(--sh-focus); }
+
+/* The live document: the same markup the PDF is built from, at paper width. */
+.output-preview {
+  width: 100%; height: 620px; border: 1px solid var(--line); border-radius: var(--r);
+  background: #fff; box-shadow: var(--sh-1); display: block;
+}
+
+/* Logo pickers: small preview next to the buttons, never a mystery box. */
+.logo-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.logo-preview { max-height: 44px; max-width: 130px; object-fit: contain; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 4px; background: #fff; }
+.logo-empty { font-size: var(--fs-sm); color: var(--muted); }
+
+.color-input { width: 46px; height: 34px; padding: 2px; border: 1px solid var(--line-2); border-radius: var(--r-sm); background: #fff; cursor: pointer; }
+.hex-input { width: 110px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: lowercase; }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+.btn.ghost:hover { background: var(--panel-2); color: var(--ink); }

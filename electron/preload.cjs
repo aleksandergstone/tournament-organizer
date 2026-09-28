@@ -3,6 +3,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('toDesktop', {
   // files
   saveText: (filename, text) => ipcRenderer.invoke('file:save', filename, text),
+  savePdf: (filename, html) => ipcRenderer.invoke('file:save-pdf', filename, html),
+  printHtml: (html) => ipcRenderer.invoke('file:print', html),
   openText: () => ipcRenderer.invoke('file:open'),
   // display mode (second window)
   openDisplay: (fullscreen) => ipcRenderer.invoke('window:open-display', !!fullscreen),

@@ -188,6 +188,67 @@ ipcMain.handle('file:save', async (_e, filename, text) => {
   }
 });
 
+// PDF generation: a self-contained HTML document → a real PDF file. A4 with the
+// document's own page CSS, plus a running footer with the document title and
+// "Page X of Y". The save dialog is shown first so a cancel costs no work, and
+// the offscreen window is always destroyed, even when printing fails.
+const PDF_OPTIONS = {
+  printBackground: true, pageSize: 'A4', preferCSSPageSize: true,
+  displayHeaderFooter: true,
+  headerTemplate: '<div></div>',
+  footerTemplate: '<div style="width:100%;font-size:8px;color:#6b7280;padding:0 12mm;'
+    + 'font-family:Segoe UI,Arial,sans-serif;display:flex;justify-content:space-between;">'
+    + '<span class="title"></span>'
+    + '<span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span></div>',
+};
+
+ipcMain.handle('file:save-pdf', async (_e, filename, html) => {
+  let w = null;
+  let tmp = null;
+  try {
+    const r = await dialog.showSaveDialog({
+      defaultPath: filename,
+      filters: [{ name: 'PDF document', extensions: ['pdf'] }, { name: 'All files', extensions: ['*'] }],
+    });
+    if (r.canceled || !r.filePath) return { canceled: true };
+    tmp = path.join(os.tmpdir(), `to-print-${Date.now()}.html`);
+    fs.writeFileSync(tmp, html, 'utf8');
+    w = new BrowserWindow({ show: false, webPreferences: { javascript: false, sandbox: true, nodeIntegration: false } });
+    await w.loadFile(tmp);
+    const data = await w.webContents.printToPDF(PDF_OPTIONS);
+    fs.writeFileSync(r.filePath, data);
+    return { path: r.filePath };
+  } catch (e) {
+    return { error: `Could not create the PDF: ${e && e.message ? e.message : e}` };
+  } finally {
+    try { if (w && !w.isDestroyed()) w.destroy(); } catch { /* ignore */ }
+    try { if (tmp) fs.unlinkSync(tmp); } catch { /* ignore */ }
+  }
+});
+
+// An organizer pressing "Print" in a browser should get the same dialog.
+ipcMain.handle('file:print', async (_e, html) => {
+  let w = null;
+  let tmp = null;
+  try {
+    tmp = path.join(os.tmpdir(), `to-print-${Date.now()}.html`);
+    fs.writeFileSync(tmp, html, 'utf8');
+    w = new BrowserWindow({ show: false, webPreferences: { javascript: false, sandbox: true, nodeIntegration: false } });
+    await w.loadFile(tmp);
+    return await new Promise((resolve) => {
+      w.webContents.print({ silent: false, printBackground: true }, (ok, reason) => {
+        if (!ok && reason && reason !== 'cancelled') resolve({ error: `Printing was cancelled: ${reason}` });
+        else resolve({ ok: true });
+      });
+    });
+  } catch (e) {
+    return { error: `Could not open the print dialog: ${e && e.message ? e.message : e}` };
+  } finally {
+    try { if (w && !w.isDestroyed()) w.destroy(); } catch { /* ignore */ }
+    try { if (tmp) fs.unlinkSync(tmp); } catch { /* ignore */ }
+  }
+});
+
 ipcMain.handle('file:open', async () => {
   try {
     const r = await dialog.showOpenDialog({
