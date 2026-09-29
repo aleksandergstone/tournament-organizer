@@ -1,0 +1,32 @@
+Every mode is now a complete, code-backed specification
+
+A mode used to explain some of itself. Each one now answers the same
+fifteen questions from data in the engine, in all four languages.
+
+The specification gained the parts that were missing:
+
+* stages — what stages a format is allowed to have, in order, what each
+  one produces and how a participant moves through it. Per format, not
+  per class: double elimination really runs three stages.
+* a stage plan shown before creation, marking what the app builds now
+  and what comes later, with what the organizer still does by hand.
+* equal points — either the tie-break order that decides them, or an
+  explicit statement that a bracket has no table and needs none.
+* exports — what an export contains and what it leaves out.
+* edge cases — free passes, unresolved draws, uneven groups, all-draw
+  tables, odd points, home and away, named one by one.
+* what is NOT available here, so nothing is left implied: no third-place
+  match, no divisions, no wildcards, no cut line, and for custom events
+  no multi-stage support.
+
+Custom events must now state what they are built from. A stage the
+generator cannot build is refused by name instead of ignored, and a
+missing stage is refused too.
+
+A setup that cannot be counted — one participant, a group of one, a
+league of two — warns before the tournament is created, and every term
+the specification relies on (advancement, Swiss, round robin, reporting
+only) has an entry in the glossary.
+
+233 tests pass, including 74 mode tests that check the specification is
+complete for every mode in every language.

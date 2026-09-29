@@ -751,6 +751,27 @@ tr.champion td.rank { color: var(--acc); }
 }
 .rule-note.warn { background: var(--warn-soft); color: var(--warn); }
 
+/* The stages of a mode, in order, with what each one produces. */
+.rule-stages { margin: 0; padding-left: 17px; display: flex; flex-direction: column; gap: 4px; }
+.rule-stages b { display: block; font-size: var(--fs-sm); }
+
+/* A short list inside one cell of the rule block. */
+.rule-list { margin: 0; padding-left: 15px; display: flex; flex-direction: column; gap: 2px; }
+.rule-list li { font-size: var(--fs-xs); color: var(--muted); line-height: 1.45; }
+
+/* The plan: what is built now and what comes later. */
+.stage-plan {
+  list-style: none; margin: 4px 0 0; padding: 0;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.stage-plan li {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--panel-2);
+}
+.stage-plan b { font-size: var(--fs-sm); }
+.stage-plan .f-hint { flex-basis: 100%; }
+
 .glossary { margin-top: 12px; }
 .glossary > summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
 .glossary > .f-hint { margin: 8px 0; }

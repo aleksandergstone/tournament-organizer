@@ -8,7 +8,7 @@ import { uid, nowIso } from '../engine/types';
 import { describeFormat } from '../engine/generate';
 import { Alert, Field, Page, Panel, StepBar } from './kit';
 import {
-  Glossary, ModeExplainer, ModePicker, PresetPicker, SettingsForMode,
+  Glossary, ModeExplainer, ModePicker, PresetPicker, PreviewWarning, SettingsForMode,
   SetupSummary, StructurePreviewBox,
 } from './modes';
 import { useT } from '../i18n';
@@ -113,6 +113,7 @@ export default function Wizard() {
       ) : null}
 
       <Panel title={t('mode.generateTitle')} sub={t('mode.generateSub')}>
+        <PreviewWarning format={f.format} rules={f.rules} count={count} />
         <StructurePreviewBox format={f.format} count={count} rules={f.rules} />
       </Panel>
 

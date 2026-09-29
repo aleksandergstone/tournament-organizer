@@ -11,6 +11,8 @@ import {
   hiddenGroups, visibleFields, showsField, fieldStatus, fieldEffect, specFor,
   groupPlan, inertFields, adaptRulesToFormat, previewStructure, validateModeSetup,
   summaryRows, glossaryFor, PICKER_GROUPS, modesInGroup, pickerGroupTitle,
+  stagePlan, manualSteps, previewWarning, fieldsByStatus, notApplicableFields,
+  requiredFields,
   PREVIEW_SAMPLE,
 } from '../src/engine/mode-info';
 import { PRESETS, presetsFor, presetById, applyPreset, activePresetId } from '../src/engine/presets';
@@ -706,5 +708,214 @@ describe('group sizes', () => {
     const playable = real.matches.filter(m => m.homeId && m.awayId).length;
     const expected = plan.sizes.reduce((sum, s) => sum + (s * (s - 1)) / 2, 0);
     expect(playable).toBe(expected);
+  });
+});
+
+// ---- every mode is fully specified -----------------------------------------
+
+describe('the mode specification is complete', () => {
+  const DICTS2 = { en, pl, de, es } as Record<string, Record<string, string>>;
+
+  it('answers all fifteen points for every mode, in every language', () => {
+    for (const m of MODES) {
+      const s = specFor(m.format);
+      // 1 purpose, 15 UI text, 14 example
+      const texts: (keyof typeof en)[] = [
+        s.info.meaning, s.info.example, s.info.goodFor, s.info.notIncluded,
+        ...s.stages.flatMap(st => [st.key, st.produces, st.flow]),
+        s.points.why, s.draws.why, s.advancement.why, s.groupSize.why, s.tiebreak.why,
+        s.reporting.produces, s.reporting.omits,
+        ...s.edgeCases, ...s.unsupported,
+        s.structure.contains, s.structure.excludes,
+      ];
+      expect(texts.length, m.format).toBeGreaterThan(20);
+      for (const key of texts) {
+        for (const loc of ['en', 'pl', 'de', 'es'] as const) {
+          expect(DICTS2[loc][key], `${key} (${m.format}) in ${loc}`).toBeTruthy();
+        }
+        expect(en[key].length, String(key)).toBeGreaterThan(3);
+      }
+    }
+  });
+
+  it('has at least one stage for every mode, and never an empty list', () => {
+    for (const m of MODES) {
+      const s = specFor(m.format);
+      expect(s.stages.length, m.format).toBeGreaterThan(0);
+      for (const st of s.stages) {
+        expect(en[st.key], String(st.key)).toBeTruthy();
+        expect(en[st.produces], String(st.produces)).toBeTruthy();
+        expect(en[st.flow], String(st.flow)).toBeTruthy();
+      }
+    }
+  });
+
+  it('runs the stages a format really has: three for double elimination', () => {
+    expect(specFor('single-elimination').stages).toHaveLength(1);
+    expect(specFor('double-elimination').stages.map(s => s.key)).toEqual([
+      'mode.stage.winners', 'mode.stage.losers', 'mode.stage.grandFinal',
+    ]);
+    expect(specFor('groups-knockout').stages.map(s => s.key)).toEqual([
+      'mode.stage.groups', 'mode.stage.knockout',
+    ]);
+    expect(specFor('swiss').stages.map(s => s.key)).toEqual([
+      'mode.stage.round1', 'mode.stage.laterRounds',
+    ]);
+  });
+
+  it('sorts every field into exactly one bucket, and names the rest', () => {
+    for (const m of MODES) {
+      const buckets = ['required', 'optional', 'advanced', 'reporting'] as const;
+      const total = buckets.reduce((n, b) => n + fieldsByStatus(m.format, b).length, 0);
+      expect(total, m.format).toBe(specFor(m.format).fields.length);
+      const na = notApplicableFields(m.format);
+      expect(na.length, m.format).toBeGreaterThan(0);
+      // Shown plus not-applicable is the whole rule set, with no overlap.
+      const shown = visibleFields(m.format);
+      for (const f of na) expect(shown.includes(f), `${m.format}.${f}`).toBe(false);
+    }
+  });
+
+  it('requires the settings a mode cannot generate without', () => {
+    // A hybrid cannot rank the groups, seat the bracket or pick qualifiers without
+    // these; Swiss cannot pair or rank without them; a bracket cannot be placed.
+    expect(requiredFields('groups-knockout').map(f => f.field)).toEqual(expect.arrayContaining(
+      ['groupCount', 'advancePerGroup', 'seeding', 'winPoints', 'tiebreakOrder']));
+    expect(requiredFields('swiss').map(f => f.field)).toEqual(expect.arrayContaining(
+      ['swissRounds', 'winPoints', 'tiebreakOrder']));
+    expect(requiredFields('round-robin').map(f => f.field)).toEqual(expect.arrayContaining(
+      ['winPoints', 'tiebreakOrder']));
+    expect(requiredFields('single-elimination').map(f => f.field)).toEqual(['seeding']);
+    expect(requiredFields('custom').map(f => f.field)).toContain('customStage');
+  });
+
+  it('says a bracket has no tie-break and does not pretend otherwise', () => {
+    expect(specFor('single-elimination').tiebreak.applies).toBe(false);
+    expect(translate('en', specFor('single-elimination').tiebreak.why)).toMatch(/no tie-break/i);
+    for (const f of ['round-robin', 'league', 'swiss', 'groups-knockout'] as const) {
+      expect(specFor(f).tiebreak.applies, f).toBe(true);
+    }
+  });
+
+  it('names what an export contains, and what it leaves out', () => {
+    expect(translate('en', specFor('single-elimination').reporting.omits)).toMatch(/no points table/i);
+    expect(translate('en', specFor('round-robin').reporting.omits)).toMatch(/no bracket/i);
+    expect(translate('en', specFor('custom').reporting.omits)).toMatch(/later stages/i);
+  });
+
+  it('names the features it does not have, instead of leaving them implied', () => {
+    // A third-place match is not generated anywhere, and every mode says so.
+    for (const m of MODES) {
+      expect(specFor(m.format).unsupported, m.format).toContain('mode.no.thirdPlace');
+    }
+    // Divisions exist nowhere; wildcards only where a group stage exists.
+    for (const m of MODES) {
+      expect(specFor(m.format).unsupported, m.format).toContain('mode.no.divisions');
+    }
+    expect(specFor('groups-knockout').unsupported).not.toContain('mode.no.wildcards');
+    expect(specFor('round-robin').unsupported).toContain('mode.no.wildcards');
+    // Only Custom is single-stage, and it says so in the strongest terms.
+    expect(specFor('custom').unsupported).toContain('mode.no.multiStage');
+    for (const m of MODES.filter(x => x.format !== 'custom')) {
+      expect(specFor(m.format).unsupported, m.format).not.toContain('mode.no.multiStage');
+    }
+  });
+});
+
+// ---- the plan has to exist before the tournament does ----------------------
+
+describe('the plan shown before creation', () => {
+  it('marks what the app builds now and what comes later', () => {
+    const bracket = stagePlan('single-elimination', rules({ allowDraws: false }), 8);
+    expect(bracket).toHaveLength(1);
+    expect(bracket[0].generatedNow).toBe(true);
+    expect(bracket[0].matches).toBe(7);
+
+    const swiss = stagePlan('swiss', rules({ swissRounds: 5 }), 16);
+    expect(swiss.map(s => s.generatedNow)).toEqual([true, false]);
+    expect(swiss[0].matches).toBe(8);
+    expect(swiss[1].matches).toBe(8);
+
+    const groups = stagePlan('groups-knockout', rules({ groupCount: 2, advancePerGroup: 2 }), 12);
+    expect(groups.map(s => s.generatedNow)).toEqual([true, false]);
+    expect(groups[0].matches).toBe(30);
+    expect(groups[1].matches).toBe(3);
+  });
+
+  it('counts the grand final as its own stage', () => {
+    const de = stagePlan('double-elimination', rules({ allowDraws: false }), 8);
+    expect(de.map(s => s.key)).toEqual(['mode.stage.winners', 'mode.stage.losers', 'mode.stage.grandFinal']);
+    expect(de[2].matches).toBe(1);
+    expect(de.every(s => s.generatedNow)).toBe(true);
+  });
+
+  it('says what the organizer still has to do by hand', () => {
+    expect(manualSteps('swiss')).toContain('mode.manual.nextRound');
+    expect(manualSteps('groups-knockout')).toContain('mode.manual.knockout');
+    expect(manualSteps('custom')).toContain('mode.manual.customStages');
+    expect(manualSteps('round-robin')).toEqual(['mode.manual.venues']);
+    for (const m of MODES) {
+      for (const k of manualSteps(m.format)) expect(translate('en', k), `${m.format} ${k}`).not.toBe(k);
+    }
+  });
+
+  it('warns before creation when the plan cannot be counted', () => {
+    expect(previewWarning('single-elimination', rules(), 1)).toBe('mode.warn.tooFew');
+    expect(previewWarning('groups-knockout', rules({ groupCount: 4, advancePerGroup: 1 }), 6)).toBe('mode.warn.groupSize');
+    expect(previewWarning('league', rules(), 2)).toBe('mode.warn.leagueTooFew');
+    // A field that works, and a count that is not known yet, warn about nothing.
+    expect(previewWarning('single-elimination', rules(), 8)).toBeNull();
+    expect(previewWarning('groups-knockout', rules({ groupCount: 2, advancePerGroup: 1 }), 8)).toBeNull();
+    expect(previewWarning('league', rules(), null)).toBeNull();
+  });
+
+  it('explains every term the spec sheet relies on', () => {
+    for (const f of ALL_FORMATS) {
+      const terms = glossaryFor(f);
+      expect(terms.length, f).toBeGreaterThan(0);
+      expect(terms, f).toContain('mode.term.advancement');
+      for (const term of terms) {
+        expect(translate('en', term), `${term} (${f})`).not.toBe(term);
+        expect(en[term], String(term)).toContain(' — ');
+      }
+    }
+    // Swiss and round robin are named, and a league is never offered a bracket.
+    expect(glossaryFor('swiss')).toContain('mode.term.swiss');
+    expect(glossaryFor('round-robin')).toContain('mode.term.roundRobin');
+    expect(glossaryFor('league')).not.toContain('mode.term.bracket');
+    // Reporting only is explained exactly where points are powerless.
+    expect(glossaryFor('single-elimination')).toContain('mode.term.reportingOnly');
+    expect(glossaryFor('round-robin')).not.toContain('mode.term.reportingOnly');
+  });
+});
+
+describe('a custom event has to state its stage', () => {
+  const fields = (i: { field: string }[]) => i.map(x => x.field);
+
+  it('refuses a custom event with no stage at all', () => {
+    const r = { ...DEFAULT_RULES };
+    delete r.customStage;
+    expect(fields(validateModeSetup('custom', r, 8))).toContain('customStage');
+  });
+
+  it('accepts the one stage the app builds', () => {
+    expect(validateModeSetup('custom', rules({ customStage: 'pairings' }), 8))
+      .not.toContainEqual(expect.objectContaining({ field: 'customStage' }));
+  });
+
+  it('refuses a stage the app does not build, and names it', () => {
+    for (const stage of ['groups', 'bracket', 'swiss'] as const) {
+      const issues = validateModeSetup('custom', rules({ customStage: stage }), 8);
+      const issue = issues.find(i => i.field === 'customStage');
+      expect(issue, stage).toBeTruthy();
+      expect(issue!.message, stage).toContain(translate('en', `mode.stageName.${stage}`));
+    }
+  });
+
+  it('keeps the custom stage out of the other modes entirely', () => {
+    for (const m of MODES.filter(x => x.format !== 'custom')) {
+      expect(showsField(m.format, 'customStage'), m.format).toBe(false);
+      expect(fieldStatus(m.format, 'customStage'), m.format).toBe('not-applicable');
+    }
   });
 });

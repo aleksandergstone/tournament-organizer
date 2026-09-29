@@ -15,7 +15,7 @@ import { adaptRulesToFormat, hiddenGroups, validateModeSetup, visibleGroups } fr
 import { applyPreset, type Preset } from '../engine/presets';
 import { Alert, Field, Page, Panel } from './kit';
 import {
-  Glossary, ModeExplainer, PresetPicker, SettingsForMode, StructurePreviewBox,
+  Glossary, ModeExplainer, PresetPicker, PreviewWarning, SettingsForMode, StructurePreviewBox,
 } from './modes';
 import { useT } from '../i18n';
 
@@ -94,6 +94,7 @@ export default function Rules() {
       ) : null}
 
       <Panel title={t('mode.generateTitle')} sub={t('mode.generateSub')}>
+        <PreviewWarning format={currentFormat} rules={r} count={count} />
         <StructurePreviewBox format={currentFormat} count={count} rules={r} />
       </Panel>
 

@@ -7,14 +7,14 @@
 import {
   MODES, PICKER_GROUPS, modesInGroup, pickerGroupTitle, modeOf, hiddenGroups,
   previewStructure, summaryRows, glossaryFor, visibleGroups, ALL_GROUPS,
-  specFor, fieldRule, groupPlan, inertFields,
+  specFor, fieldRule, groupPlan, inertFields, stagePlan, manualSteps, previewWarning,
   type PickerGroup, type SettingGroup, type StructurePreview,
   type FieldRule, type ScoreEffect, type SettingStatus, type ModeSpec,
 } from '../engine/mode-info';
 import { presetsFor, activePresetId, type Preset } from '../engine/presets';
-import type { DrawResolution, RuleSet, TiebreakKey, ValidationIssueLike } from '../engine/types';
+import { CUSTOM_STAGES, GENERATED_CUSTOM_STAGES, type CustomStage, type DrawResolution, type RuleSet, type TiebreakKey, type ValidationIssueLike } from '../engine/types';
 import { describeFormat } from '../engine/generate';
-import { Field, Panel, Switch } from './kit';
+import { Field, Panel, Switch, Alert } from './kit';
 import { useT, type Dict } from '../i18n';
 
 type Key = keyof Dict & string;
@@ -29,11 +29,28 @@ const GROUP_TITLE: Record<SettingGroup, Key> = {
   rounds: 'mode.set.rounds',
   meeting: 'mode.set.meeting',
   byes: 'mode.set.byes',
+  structure: 'mode.set.structure',
   reporting: 'mode.set.reporting',
 };
 
 const RESOLUTIONS: readonly DrawResolution[] = ['overtime', 'replay', 'penalty', 'tiebreak'];
 const ALL_TIEBREAKS: readonly TiebreakKey[] = ['points', 'wins', 'diff', 'scored', 'buchholz', 'seed', 'name'];
+
+/**
+/**
+ * The warning a setup screen must show before creation: a plan it cannot count
+ * is a plan the organizer should not save blind.
+ */
+export function PreviewWarning({ format, rules, count }: {
+  format: string;
+  rules: RuleSet;
+  count?: number | null;
+}) {
+  const t = useT();
+  const warning = previewWarning(format, rules, count);
+  if (!warning) return null;
+  return <Alert tone="warn" title={t('mode.warn.title')}>{t(warning)}</Alert>;
+}
 
 /**
  * The two facts that make a setting unambiguous: how much it matters here, and
@@ -105,6 +122,49 @@ export function ModeRules({ format, rules, count }: {
       <div>
         <dt>{t('mode.rules.advancement')}</dt>
         <dd><span className="f-hint">{t(spec.advancement.why)}</span></dd>
+      </div>
+      <div>
+        <dt>{t('mode.rules.stages')}</dt>
+        <dd>
+          <ol className="rule-stages">
+            {spec.stages.map((s, i) => (
+              <li key={String(s.key)}>
+                <b>{i + 1}. {t(s.key)}</b>
+                <span className="f-hint">{t(s.produces)} — {t(s.flow)}</span>
+              </li>
+            ))}
+          </ol>
+        </dd>
+      </div>
+      <div>
+        <dt>{t('mode.rules.tiebreak')}</dt>
+        <dd>
+          {spec.tiebreak.applies ? <RuleTag status="required" affects="tie-break" /> : null}
+          <span className="f-hint">{t(spec.tiebreak.why)}</span>
+        </dd>
+      </div>
+      <div>
+        <dt>{t('mode.rules.reporting')}</dt>
+        <dd>
+          <span className="f-hint">{t(spec.reporting.produces)}</span>
+          <span className="f-hint">{t(spec.reporting.omits)}</span>
+        </dd>
+      </div>
+      <div>
+        <dt>{t('mode.rules.edgeCases')}</dt>
+        <dd>
+          <ul className="rule-list">
+            {spec.edgeCases.map(k => <li key={String(k)}>{t(k)}</li>)}
+          </ul>
+        </dd>
+      </div>
+      <div>
+        <dt>{t('mode.rules.unsupported')}</dt>
+        <dd>
+          <ul className="rule-list">
+            {spec.unsupported.map(k => <li key={String(k)}>{t(k)}</li>)}
+          </ul>
+        </dd>
       </div>
       <div>
         <dt>{t('mode.rules.contains')}</dt>
@@ -289,6 +349,24 @@ export function StructurePreviewBox({ format, count, rules }: {
         </table>
       ) : null}
       {p.notes.map(n => <p key={n} className="f-hint">{t(n)}</p>)}
+      <ol className="stage-plan">
+        {stagePlan(format, rules, count).map((s, i) => (
+          <li key={i}>
+            <b>{t(s.key)}</b>
+            <span className={'chip' + (s.generatedNow ? ' ok' : '')}>
+              {s.generatedNow ? t('mode.stage.now') : t('mode.stage.later')}
+            </span>
+            {s.matches !== null ? <span className="chip">{t('preview.matches')}: {s.matches}</span> : null}
+            <span className="f-hint">{t(s.produces)}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="rule-note">
+        <b>{t('mode.rules.manual')}</b>
+        <ul className="rule-list">
+          {manualSteps(format).map(k => <li key={String(k)}>{t(k)}</li>)}
+        </ul>
+      </p>
     </div>
   );
 }
@@ -558,6 +636,31 @@ export function SettingsForMode({ format, rules, set, count, issues = [], groups
             <Field label={<>{t('rules.byePoints')}{tag('byePoints')}</>} hint={t('mode.why.byePoints')}>
               <input type="number" min={0} value={rules.byePoints ?? 3} onChange={e => set({ byePoints: Number(e.target.value) })} />
             </Field>
+          ) : null}
+
+          {g === 'structure' ? (
+            <>
+              <FieldTagLine format={format} field="customStage" />
+              <Field
+                label={<>{t('rules.customStage')}{tag('customStage')}</>}
+                hint={t('mode.why.customStage')}
+                error={err('customStage')}>
+                <select
+                  value={rules.customStage ?? ''}
+                  onChange={e => set({ customStage: (e.target.value || undefined) as CustomStage | undefined })}>
+                  <option value="">{t('mode.err.stageRequired')}</option>
+                  {CUSTOM_STAGES.map(s => (
+                    <option
+                      key={s}
+                      value={s}
+                      disabled={!GENERATED_CUSTOM_STAGES.includes(s)}>
+                      {t(`mode.stageName.${s}` as Key)}
+                      {GENERATED_CUSTOM_STAGES.includes(s) ? '' : ` — ${t('mode.no.multiStage')}`}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </>
           ) : null}
 
           {inertNote ? <p className="rule-note warn">{inertNote}</p> : null}
