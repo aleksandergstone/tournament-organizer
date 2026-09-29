@@ -11,7 +11,7 @@ import { genDoubleElim } from '../engine/double';
 import { recomputeBracket } from '../engine/recompute';
 import { genRoundRobin, genGroupsKnockout, genLeague, describeFormat } from '../engine/generate';
 import { swissPairings } from '../engine/swiss';
-import { adaptRulesToFormat, hiddenGroups, validateModeSetup, visibleGroups } from '../engine/mode-info';
+import { adaptRulesToFormat, validateModeSetup, visibleGroups } from '../engine/mode-info';
 import { applyPreset, type Preset } from '../engine/presets';
 import { Alert, Field, Page, Panel } from './kit';
 import {
@@ -49,7 +49,6 @@ export default function Rules() {
   // The real field if participants are in, otherwise what the organizer expects.
   const count = n >= 2 ? n : (domain.tournament.participantCountExpected ?? null);
   const issues = validateModeSetup(currentFormat, r, count);
-  const advanced = hiddenGroups(currentFormat);
   return (
     <Page title={t('rules.title')} sub={t('rules.sub')}>
       <Panel title={t('wizard.format')}>
@@ -83,15 +82,6 @@ export default function Rules() {
       </div>
       <SettingsForMode format={currentFormat} rules={r} set={set} count={count}
         groups={visibleGroups(currentFormat)} issues={issues} />
-
-      {advanced.length > 0 ? (
-        <details className="advanced">
-          <summary>{t('mode.advancedTitle')}</summary>
-          <p className="f-hint">{t('mode.advancedSub')}</p>
-          <SettingsForMode format={currentFormat} rules={r} set={set} count={count}
-            groups={advanced} issues={issues} />
-        </details>
-      ) : null}
 
       <Panel title={t('mode.generateTitle')} sub={t('mode.generateSub')}>
         <PreviewWarning format={currentFormat} rules={r} count={count} />

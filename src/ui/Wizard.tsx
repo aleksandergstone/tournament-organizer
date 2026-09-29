@@ -2,7 +2,7 @@ import { useApp } from '../state/store';
 import { CompetitionFormat, RuleSet } from '../engine/types';
 import { useState } from 'react';
 import { validateTournament, ValidationIssue } from '../engine/validate';
-import { adaptRulesToFormat, hiddenGroups, validateModeSetup, visibleGroups } from '../engine/mode-info';
+import { adaptRulesToFormat, validateModeSetup, visibleGroups } from '../engine/mode-info';
 import { applyPreset, type Preset } from '../engine/presets';
 import { uid, nowIso } from '../engine/types';
 import { describeFormat } from '../engine/generate';
@@ -34,7 +34,6 @@ export default function Wizard() {
   const count = typeof f.participantCountExpected === 'number' ? f.participantCountExpected : null;
   // Live, while typing: the same checks the engine runs on save.
   const liveIssues = validateModeSetup(f.format, f.rules, count);
-  const advanced = hiddenGroups(f.format);
 
   const pickFormat = (format: CompetitionFormat) => {
     setF(s => ({
@@ -101,16 +100,6 @@ export default function Wizard() {
       <SettingsForMode
         format={f.format} rules={f.rules} set={setRules} count={count}
         groups={visibleGroups(f.format)} issues={liveIssues} />
-
-      {advanced.length > 0 ? (
-        <details className="advanced">
-          <summary>{t('mode.advancedTitle')}</summary>
-          <p className="f-hint">{t('mode.advancedSub')}</p>
-          <SettingsForMode
-            format={f.format} rules={f.rules} set={setRules} count={count}
-            groups={advanced} issues={liveIssues} />
-        </details>
-      ) : null}
 
       <Panel title={t('mode.generateTitle')} sub={t('mode.generateSub')}>
         <PreviewWarning format={f.format} rules={f.rules} count={count} />

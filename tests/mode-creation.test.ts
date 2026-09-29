@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
 import {
   MODES, ALL_GROUPS, SETTING_FIELDS, modeOf, settingGroupsFor, visibleGroups,
   hiddenGroups, visibleFields, showsField, fieldStatus, fieldEffect, specFor,
-  groupPlan, inertFields, adaptRulesToFormat, previewStructure, validateModeSetup,
+  groupPlan, inertFields, labelOfField, adaptRulesToFormat, previewStructure, validateModeSetup,
   summaryRows, glossaryFor, PICKER_GROUPS, modesInGroup, pickerGroupTitle,
   stagePlan, manualSteps, previewWarning, fieldsByStatus, notApplicableFields,
   requiredFields,
@@ -671,10 +671,17 @@ describe('the exact mechanics of each mode', () => {
     expect(inert).toContain('groupCount');
     expect(inert).toContain('advancePerGroup');
     expect(inert).toContain('swissRounds');
-    const issues = validateModeSetup('custom', rules());
-    const last = issues[issues.length - 1];
-    expect(last.field).toBe('format');
-    expect(last.message).toContain(translate('en', 'rules.groupCount'));
+    // The settings that change nothing in Custom are named, but naming them is
+    // not a reason to refuse the tournament: Custom always has some, so an issue
+    // here would make a custom event impossible to create.
+    expect(validateModeSetup('custom', rules({ customStage: 'pairings' }), 8)).toEqual([]);
+    // The default rules already state a stage, so a missing one is a real case.
+    const noStage = { ...rules() };
+    delete noStage.customStage;
+    expect(validateModeSetup('custom', noStage as never, 8).map(i => i.field)).toEqual(['customStage']);
+    // And a message that names a field names it in words, never as a key.
+    expect(labelOfField('groupCount')).toBe(en['common.groups']);
+    expect(labelOfField('advancePerGroup')).toBe(en['rules.advance']);
   });
 });
 

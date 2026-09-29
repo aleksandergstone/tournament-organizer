@@ -7,7 +7,7 @@
 import {
   MODES, PICKER_GROUPS, modesInGroup, pickerGroupTitle, modeOf, hiddenGroups,
   previewStructure, summaryRows, glossaryFor, visibleGroups, ALL_GROUPS,
-  specFor, fieldRule, groupPlan, inertFields, stagePlan, manualSteps, previewWarning,
+  specFor, fieldRule, groupPlan, inertFields, stagePlan, manualSteps, previewWarning, labelOfField,
   type PickerGroup, type SettingGroup, type StructurePreview,
   type FieldRule, type ScoreEffect, type SettingStatus, type ModeSpec,
 } from '../engine/mode-info';
@@ -261,7 +261,7 @@ export function ModeExplainer({ format, rules, count }: {
         </p>
       ) : null}
       {inert.length > 0 ? (
-        <p className="f-hint">{t('mode.err.inertSettings', { names: inert.map(f => t(`rules.${f.field}` as Key)).join(', ') })}</p>
+        <p className="f-hint">{t('mode.err.inertSettings', { names: inert.map(f => labelOfField(f.field)).join(', ') })}</p>
       ) : null}
     </div>
   );
@@ -378,7 +378,7 @@ export function SetupSummary({ format, rules, count }: {
   count?: number | null;
 }) {
   const t = useT();
-  const rows = summaryRows(format, rules);
+  const rows = summaryRows(format, rules, count);
   const p = previewStructure(format, count ?? null, rules);
   const total = (p.matches ?? 0) + p.later;
   return (
@@ -570,12 +570,16 @@ export function SettingsForMode({ format, rules, set, count, issues = [], groups
   groups?: readonly SettingGroup[];
 }) {
   const t = useT();
-  const groups = ALL_GROUPS.filter(g => (only ?? visibleGroups(format)).includes(g));
+  // A group with no field in this format is never rendered, whatever a caller
+  // asks for: an input the generator ignores teaches a wrong model.
+  const wanted = only ?? visibleGroups(format);
+  const has = (g: SettingGroup) => specFor(format).fields.some(f => f.group === g);
+  const groups = ALL_GROUPS.filter(g => wanted.includes(g) && has(g));
   const err = (field: string) => issues.find(i => i.field === field)?.message;
   const inert = inertFields(format);
   const inertHere = inert.filter(f => groups.includes(f.group));
   const inertNote = inertHere.length > 0
-    ? t('mode.err.inertSettings', { names: inertHere.map(f => t(`rules.${f.field}` as Key)).join(', ') })
+    ? t('mode.err.inertSettings', { names: inertHere.map(f => labelOfField(f.field)).join(', ') })
     : null;
   const tag = (field: keyof RuleSet) => {
     const rule = fieldRule(format, field);

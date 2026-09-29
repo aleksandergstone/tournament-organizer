@@ -502,14 +502,10 @@ export function validateModeSetup(
     }
   }
 
-  // --- settings the mode shows but the generator cannot act on -----------------
-  // Custom deliberately exposes every combination, so the app names the ones that
-  // change nothing here instead of pretending they build a stage.
-  const inert = inertFields(format);
-  if (inert.length > 0) {
-    const names = inert.map(f => t(`rules.${f.field}` as never)).join(', ');
-    issues.push({ field: 'format', message: t('mode.err.inertSettings', { names }) });
-  }
+  // Settings the mode shows but the generator cannot act on are named in the
+  // settings panel and in the mode explanation. They are deliberately NOT an
+  // issue here: Custom always has some, so an issue would make a custom event
+  // impossible to create.
 
   // --- a custom event has to state its stage ----------------------------------
   // The one thing a custom format may not leave to the app: what it is built
@@ -735,6 +731,36 @@ const WHY: Record<keyof RuleSet, keyof Dict> = {
   byePoints: 'mode.why.byePoints',
   customStage: 'mode.why.customStage',
 };
+
+/**
+ * The label a field is shown under. Not every field has a "rules.*" key, so a
+ * message that names fields cannot build the name by string: three of them live
+ * under a different prefix, and a missing key would print itself in the UI.
+ */
+const FIELD_LABELS: Record<keyof RuleSet, keyof Dict> = {
+  rounds: 'rules.swissRounds',
+  matchLengthMin: 'mode.why.matchLength',
+  winPoints: 'rules.win',
+  drawPoints: 'rules.draw',
+  lossPoints: 'rules.loss',
+  allowDraws: 'rules.allowDraws',
+  drawResolution: 'mode.rules.drawRule',
+  tiebreakOrder: 'rules.tiebreak',
+  walkoverWinnerPoints: 'rules.walkoverWin',
+  overtimeAllowed: 'rules.overtime',
+  seeding: 'rules.seeding',
+  groupCount: 'common.groups',
+  advancePerGroup: 'rules.advance',
+  homeAway: 'rules.homeAway',
+  swissRounds: 'rules.swissRounds',
+  byePoints: 'rules.byePoints',
+  customStage: 'rules.customStage',
+};
+
+/** The user-facing name of a rule field, in the active language. */
+export function labelOfField(field: keyof RuleSet): string {
+  return t(FIELD_LABELS[field]);
+}
 
 /** Every rule field the app knows, so "not applicable" can name the rest. */
 export const ALL_RULE_FIELDS: readonly (keyof RuleSet)[] =
