@@ -648,3 +648,86 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
 .champion-place.place-1 { font-size: 15px; font-weight: 600; color: var(--ink); }
 tr.champion td { font-weight: 600; color: var(--ink); }
 tr.champion td.rank { color: var(--acc); }
+
+/* --- guided mode creation --------------------------------------------- */
+/* The mode picker: grouped by intent, each card saying what the mode means. */
+.mode-picker { display: flex; flex-direction: column; gap: 18px; }
+.mode-group-title {
+  font-size: var(--fs-xs); font-weight: 620; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--muted); margin: 0 0 8px;
+}
+.mode-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); gap: 10px; }
+.mode-card {
+  display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer;
+  padding: 11px 13px; border: 1px solid var(--line-2); border-radius: var(--r);
+  background: var(--panel); color: var(--ink); box-shadow: var(--sh-1);
+  transition: border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
+}
+.mode-card:hover { border-color: #b9c2cf; background: var(--panel-2); }
+.mode-card.on { border-color: var(--acc); background: var(--acc-soft); box-shadow: var(--sh-focus); }
+.mode-card-name { font-weight: 620; }
+.mode-card-meaning { font-size: var(--fs-xs); color: var(--muted); line-height: 1.45; }
+
+.mode-explain { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.mode-explain-meaning { margin: 0; font-size: var(--fs-body); }
+.mode-explain-list, .preset-list, .glossary-list { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.mode-explain-list > div, .preset-list > div, .glossary-list > div { display: grid; grid-template-columns: 132px 1fr; gap: 10px; }
+.mode-explain-list dt, .preset-list dt, .glossary-list dt { font-size: var(--fs-xs); color: var(--muted); }
+.mode-explain-list dd, .preset-list dd, .glossary-list dd { margin: 0; font-size: var(--fs-sm); }
+
+/* Preset cards: what it does, why, who it fits, what it generates. */
+.preset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 12px; }
+.preset-card {
+  display: flex; flex-direction: column; gap: 10px; padding: 13px;
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--panel-2);
+}
+.preset-card.on { border-color: var(--ok-line); background: var(--ok-soft); }
+.preset-head { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.preset-card .btn { align-self: flex-start; }
+.chip {
+  font-size: 11px; font-weight: 600; letter-spacing: .2px; padding: 2px 7px;
+  border-radius: 999px; background: #eef1f6; color: var(--ink-2); white-space: nowrap;
+}
+.chip.ok { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok-line); }
+
+/* What the app will generate, counted from the current rules. */
+.preview { display: flex; flex-direction: column; gap: 9px; }
+.preview-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.preview-table, .summary-table { width: 100%; border-collapse: collapse; }
+.preview-table th, .summary-table th {
+  text-align: left; font-weight: 500; color: var(--muted); font-size: var(--fs-xs);
+  padding: 4px 10px 4px 0; vertical-align: top; white-space: nowrap;
+}
+.preview-table td, .summary-table td { padding: 4px 0; font-size: var(--fs-sm); }
+.preview-table tr + tr th, .preview-table tr + tr td,
+.summary-table tr + tr th, .summary-table tr + tr td { border-top: 1px solid var(--line); }
+.summary-rules { margin: 0; padding-left: 17px; display: flex; flex-direction: column; gap: 3px; }
+
+/* Section heading between panels, and the collapsed advanced block. */
+.section-head { margin: 20px 0 10px; }
+.section-head h2 { font-size: var(--fs-h2); }
+.advanced {
+  margin-top: 12px; padding: 12px 14px; border: 1px dashed var(--line-2);
+  border-radius: var(--r); background: var(--panel-2);
+}
+.advanced > summary { cursor: pointer; font-weight: 600; }
+.advanced > .card { margin-top: 12px; }
+
+/* Tie-break order: a sequence, because order is the whole meaning. */
+.tiebreak { display: flex; flex-direction: column; gap: 8px; }
+.tiebreak-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tiebreak-list li { display: flex; align-items: center; gap: 7px; }
+.tiebreak-pos {
+  width: 21px; height: 21px; border-radius: 50%; background: var(--acc-soft); color: var(--acc);
+  display: grid; place-items: center; font-size: 11px; font-weight: 700;
+}
+.tiebreak-name { flex: 1; font-size: var(--fs-sm); }
+.tiebreak-add { max-width: 260px; }
+.btn.tiny { padding: 2px 7px; font-size: 12px; line-height: 1.3; }
+
+.glossary { margin-top: 12px; }
+.glossary > summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
+.glossary > .f-hint { margin: 8px 0; }
+@media (max-width: 620px) {
+  .mode-explain-list > div, .preset-list > div, .glossary-list > div { grid-template-columns: 1fr; gap: 1px; }
+}

@@ -1,3 +1,9 @@
+// Rules screen: the same guided view as the wizard, one step further on.
+//
+// The format decides which settings exist here — a bracket never shows a points
+// field, a league never shows Swiss rounds — and the same catalogue drives the
+// presets, the preview and the warnings, so this screen and the wizard cannot
+// describe the event differently.
 import { useApp } from '../state/store';
 import { RuleSet } from '../engine/types';
 import { genSingleElim } from '../engine/elim';
@@ -5,7 +11,12 @@ import { genDoubleElim } from '../engine/double';
 import { recomputeBracket } from '../engine/recompute';
 import { genRoundRobin, genGroupsKnockout, genLeague, describeFormat } from '../engine/generate';
 import { swissPairings } from '../engine/swiss';
-import { Alert, Field, Page, Panel, Switch } from './kit';
+import { hiddenGroups, visibleGroups, validateModeSetup } from '../engine/mode-info';
+import { applyPreset, type Preset } from '../engine/presets';
+import { Alert, Field, Page, Panel } from './kit';
+import {
+  Glossary, ModeExplainer, PresetPicker, SettingsForMode, StructurePreviewBox,
+} from './modes';
 import { useT } from '../i18n';
 
 const FINISHED = new Set(['played', 'draw', 'walkover', 'overtime']);
@@ -35,51 +46,54 @@ export default function Rules() {
   };
   const n = domain.participants.filter(p => p.active).length;
   const hasResults = domain.matches.some(m => FINISHED.has(m.result.status));
+  // The real field if participants are in, otherwise what the organizer expects.
+  const count = n >= 2 ? n : (domain.tournament.participantCountExpected ?? null);
+  const issues = validateModeSetup(currentFormat, r, count);
+  const advanced = hiddenGroups(currentFormat);
   return (
     <Page title={t('rules.title')} sub={t('rules.sub')}>
       <Panel title={t('wizard.format')}>
-        <div className="grid2">
-          <Field label={t('wizard.format')} hint={t('rules.formatHint')}>
-            <select value={domain.tournament.format} onChange={e => update(d => ({ ...d, tournament: { ...d.tournament, format: e.target.value as never } }), 'format.change')}>
-              {['single-elimination', 'double-elimination', 'round-robin', 'swiss', 'groups-knockout', 'league', 'team-match', 'individual-match', 'custom']
-                .map(x => <option key={x} value={x}>{describeFormat(x)}</option>)}
-            </select>
-          </Field>
-          <Field label={t('rules.seeding')} hint={t('rules.seedingHint')}>
-            <select value={r.seeding} onChange={e => set({ seeding: e.target.value as RuleSet['seeding'] })}>
-              <option value="seeded">{t('rules.seedingSeeded')}</option>
-              <option value="random">{t('rules.seedingRandom')}</option>
-              <option value="manual">{t('rules.seedingManual')}</option>
-            </select>
-          </Field>
-        </div>
+        <Field label={t('wizard.format')} hint={t('rules.formatHint')}>
+          <select value={currentFormat} onChange={e => update(d => ({ ...d, tournament: { ...d.tournament, format: e.target.value as never } }), 'format.change')}>
+            {['single-elimination', 'double-elimination', 'round-robin', 'swiss', 'groups-knockout', 'league', 'team-match', 'individual-match', 'custom']
+              .map(x => <option key={x} value={x}>{describeFormat(x)}</option>)}
+          </select>
+        </Field>
+        <ModeExplainer format={currentFormat} />
       </Panel>
 
-      <Panel title={t('rules.scoring')} sub={t('rules.scoringSub')}>
-        <div className="grid2">
-          <Field label={t('rules.win')}><input type="number" value={r.winPoints} onChange={e => set({ winPoints: Number(e.target.value) })} /></Field>
-          <Field label={t('rules.draw')}><input type="number" value={r.drawPoints} onChange={e => set({ drawPoints: Number(e.target.value) })} /></Field>
-          <Field label={t('rules.loss')}><input type="number" value={r.lossPoints} onChange={e => set({ lossPoints: Number(e.target.value) })} /></Field>
-          <Field label={t('rules.walkoverWin')}><input type="number" value={r.walkoverWinnerPoints} onChange={e => set({ walkoverWinnerPoints: Number(e.target.value) })} /></Field>
-        </div>
-        <div style={{ marginTop: 4 }}>
-          <Switch checked={r.allowDraws} onChange={v => set({ allowDraws: v })} label={t('rules.allowDraws')} hint={t('rules.allowDrawsHint')} />
-          <Switch checked={!!r.overtimeAllowed} onChange={v => set({ overtimeAllowed: v })} label={t('rules.overtime')} hint={t('rules.overtimeHint')} />
-          <Switch checked={!!r.homeAway} onChange={v => set({ homeAway: v })} label={t('rules.homeAway')} hint={t('rules.homeAwayHint')} />
-        </div>
+      <Panel title={t('mode.presetsTitle')} sub={t('mode.presetsSub')}>
+        <PresetPicker format={currentFormat} rules={r} onApply={(p: Preset) => set(applyPreset(r, p))} />
       </Panel>
 
-      <Panel title={t('rules.structure')} sub={t('rules.structureSub')}>
-        <div className="grid3">
-          <Field label={t('common.groups')}><input type="number" min={2} value={r.groupCount ?? 2} onChange={e => set({ groupCount: Number(e.target.value) })} /></Field>
-          <Field label={t('rules.advance')}><input type="number" min={1} value={r.advancePerGroup ?? 2} onChange={e => set({ advancePerGroup: Number(e.target.value) })} /></Field>
-          <Field label={t('rules.swissRounds')}><input type="number" min={1} value={r.swissRounds ?? 5} onChange={e => set({ swissRounds: Number(e.target.value) })} /></Field>
-          <Field label={t('rules.byePoints')}><input type="number" value={r.byePoints ?? 3} onChange={e => set({ byePoints: Number(e.target.value) })} /></Field>
-        </div>
+      <div className="section-head">
+        <h2>{t('mode.settingsTitle')}</h2>
+      </div>
+      <SettingsForMode format={currentFormat} rules={r} set={set} count={count}
+        groups={visibleGroups(currentFormat)} issues={issues} />
+
+      {advanced.length > 0 ? (
+        <details className="advanced">
+          <summary>{t('mode.advancedTitle')}</summary>
+          <p className="f-hint">{t('mode.advancedSub')}</p>
+          <SettingsForMode format={currentFormat} rules={r} set={set} count={count}
+            groups={advanced} issues={issues} />
+        </details>
+      ) : null}
+
+      <Panel title={t('mode.generateTitle')} sub={t('mode.generateSub')}>
+        <StructurePreviewBox format={currentFormat} count={count} rules={r} />
       </Panel>
 
+      {issues.length > 0 && (
+        <Alert tone="warn" title={t('rules.checkRules')}>
+          {issues.map((i, k) => <div key={k}>{i.message}</div>)}
+        </Alert>
+      )}
       {n < 2 && <Alert tone="warn" title={t('rules.notEnough')}>{t('rules.notEnoughBody', { n })}</Alert>}
       {hasResults && <Alert tone="warn" title={t('rules.resultsLost')}>{t('rules.resultsLostBody')}</Alert>}
+
+      <Glossary format={currentFormat} />
 
       <div className="footbar">
         <span className="muted">

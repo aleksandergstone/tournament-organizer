@@ -60,6 +60,12 @@ export interface RuleSet {
 
 export type TiebreakKey = 'points' | 'wins' | 'diff' | 'scored' | 'buchholz' | 'seed' | 'name';
 
+/**
+ * A validation problem, in the smallest shape that both the engine and the
+ * setup screens can pass around (engine/validate.ts adds nothing to it).
+ */
+export interface ValidationIssueLike { field: string; message: string; }
+
 export const DEFAULT_RULES: RuleSet = {
   winPoints: 3,
   drawPoints: 1,

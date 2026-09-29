@@ -1,8 +1,9 @@
-import { Match, Participant, Tournament } from './types';
+import { Match, Participant, Tournament, ValidationIssueLike } from './types';
+import { validateModeSetup } from './mode-info';
 import { t } from '../i18n';
 
 // Validation returns human-readable errors; never throws for user data.
-export interface ValidationIssue { field: string; message: string; }
+export interface ValidationIssue extends ValidationIssueLike {}
 
 export function validateTournament(tour: Partial<Tournament>): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
@@ -11,6 +12,13 @@ export function validateTournament(tour: Partial<Tournament>): ValidationIssue[]
   if (!tour.format) issues.push({ field: 'format', message: t('engine.formatRequired') });
   if (tour.dates?.start && tour.dates?.end && tour.dates.start > tour.dates.end)
     issues.push({ field: 'dates', message: t('engine.badDates') });
+  // Rules that make no sense for the chosen format (byes in a bracket, more
+  // Swiss rounds than players, more groups than players…).
+  if (tour.format && tour.rules) {
+    for (const i of validateModeSetup(tour.format, tour.rules, tour.participantCountExpected ?? null)) {
+      issues.push(i);
+    }
+  }
   return issues;
 }
 

@@ -1,34 +1,50 @@
 import { useApp } from '../state/store';
-import { CompetitionFormat } from '../engine/types';
+import { CompetitionFormat, RuleSet } from '../engine/types';
 import { useState } from 'react';
 import { validateTournament, ValidationIssue } from '../engine/validate';
+import { validateModeSetup, hiddenGroups, visibleGroups } from '../engine/mode-info';
+import { applyPreset, type Preset } from '../engine/presets';
 import { uid, nowIso } from '../engine/types';
+import { describeFormat } from '../engine/generate';
 import { Alert, Field, Page, Panel, StepBar } from './kit';
+import {
+  Glossary, ModeExplainer, ModePicker, PresetPicker, SettingsForMode,
+  SetupSummary, StructurePreviewBox,
+} from './modes';
 import { useT } from '../i18n';
-import type { Dict } from '../i18n';
 
-type Key = keyof Dict & string;
-const FORMATS: { v: CompetitionFormat; key: Key; hint: Key }[] = [
-  { v: 'single-elimination', key: 'format.single-elimination', hint: 'format.hint.single-elimination' },
-  { v: 'double-elimination', key: 'format.double-elimination', hint: 'format.hint.double-elimination' },
-  { v: 'round-robin', key: 'format.round-robin', hint: 'format.hint.round-robin' },
-  { v: 'swiss', key: 'format.swiss', hint: 'format.hint.swiss' },
-  { v: 'groups-knockout', key: 'format.groups-knockout', hint: 'format.hint.groups-knockout' },
-  { v: 'league', key: 'format.league', hint: 'format.hint.league' },
-  { v: 'team-match', key: 'format.team-match', hint: 'format.hint.team-match' },
-  { v: 'individual-match', key: 'format.individual-match', hint: 'format.hint.individual-match' },
-  { v: 'custom', key: 'format.custom', hint: 'format.hint.custom' },
-];
-
+/**
+ * Creating a tournament, as a guided conversation rather than a form dump:
+ * what kind of event is this → what that mode means → a starting point (preset)
+ * → the settings that mode actually uses → a look at what will be generated →
+ * a plain summary → create.
+ *
+ * Every step reads the engine catalogue, so what the wizard promises here is
+ * exactly what the generators will do later.
+ */
 export default function Wizard() {
   const { domain, newProject, go } = useApp();
   const t = useT();
   const [f, setF] = useState({ ...domain.tournament, name: domain.tournament.name || '', sport: domain.tournament.sport || 'Football' });
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const set = (k: string, v: unknown) => setF(s => ({ ...s, [k]: v }));
+  const setRules = (patch: Partial<RuleSet>) => setF(s => ({ ...s, rules: { ...s.rules, ...patch } }));
   const errOf = (field: string) => issues.find(i => i.field === field)?.message;
   const others = issues.filter(i => !['name', 'sport', 'dates'].includes(i.field));
-  const format = FORMATS.find(x => x.v === f.format) ?? FORMATS[0];
+  const count = typeof f.participantCountExpected === 'number' ? f.participantCountExpected : null;
+  // Live, while typing: the same checks the engine runs on save.
+  const liveIssues = validateModeSetup(f.format, f.rules, count);
+  const advanced = hiddenGroups(f.format);
+
+  const pickFormat = (format: CompetitionFormat) => {
+    setF(s => ({
+      ...s,
+      format,
+      // A mode for individuals is a mode played without team wording.
+      individualOrTeam: format === 'individual-match' ? 'individual' : s.individualOrTeam,
+    }));
+  };
+  const usePreset = (preset: Preset) => setRules(applyPreset(f.rules, preset));
   const submit = () => {
     const t = { ...f, id: f.id.startsWith('t_') ? f.id : uid('t'), createdAt: f.createdAt || nowIso(), updatedAt: nowIso(), archived: false };
     const bad = validateTournament(t);
@@ -66,15 +82,35 @@ export default function Wizard() {
         </div>
       </Panel>
 
-      <Panel title={t('wizard.format')} sub={t('wizard.formatSub')}>
-        <div className="grid2">
-          <Field label={t('wizard.format')}>
-            <select value={f.format} onChange={e => set('format', e.target.value)}>
-              {FORMATS.map(x => <option key={x.v} value={x.v}>{t(x.key)}</option>)}
-            </select>
-          </Field>
-          <div className="f-hint" style={{ alignSelf: 'end', paddingBottom: 8 }}>{t(format.hint)}</div>
-        </div>
+
+      <Panel title={t('mode.pickTitle')} sub={t('mode.pickSub')}>
+        <ModePicker value={f.format} onChange={pickFormat} />
+        <ModeExplainer format={f.format} />
+      </Panel>
+
+      <Panel title={t('mode.presetsTitle')} sub={t('mode.presetsSub')}>
+        <PresetPicker format={f.format} rules={f.rules} onApply={usePreset} />
+      </Panel>
+
+      <div className="section-head">
+        <h2>{t('mode.settingsTitle')}</h2>
+      </div>
+      <SettingsForMode
+        format={f.format} rules={f.rules} set={setRules} count={count}
+        groups={visibleGroups(f.format)} issues={liveIssues} />
+
+      {advanced.length > 0 ? (
+        <details className="advanced">
+          <summary>{t('mode.advancedTitle')}</summary>
+          <p className="f-hint">{t('mode.advancedSub')}</p>
+          <SettingsForMode
+            format={f.format} rules={f.rules} set={setRules} count={count}
+            groups={advanced} issues={liveIssues} />
+        </details>
+      ) : null}
+
+      <Panel title={t('mode.generateTitle')} sub={t('mode.generateSub')}>
+        <StructurePreviewBox format={f.format} count={count} rules={f.rules} />
       </Panel>
 
       <Panel title={t('wizard.whenWhere')} sub={t('wizard.whenWhereSub')}>
@@ -91,9 +127,14 @@ export default function Wizard() {
         </div>
       </Panel>
 
+      <Panel title={t('mode.summaryTitle')}>
+        <SetupSummary format={f.format} rules={f.rules} count={count} />
+      </Panel>
+      <Glossary format={f.format} />
+
       <div className="footbar">
         <span className="muted">
-          {t('wizard.creates', { name: f.name.trim() || t('wizard.newTournament'), format: t(format.key) })}
+          {t('wizard.creates', { name: f.name.trim() || t('wizard.newTournament'), format: describeFormat(f.format) })}
         </span>
         <span className="sp" />
         <button className="btn" onClick={() => go('home')}>{t('common.cancel')}</button>

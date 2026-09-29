@@ -162,6 +162,17 @@ app.whenReady().then(async () => {
     await nav('Standings', 'Standings & final ranking');
     await shot('14-standings-final-result');
 
+    // 4c) Rules screen for a bracket: the guided mode view, no points fields
+    await nav('Home');
+    await openProject('Friday Night Cup');
+    await expectH1('Friday Night Cup');
+    await nav('Rules', 'Format & rules');
+    await shot('15-rules-double-elimination');
+    // The lower half: settings that matter for this mode, preview, summary.
+    await js('window.scrollTo(0, 980)');
+    await settle();
+    await shot('16-rules-settings-and-preview');
+
     // 5) Event operations: display mode and venue schedule
     await nav('Home');
     await openProject('City League 2026');
