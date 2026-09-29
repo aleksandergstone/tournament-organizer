@@ -45,12 +45,28 @@ export function recordResult(
   }
   if (r.status === 'played' || r.status === 'overtime' || r.status === 'draw') {
     const hs = r.homeScore ?? 0, as = r.awayScore ?? 0;
-    if (r.status === 'draw') r.winnerId = null;
-    else if (hs === as) {
-      r.winnerId = rules.allowDraws && !opts?.knockout ? null : r.winnerId;
-      if (!rules.allowDraws || opts?.knockout) {
+    if (r.status === 'draw') {
+      // An explicit draw: only meaningful where the mode allows one.
+      if (opts?.knockout) {
+        const rule = rules.drawResolution ?? 'none';
+        if (rule === 'none' || !rules.allowDraws) return { matches, issues: [knockoutMsg(m.roundName)] };
+        if (rule === 'overtime') return { matches, issues: [t('engine.drawOvertime')] };
+      } else if (!rules.allowDraws) {
         return { matches, issues: [knockoutMsg(m.roundName)] };
       }
+      r.winnerId = null;
+    }
+    else if (hs === as) {
+      // A level score. In a bracket it can only be accepted when the mode has a
+      // rule for it, and even then the match stays undecided: the winner has to
+      // come from extra time, a replay or a decider, never from the draw itself.
+      if (!rules.allowDraws) return { matches, issues: [knockoutMsg(m.roundName)] };
+      if (opts?.knockout) {
+        const rule = rules.drawResolution ?? 'none';
+        if (rule === 'none') return { matches, issues: [knockoutMsg(m.roundName)] };
+        if (rule === 'overtime') return { matches, issues: [t('engine.drawOvertime')] };
+      }
+      r.winnerId = null;
       r.status = 'draw';
     }
     else r.winnerId = hs > as ? m.homeId : m.awayId;

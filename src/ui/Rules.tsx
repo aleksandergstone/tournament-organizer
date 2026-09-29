@@ -11,7 +11,7 @@ import { genDoubleElim } from '../engine/double';
 import { recomputeBracket } from '../engine/recompute';
 import { genRoundRobin, genGroupsKnockout, genLeague, describeFormat } from '../engine/generate';
 import { swissPairings } from '../engine/swiss';
-import { hiddenGroups, visibleGroups, validateModeSetup } from '../engine/mode-info';
+import { adaptRulesToFormat, hiddenGroups, validateModeSetup, visibleGroups } from '../engine/mode-info';
 import { applyPreset, type Preset } from '../engine/presets';
 import { Alert, Field, Page, Panel } from './kit';
 import {
@@ -54,12 +54,24 @@ export default function Rules() {
     <Page title={t('rules.title')} sub={t('rules.sub')}>
       <Panel title={t('wizard.format')}>
         <Field label={t('wizard.format')} hint={t('rules.formatHint')}>
-          <select value={currentFormat} onChange={e => update(d => ({ ...d, tournament: { ...d.tournament, format: e.target.value as never } }), 'format.change')}>
+          <select value={currentFormat} onChange={e => {
+            const format = e.target.value;
+            // The draw rule belongs to the format, so it follows it; the rest of
+            // the organizer's settings are untouched.
+            update(d => ({
+              ...d,
+              tournament: {
+                ...d.tournament,
+                format: format as never,
+                rules: { ...d.tournament.rules, ...adaptRulesToFormat(format, d.tournament.rules) },
+              },
+            }), 'format.change');
+          }}>
             {['single-elimination', 'double-elimination', 'round-robin', 'swiss', 'groups-knockout', 'league', 'team-match', 'individual-match', 'custom']
               .map(x => <option key={x} value={x}>{describeFormat(x)}</option>)}
           </select>
         </Field>
-        <ModeExplainer format={currentFormat} />
+        <ModeExplainer format={currentFormat} rules={r} count={count} />
       </Panel>
 
       <Panel title={t('mode.presetsTitle')} sub={t('mode.presetsSub')}>

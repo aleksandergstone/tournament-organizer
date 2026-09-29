@@ -39,5 +39,7 @@ t.txt
 v.txt
 b.txt
 p.txt
+s-out.txt
+s-err.txt
 tools-setup.log
 tools-setup.err

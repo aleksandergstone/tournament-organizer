@@ -35,7 +35,7 @@ export const PRESETS: readonly Preset[] = [
     what: 'preset.quickKnockout.what', why: 'preset.quickKnockout.why', fits: 'preset.quickKnockout.fits',
     generates: 'preset.quickKnockout.generates', matters: 'preset.quickKnockout.matters',
     level: 'simple',
-    rules: { seeding: 'seeded', allowDraws: true, overtimeAllowed: true },
+    rules: { seeding: 'seeded', allowDraws: false, overtimeAllowed: true },
   },
   {
     id: 'unseeded-knockout', format: 'single-elimination',
@@ -43,7 +43,7 @@ export const PRESETS: readonly Preset[] = [
     what: 'preset.unseededKnockout.what', why: 'preset.unseededKnockout.why', fits: 'preset.unseededKnockout.fits',
     generates: 'preset.unseededKnockout.generates', matters: 'preset.unseededKnockout.matters',
     level: 'simple',
-    rules: { seeding: 'random', allowDraws: true, overtimeAllowed: true },
+    rules: { seeding: 'random', allowDraws: false, overtimeAllowed: true },
   },
   {
     id: 'fair-double', format: 'double-elimination',
@@ -51,7 +51,7 @@ export const PRESETS: readonly Preset[] = [
     what: 'preset.fairDouble.what', why: 'preset.fairDouble.why', fits: 'preset.fairDouble.fits',
     generates: 'preset.fairDouble.generates', matters: 'preset.fairDouble.matters',
     level: 'medium',
-    rules: { seeding: 'seeded', allowDraws: true, overtimeAllowed: true },
+    rules: { seeding: 'seeded', allowDraws: false, overtimeAllowed: true },
   },
   {
     id: 'everyone-plays', format: 'round-robin',

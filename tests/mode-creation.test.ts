@@ -8,17 +8,22 @@
 import { describe, it, expect } from 'vitest';
 import {
   MODES, ALL_GROUPS, SETTING_FIELDS, modeOf, settingGroupsFor, visibleGroups,
-  hiddenGroups, visibleFields, showsField, previewStructure, validateModeSetup,
+  hiddenGroups, visibleFields, showsField, fieldStatus, fieldEffect, specFor,
+  groupPlan, inertFields, adaptRulesToFormat, previewStructure, validateModeSetup,
   summaryRows, glossaryFor, PICKER_GROUPS, modesInGroup, pickerGroupTitle,
   PREVIEW_SAMPLE,
 } from '../src/engine/mode-info';
 import { PRESETS, presetsFor, presetById, applyPreset, activePresetId } from '../src/engine/presets';
 import { validateTournament } from '../src/engine/validate';
+import { recordResult } from '../src/engine/result';
 import { genSingleElim } from '../src/engine/elim';
 import { genDoubleElim } from '../src/engine/double';
 import { genRoundRobin, genLeague, genGroupsKnockout } from '../src/engine/generate';
 import { DEFAULT_RULES, type Participant, type RuleSet } from '../src/engine/types';
 import { en } from '../src/i18n/en';
+import { pl } from '../src/i18n/pl';
+import { de } from '../src/i18n/de';
+import { es } from '../src/i18n/es';
 import { translate } from '../src/i18n';
 
 const ALL_FORMATS = MODES.map(m => m.format);
@@ -83,49 +88,68 @@ describe('mode catalogue', () => {
     const m = modeOf('swiss');
 
 describe('which settings a mode shows', () => {
-  it('shows a bracket only what decides and orders a match', () => {
+  it('gives a bracket only what settles a match, plus points kept for reports', () => {
     for (const f of ['single-elimination', 'double-elimination'] as const) {
-      expect(visibleGroups(f)).toEqual(['seeding']);
-      expect(visibleFields(f)).toEqual(['seeding', 'allowDraws', 'overtimeAllowed']);
+      expect(visibleGroups(f)).toEqual(['seeding', 'draws', 'reporting']);
+      expect(visibleFields(f)).toEqual([
+        'seeding', 'overtimeAllowed', 'allowDraws', 'drawResolution',
+        'winPoints', 'drawPoints', 'lossPoints', 'walkoverWinnerPoints',
+      ]);
     }
   });
 
-  it('never shows points in a bracket — not in any form', () => {
+  it('shows points in a bracket only as reporting, never as progression', () => {
     for (const f of ['single-elimination', 'double-elimination'] as const) {
-      for (const field of ['winPoints', 'drawPoints', 'lossPoints', 'walkoverWinnerPoints', 'tiebreakOrder'] as const) {
-        expect(showsField(f, field), `${f}.${field}`).toBe(false);
+      for (const field of ['winPoints', 'drawPoints', 'lossPoints', 'walkoverWinnerPoints'] as const) {
+        expect(fieldStatus(f, field), `${f}.${field}`).toBe('reporting');
+        expect(fieldEffect(f, field), `${f}.${field}`).toBe('reporting');
       }
-      const keys = summaryRows(f, rules()).map(r => r.key);
+      // No tie-break, no table: a bracket is not ranked by points.
+      expect(showsField(f, 'tiebreakOrder'), f).toBe(false);
+      const keys = summaryRows(f, rules({ allowDraws: false })).map(r => r.key);
+      expect(keys).toContain('mode.sum.reporting');
       expect(keys).not.toContain('mode.sum.points');
       expect(keys).not.toContain('mode.sum.tiebreak');
     }
   });
 
-  it('shows points and tie-breaks only where a table is produced', () => {
+  it('shows points and tie-breaks as primary logic where a table is produced', () => {
     for (const f of ['round-robin', 'swiss', 'league', 'groups-knockout', 'team-match', 'individual-match'] as const) {
       expect(showsField(f, 'winPoints'), f).toBe(true);
       expect(showsField(f, 'tiebreakOrder'), f).toBe(true);
+      expect(fieldStatus(f, 'winPoints'), f).toBe('required');
+      expect(fieldEffect(f, 'winPoints'), f).toBe('ranking');
+      expect(fieldStatus(f, 'tiebreakOrder'), f).toBe('required');
+      expect(fieldEffect(f, 'tiebreakOrder'), f).toBe('tie-break');
+      // A level match is a final result here, so there is no decider to choose.
+      expect(showsField(f, 'drawResolution'), f).toBe(false);
     }
   });
 
   it('gives each mode only its own structure settings', () => {
-    expect(visibleGroups('swiss')).toEqual(['scoring', 'tiebreak', 'rounds', 'byes']);
-    expect(visibleGroups('league')).toEqual(['scoring', 'tiebreak', 'seeding', 'meeting']);
-    expect(visibleGroups('groups-knockout')).toEqual(['scoring', 'tiebreak', 'seeding', 'groups']);
+    expect(visibleGroups('swiss')).toEqual(['scoring', 'draws', 'tiebreak', 'rounds', 'byes']);
+    expect(visibleGroups('league')).toEqual(['scoring', 'draws', 'tiebreak', 'seeding', 'meeting']);
+    expect(visibleGroups('groups-knockout')).toEqual(['scoring', 'draws', 'tiebreak', 'seeding', 'groups']);
     expect(showsField('swiss', 'groupCount')).toBe(false);
     expect(showsField('swiss', 'homeAway')).toBe(false);
     expect(showsField('league', 'swissRounds')).toBe(false);
     expect(showsField('single-elimination', 'byePoints')).toBe(false);
+    expect(showsField('round-robin', 'drawResolution')).toBe(false);
   });
 
   it('keeps the rest of the rules reachable as advanced settings', () => {
     for (const m of MODES) {
       const shown = new Set(visibleGroups(m.format));
       const hidden = hiddenGroups(m.format);
-      expect(hidden.length, m.format).toBeGreaterThan(0);
       for (const g of hidden) expect(shown.has(g), `${m.format}.${g}`).toBe(false);
       // Nothing is lost: visible + hidden is the whole catalogue.
       expect([...shown, ...hidden].sort()).toEqual([...ALL_GROUPS].sort());
+    }
+    // Every mode except Custom has something to tuck away; Custom shows it all
+    // on purpose, which is what makes it the flexible one.
+    for (const m of MODES) {
+      if (m.format === 'custom') expect(hiddenGroups(m.format)).toEqual([]);
+      else expect(hiddenGroups(m.format).length, m.format).toBeGreaterThan(0);
     }
   });
 
@@ -337,8 +361,10 @@ describe('setup validation', () => {
   it('says nothing about a sensible setup', () => {
     expect(validateModeSetup('groups-knockout', rules({ groupCount: 2, advancePerGroup: 2 }), 12)).toEqual([]);
     expect(validateModeSetup('swiss', rules({ swissRounds: 5 }), 16)).toEqual([]);
-    expect(validateModeSetup('single-elimination', rules(), 8)).toEqual([]);
+    expect(validateModeSetup('single-elimination', rules({ allowDraws: false }), 8)).toEqual([]);
+    expect(validateModeSetup('double-elimination', rules({ allowDraws: false }), 8)).toEqual([]);
     expect(validateModeSetup('league', rules(), 10)).toEqual([]);
+    expect(validateModeSetup('round-robin', rules(), 8)).toEqual([]);
   });
 
   it('needs two groups, and teams left behind in each one', () => {
@@ -391,11 +417,32 @@ describe('setup summary', () => {
   });
 
   it('fills the numbers in, not just the labels', () => {
-    const rows = summaryRows('groups-knockout', rules({ groupCount: 4, advancePerGroup: 3 }));
-    const value = (k: string) => rows.find(r => r.key === k)?.value;
-    expect(value('mode.sum.groups')).toContain('4');
-    expect(value('mode.sum.groups')).toContain('3');
+    const rows = summaryRows('groups-knockout', rules({ groupCount: 4, advancePerGroup: 3 }), 16);
+    const value = (k: string) => rows.find(r => r.key === k)?.value ?? '';
+    expect(value('mode.sum.groupPlan')).toContain('4 / 4 / 4 / 4');
+    expect(value('mode.sum.groupPlan')).toContain('3');
     expect(value('mode.sum.points')).toContain('3');
+  });
+
+  it('states who goes forward, in every mode', () => {
+    for (const m of MODES) {
+      const rows = summaryRows(m.format, rules({ allowDraws: false }));
+      expect(rows[0].key, m.format).toBe('mode.sum.advances');
+      expect(rows[0].value, m.format).toBe(translate('en', specFor(m.format).advancement.why));
+      expect(rows[0].value.length, m.format).toBeGreaterThan(20);
+    }
+  });
+
+  it('names the draw rule instead of a bare yes/no in a bracket', () => {
+    const off = summaryRows('single-elimination', rules({ allowDraws: false }));
+    expect(off.find(r => r.key === 'mode.sum.drawRule')?.value).toBe(translate('en', 'mode.draws.notAllowed'));
+    for (const rule of ['overtime', 'replay', 'penalty', 'tiebreak'] as const) {
+      const on = summaryRows('single-elimination', rules({ allowDraws: true, drawResolution: rule }));
+      const value = on.find(r => r.key === 'mode.sum.drawRule')?.value ?? '';
+      expect(value, rule).toContain(translate('en', `mode.resolution.${rule}`).slice(0, 12));
+    }
+    // A table just says yes or no, because a draw is a final result there.
+    expect(summaryRows('league', rules({ allowDraws: true })).map(r => r.key)).toContain('mode.sum.draws');
   });
 
   it('names the tie-break order as an order', () => {
@@ -431,5 +478,233 @@ describe('glossary', () => {
     for (const f of ALL_FORMATS) {
       for (const term of glossaryFor(f)) expect(en[term], term).toContain(' — ');
     }
+  });
+});
+
+describe('draw rules are enforced, not just explained', () => {
+  const fields = (i: { field: string }[]) => i.map(x => x.field);
+
+  it('refuses a bracket that allows draws without a rule to settle them', () => {
+    expect(fields(validateModeSetup('single-elimination', rules({ allowDraws: true, drawResolution: 'none' }), 8)))
+      .toContain('drawResolution');
+    expect(validateModeSetup('single-elimination', rules({ allowDraws: true, drawResolution: 'penalty' }), 8)).toEqual([]);
+  });
+
+  it('insists extra time exists when extra time is the rule', () => {
+    const bad = rules({ allowDraws: true, drawResolution: 'overtime', overtimeAllowed: false });
+    expect(fields(validateModeSetup('single-elimination', bad, 8))).toContain('overtimeAllowed');
+    const good = rules({ allowDraws: true, drawResolution: 'overtime', overtimeAllowed: true });
+    expect(validateModeSetup('single-elimination', good, 8)).toEqual([]);
+  });
+
+  it('never asks for a decider where a draw is a final result', () => {
+    for (const f of ['round-robin', 'league', 'swiss', 'groups-knockout']) {
+      expect(fields(validateModeSetup(f, rules({ allowDraws: true }), 12)), f).not.toContain('drawResolution');
+    }
+  });
+
+  it('leaves a level match undecided when the bracket has a rule for it', () => {
+    const r = rules({ allowDraws: true, drawResolution: 'replay' });
+    const base = genSingleElim(players(4), r).matches;
+    const out = recordResult(base, base[0].id, { homeScore: 1, awayScore: 1, status: 'played' }, r, { knockout: true });
+    expect(out.issues).toEqual([]);
+    const played = out.matches.find(m => m.id === base[0].id)!;
+    expect(played.result.status).toBe('draw');
+    expect(played.result.winnerId).toBeNull();
+  });
+
+  it('asks for the extra-time result instead of accepting a draw on it', () => {
+    const r = rules({ allowDraws: true, drawResolution: 'overtime', overtimeAllowed: true });
+    const base = genSingleElim(players(4), r).matches;
+    const out = recordResult(base, base[0].id, { homeScore: 2, awayScore: 2, status: 'played' }, r, { knockout: true });
+    expect(out.issues).toEqual([translate('en', 'engine.drawOvertime')]);
+  });
+
+  it('refuses a level match in a bracket that has no rule', () => {
+    const r = rules({ allowDraws: false });
+    const base = genSingleElim(players(4), r).matches;
+    const out = recordResult(base, base[0].id, { homeScore: 1, awayScore: 1, status: 'played' }, r, { knockout: true });
+    expect(out.issues.length).toBe(1);
+  });
+
+  it('still records a draw normally in a table', () => {
+    const r = rules({ allowDraws: true });
+    const base = genRoundRobin(players(4), r);
+    const out = recordResult(base, base[0].id, { homeScore: 2, awayScore: 2, status: 'played' }, r);
+    expect(out.issues).toEqual([]);
+    expect(out.matches.find(m => m.id === base[0].id)!.result.status).toBe('draw');
+  });
+});
+
+describe('changing the format', () => {
+  it('closes draws in a bracket and opens them in a table, touching nothing else', () => {
+    const current = rules({ winPoints: 2, tiebreakOrder: ['wins'], groupCount: 4 });
+    const asBracket = { ...current, ...adaptRulesToFormat('single-elimination', current) };
+    expect(asBracket.allowDraws).toBe(false);
+    expect(asBracket.drawResolution).toBe('none');
+    expect(asBracket.winPoints).toBe(2);
+    expect(asBracket.tiebreakOrder).toEqual(['wins']);
+    expect(asBracket.groupCount).toBe(4);
+    const asTable = { ...current, ...adaptRulesToFormat('league', current) };
+    expect(asTable.allowDraws).toBe(true);
+  });
+
+  it('leaves a fresh tournament valid in its default format', () => {
+    const r = { ...DEFAULT_RULES, ...adaptRulesToFormat('single-elimination', DEFAULT_RULES) };
+    expect(validateModeSetup('single-elimination', r, 8)).toEqual([]);
+    expect(validateModeSetup('league', DEFAULT_RULES, 10)).toEqual([]);
+  });
+});
+
+// ---- the rule layer: what each mode promises --------------------------------
+
+const DICTS = { en, pl, de, es } as Record<string, Record<string, string>>;
+
+describe('mode rules', () => {
+  it('classifies every field it shows, and every word exists in all four languages', () => {
+    for (const m of MODES) {
+      for (const f of specFor(m.format).fields) {
+        expect(['required', 'optional', 'advanced', 'reporting'], `${m.format}.${f.field}`).toContain(f.status);
+        expect(['progression', 'ranking', 'tie-break', 'reporting', 'none'], `${m.format}.${f.field}`).toContain(f.affects);
+        for (const loc of ['en', 'pl', 'de', 'es']) {
+          expect(DICTS[loc][f.why], `${f.why} in ${loc}`).toBeTruthy();
+        }
+      }
+    }
+  });
+
+  it('states points, draws, group size, advancement and structure for every mode', () => {
+    for (const m of MODES) {
+      const s = specFor(m.format);
+      for (const key of [s.points.why, s.draws.why, s.groupSize.why, s.advancement.why, s.structure.contains, s.structure.excludes]) {
+        expect(translate('en', key), String(key)).not.toBe(key);
+        for (const loc of ['pl', 'de', 'es'] as const) expect(DICTS[loc][key], `${key} in ${loc}`).toBeTruthy();
+      }
+      expect(['bracket', 'table', 'rounds', 'fixtures'], m.format).toContain(s.advancement.kind);
+      // Six different thoughts, not one sentence reused.
+      const lines = new Set([s.points.why, s.draws.why, s.groupSize.why, s.advancement.why, s.structure.contains, s.structure.excludes]);
+      expect(lines.size, m.format).toBe(6);
+    }
+  });
+
+  it('reads an unknown format as the custom rules', () => {
+    expect(specFor('nonsense').format).toBe('custom');
+  });
+});
+
+describe('the exact mechanics of each mode', () => {
+  it('single elimination: the match result advances, points are paperwork', () => {
+    const s = specFor('single-elimination');
+    expect(s.advancement.kind).toBe('bracket');
+    expect(s.points).toMatchObject({ status: 'reporting', affects: 'reporting' });
+    expect(s.draws.policy).toBe('requires-resolution');
+    expect(s.draws.resolutions).toEqual(['overtime', 'replay', 'penalty', 'tiebreak']);
+    expect(fieldEffect('single-elimination', 'seeding')).toBe('progression');
+    expect(showsField('single-elimination', 'groupCount')).toBe(false);
+    expect(showsField('single-elimination', 'swissRounds')).toBe(false);
+    expect(showsField('single-elimination', 'tiebreakOrder')).toBe(false);
+  });
+
+  it('double elimination: the same bracket rules, and the reset is explained', () => {
+    const s = specFor('double-elimination');
+    expect(s.advancement.kind).toBe('bracket');
+    expect(s.points.affects).toBe('reporting');
+    expect(s.draws.policy).toBe('requires-resolution');
+    expect(translate('en', 'preview.noteReset')).toContain('final');
+    expect(previewStructure('double-elimination', 8, rules({ allowDraws: false })).notes).toContain('preview.noteReset');
+  });
+
+  it('round robin: points and draws are the engine', () => {
+    const s = specFor('round-robin');
+    expect(s.advancement.kind).toBe('table');
+    expect(s.points).toMatchObject({ status: 'required', affects: 'ranking' });
+    expect(s.draws.policy).toBe('allowed');
+    expect(fieldStatus('round-robin', 'allowDraws')).toBe('required');
+    expect(fieldEffect('round-robin', 'homeAway')).toBe('none');
+    expect(translate('en', s.draws.why)).toContain('draw points');
+  });
+
+  it('swiss: points drive pairing and ranking, the round count decides the length', () => {
+    const s = specFor('swiss');
+    expect(s.advancement.kind).toBe('rounds');
+    expect(fieldStatus('swiss', 'swissRounds')).toBe('required');
+    expect(fieldEffect('swiss', 'swissRounds')).toBe('progression');
+    expect(fieldEffect('swiss', 'winPoints')).toBe('ranking');
+    expect(fieldEffect('swiss', 'tiebreakOrder')).toBe('tie-break');
+    expect(showsField('swiss', 'groupCount')).toBe(false);
+    expect(showsField('swiss', 'homeAway')).toBe(false);
+  });
+
+  it('groups + knockout: group size and qualification decide, then the bracket does', () => {
+    const s = specFor('groups-knockout');
+    expect(s.advancement.kind).toBe('bracket');
+    expect(s.groupSize.status).toBe('required');
+    expect(fieldStatus('groups-knockout', 'groupCount')).toBe('required');
+    expect(fieldEffect('groups-knockout', 'advancePerGroup')).toBe('progression');
+    expect(fieldEffect('groups-knockout', 'winPoints')).toBe('ranking');
+    expect(fieldEffect('groups-knockout', 'seeding')).toBe('progression');
+    const plan = groupPlan(rules({ groupCount: 3, advancePerGroup: 2 }), 12);
+    expect(plan.sizes).toEqual([4, 4, 4]);
+    expect(plan.qualifiers).toBe(6);
+    expect(plan.knockoutSize).toBe(8);
+    expect(plan.knockoutByes).toBe(2);
+  });
+
+  it('league: one table, points central, no group stage', () => {
+    const s = specFor('league');
+    expect(s.advancement.kind).toBe('table');
+    expect(s.points.status).toBe('required');
+    expect(fieldStatus('league', 'homeAway')).toBe('optional');
+    expect(showsField('league', 'groupCount')).toBe(false);
+    expect(showsField('league', 'swissRounds')).toBe(false);
+  });
+
+  it('custom: every combination on show, and the inert ones are named out loud', () => {
+    const s = specFor('custom');
+    // Custom shows every group on purpose. The only one it leaves out is the
+    // reporting-only group, because here the points really do build the table.
+    expect(s.groups).toEqual([...ALL_GROUPS].filter(g => g !== 'reporting'));
+    expect(hiddenGroups('custom')).toEqual(['reporting']);
+    const inert = inertFields('custom').map(f => f.field);
+    expect(inert).toContain('groupCount');
+    expect(inert).toContain('advancePerGroup');
+    expect(inert).toContain('swissRounds');
+    const issues = validateModeSetup('custom', rules());
+    const last = issues[issues.length - 1];
+    expect(last.field).toBe('format');
+    expect(last.message).toContain(translate('en', 'rules.groupCount'));
+  });
+});
+
+describe('group sizes', () => {
+  it('divides evenly, and spreads the remainder one participant at a time', () => {
+    expect(groupPlan(rules({ groupCount: 4, advancePerGroup: 2 }), 16).sizes).toEqual([4, 4, 4, 4]);
+    const ten = groupPlan(rules({ groupCount: 4, advancePerGroup: 2 }), 10);
+    expect(ten.sizes).toEqual([3, 3, 2, 2]);
+    expect(ten.uneven).toBe(true);
+    expect(ten.smallest).toBe(2);
+    expect(ten.largest).toBe(3);
+    expect(groupPlan(rules({ groupCount: 2, advancePerGroup: 2 }), 8).uneven).toBe(false);
+  });
+
+  it('computes the qualifiers and the bracket they need', () => {
+    const six = groupPlan(rules({ groupCount: 2, advancePerGroup: 3 }), 12);
+    expect(six.qualifiers).toBe(6);
+    expect(six.knockoutSize).toBe(8);
+    expect(six.knockoutByes).toBe(2);
+    expect(groupPlan(rules({ groupCount: 4, advancePerGroup: 1 }), 16).knockoutByes).toBe(0);
+  });
+
+  it('uses the sample field when the count is not known yet', () => {
+    expect(groupPlan(rules({ groupCount: 2, advancePerGroup: 2 }), null).sizes).toEqual([4, 4]);
+  });
+
+  it('agrees with the generator about how many group matches that makes', () => {
+    const r = rules({ groupCount: 4, advancePerGroup: 2 });
+    const real = genGroupsKnockout(players(10), r);
+    const plan = groupPlan(r, 10);
+    const playable = real.matches.filter(m => m.homeId && m.awayId).length;
+    const expected = plan.sizes.reduce((sum, s) => sum + (s * (s - 1)) / 2, 0);
+    expect(playable).toBe(expected);
   });
 });

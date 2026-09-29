@@ -2,7 +2,7 @@ import { useApp } from '../state/store';
 import { CompetitionFormat, RuleSet } from '../engine/types';
 import { useState } from 'react';
 import { validateTournament, ValidationIssue } from '../engine/validate';
-import { validateModeSetup, hiddenGroups, visibleGroups } from '../engine/mode-info';
+import { adaptRulesToFormat, hiddenGroups, validateModeSetup, visibleGroups } from '../engine/mode-info';
 import { applyPreset, type Preset } from '../engine/presets';
 import { uid, nowIso } from '../engine/types';
 import { describeFormat } from '../engine/generate';
@@ -40,6 +40,9 @@ export default function Wizard() {
     setF(s => ({
       ...s,
       format,
+      // The format decides the draw rule, so it follows the format. Everything
+      // else the organizer set stays exactly as it was.
+      rules: { ...s.rules, ...adaptRulesToFormat(format, s.rules) },
       // A mode for individuals is a mode played without team wording.
       individualOrTeam: format === 'individual-match' ? 'individual' : s.individualOrTeam,
     }));
@@ -85,7 +88,7 @@ export default function Wizard() {
 
       <Panel title={t('mode.pickTitle')} sub={t('mode.pickSub')}>
         <ModePicker value={f.format} onChange={pickFormat} />
-        <ModeExplainer format={f.format} />
+        <ModeExplainer format={f.format} rules={f.rules} count={count} />
       </Panel>
 
       <Panel title={t('mode.presetsTitle')} sub={t('mode.presetsSub')}>

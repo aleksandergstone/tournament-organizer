@@ -40,6 +40,18 @@ export interface VenueResource {
   note?: string | null;
 }
 
+/**
+ * How a level match inside a bracket is settled. A draw cannot decide who
+ * advances, so a format that allows draws has to say what happens next instead
+ * of leaving the bracket stuck.
+ *  - none:     draws are not allowed; the app refuses to record one
+ *  - overtime: the extra time decides; record the result as overtime
+ *  - replay:   the match is played again; the next round waits
+ *  - penalty:  a shoot-out / decider decides
+ *  - tiebreak: a seeded decider decides
+ */
+export type DrawResolution = 'none' | 'overtime' | 'replay' | 'penalty' | 'tiebreak';
+
 export interface RuleSet {
   rounds?: number;            // swiss rounds, or null = auto
   matchLengthMin?: number | null;
@@ -47,6 +59,8 @@ export interface RuleSet {
   drawPoints: number;
   lossPoints: number;
   allowDraws: boolean;
+  /** Only consulted where a draw is allowed inside a bracket. */
+  drawResolution?: DrawResolution;
   tiebreakOrder: TiebreakKey[];
   walkoverWinnerPoints: number; // default = winPoints
   overtimeAllowed: boolean;
@@ -71,6 +85,8 @@ export const DEFAULT_RULES: RuleSet = {
   drawPoints: 1,
   lossPoints: 0,
   allowDraws: true,
+  // A draw inside a bracket is refused until the organizer picks a rule for it.
+  drawResolution: 'none',
   tiebreakOrder: ['points', 'wins', 'diff', 'scored', 'seed', 'name'],
   walkoverWinnerPoints: 3,
   overtimeAllowed: false,

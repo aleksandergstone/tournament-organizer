@@ -725,9 +725,36 @@ tr.champion td.rank { color: var(--acc); }
 .tiebreak-add { max-width: 260px; }
 .btn.tiny { padding: 2px 7px; font-size: 12px; line-height: 1.3; }
 
+/* The rule tags: how much a setting matters here, and what it changes. */
+.rule-tag {
+  display: inline-flex; align-items: baseline; gap: 6px; margin-left: 8px;
+  font-size: 11px; font-weight: 500; vertical-align: middle; white-space: nowrap;
+}
+.rule-tag b { font-weight: 650; }
+.rule-tag-affects { color: var(--muted); }
+.rule-tag.st-required b { color: var(--acc); }
+.rule-tag.st-optional b { color: var(--ink-2); }
+.rule-tag.st-advanced b { color: var(--warn); }
+.rule-tag.st-reporting b { color: var(--muted); }
+
+/* The six facts about a mode, shown before the organizer commits to it. */
+.rule-block { margin: 12px 0 0; display: flex; flex-direction: column; gap: 7px; }
+.rule-block > div { display: grid; grid-template-columns: 132px 1fr; gap: 10px; align-items: baseline; }
+.rule-block dt { font-size: var(--fs-xs); color: var(--muted); }
+.rule-block dd { margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.rule-block .rule-tag { margin-left: 0; }
+
+/* A line under a heading: the one fact about that group. */
+.rule-note {
+  margin: 0 0 8px; padding: 7px 10px; border-radius: var(--r-sm);
+  background: var(--acc-soft); color: var(--ink-2); font-size: var(--fs-xs); line-height: 1.5;
+}
+.rule-note.warn { background: var(--warn-soft); color: var(--warn); }
+
 .glossary { margin-top: 12px; }
 .glossary > summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
 .glossary > .f-hint { margin: 8px 0; }
 @media (max-width: 620px) {
   .mode-explain-list > div, .preset-list > div, .glossary-list > div { grid-template-columns: 1fr; gap: 1px; }
+  .rule-block > div { grid-template-columns: 1fr; gap: 2px; }
 }

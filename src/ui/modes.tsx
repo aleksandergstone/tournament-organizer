@@ -1,17 +1,18 @@
-// Guided mode creation: the pieces both the wizard and the rules screen use.
+// Shared UI for the guided mode flow.
 //
-// Nothing here decides anything on its own. Every card, explanation, preset,
-// preview line and validation message comes from the engine catalogue in
-// mode-info.ts / presets.ts, so the two screens can never describe a format
-// differently from the way the generators build it.
+// Nothing here decides anything. Every card, tag, explanation, preset, preview
+// line and validation message comes from the engine catalogue in mode-info.ts /
+// presets.ts, so the two screens cannot describe a format differently from the
+// way the generators build it.
 import {
   MODES, PICKER_GROUPS, modesInGroup, pickerGroupTitle, modeOf, hiddenGroups,
-  visibleGroups, ALL_GROUPS,
-  previewStructure, summaryRows, glossaryFor,
+  previewStructure, summaryRows, glossaryFor, visibleGroups, ALL_GROUPS,
+  specFor, fieldRule, groupPlan, inertFields,
   type PickerGroup, type SettingGroup, type StructurePreview,
+  type FieldRule, type ScoreEffect, type SettingStatus, type ModeSpec,
 } from '../engine/mode-info';
 import { presetsFor, activePresetId, type Preset } from '../engine/presets';
-import type { RuleSet, TiebreakKey, ValidationIssueLike } from '../engine/types';
+import type { DrawResolution, RuleSet, TiebreakKey, ValidationIssueLike } from '../engine/types';
 import { describeFormat } from '../engine/generate';
 import { Field, Panel, Switch } from './kit';
 import { useT, type Dict } from '../i18n';
@@ -19,13 +20,110 @@ import { useT, type Dict } from '../i18n';
 type Key = keyof Dict & string;
 type Patch = (p: Partial<RuleSet>) => void;
 
+const GROUP_TITLE: Record<SettingGroup, Key> = {
+  scoring: 'rules.scoring',
+  draws: 'mode.set.draws',
+  tiebreak: 'rules.tiebreak',
+  seeding: 'rules.seeding',
+  groups: 'mode.set.groups',
+  rounds: 'mode.set.rounds',
+  meeting: 'mode.set.meeting',
+  byes: 'mode.set.byes',
+  reporting: 'mode.set.reporting',
+};
+
+const RESOLUTIONS: readonly DrawResolution[] = ['overtime', 'replay', 'penalty', 'tiebreak'];
+const ALL_TIEBREAKS: readonly TiebreakKey[] = ['points', 'wins', 'diff', 'scored', 'buchholz', 'seed', 'name'];
+
+/**
+ * The two facts that make a setting unambiguous: how much it matters here, and
+ * what changing it actually changes. Rendered next to every control, so a number
+ * in a form is never a mystery.
+ */
+export function RuleTag({ status, affects }: { status: SettingStatus; affects: ScoreEffect }) {
+  const t = useT();
+  return (
+    <span className={`rule-tag st-${status}`}>
+      <b>{t(`mode.status.${status}` as Key)}</b>
+      <span className="rule-tag-affects">{t(`mode.affects.${affects}` as Key)}</span>
+    </span>
+  );
+}
+
+/** The tag for one field, or a muted "not used here" when it does not apply. */
+function FieldTag({ format, field }: { format: string; field: keyof RuleSet }) {
+  const t = useT();
+  const rule = fieldRule(format, field);
+  if (!rule) return <span className="f-hint">{t('mode.notApplicable')}</span>;
+  return <RuleTag status={rule.status} affects={rule.affects} />;
+}
+
+/**
+ * "How this mode works", in six lines: what the points do, what a draw means,
+ * how big the groups are, who goes forward, and what the structure does and does
+ * not contain. Shown next to the mode before the organizer commits to it.
+ */
+export function ModeRules({ format, rules, count }: {
+  format: string;
+  rules?: RuleSet;
+  count?: number | null;
+}) {
+  const t = useT();
+  const spec: ModeSpec = specFor(format);
+  const hasGroups = spec.fields.some(f => f.group === 'groups');
+  const plan = hasGroups && rules ? groupPlan(rules, count) : null;
+  return (
+    <dl className="rule-block">
+      <div>
+        <dt>{t('mode.rules.points')}</dt>
+        <dd>
+          <RuleTag status={spec.points.status} affects={spec.points.affects} />
+          <span className="f-hint">{t(spec.points.why)}</span>
+        </dd>
+      </div>
+      <div>
+        <dt>{t('mode.rules.draws')}</dt>
+        <dd>
+          <RuleTag status={spec.draws.policy === 'requires-resolution' ? 'advanced' : 'optional'} affects={spec.draws.policy === 'requires-resolution' ? 'progression' : 'ranking'} />
+          <span className="f-hint">{t(spec.draws.why)}</span>
+        </dd>
+      </div>
+      <div>
+        <dt>{t('mode.rules.groupSize')}</dt>
+        <dd>
+          <RuleTag status={spec.groupSize.status} affects={spec.groupSize.status === 'required' ? 'progression' : 'none'} />
+          <span className="f-hint">{t(spec.groupSize.why)}</span>
+          {plan ? (
+            <span className="f-hint">
+              {plan.uneven
+                ? t('mode.groupPlan.uneven', { sizes: plan.sizes.join(' / ') })
+                : t('mode.groupPlan.even', { n: plan.smallest })}
+            </span>
+          ) : null}
+        </dd>
+      </div>
+      <div>
+        <dt>{t('mode.rules.advancement')}</dt>
+        <dd><span className="f-hint">{t(spec.advancement.why)}</span></dd>
+      </div>
+      <div>
+        <dt>{t('mode.rules.contains')}</dt>
+        <dd><span className="f-hint">{t(spec.structure.contains)}</span></dd>
+      </div>
+      <div>
+        <dt>{t('mode.rules.excludes')}</dt>
+        <dd><span className="f-hint">{t(spec.structure.excludes)}</span></dd>
+      </div>
+    </dl>
+  );
+}
 
 /* ------------------------------------------------------------ the picker */
+
 /**
  * The mode picker, grouped by what the organizer is trying to do rather than by
- * feature name: a quick knockout, a full ranking, a group stage, or a flat list.
- * Every card says what the mode *means* — the reason to pick it over its
- * neighbour — so the choice does not depend on knowing the vocabulary.
+ * feature name. Each card carries the mode's own sentence and its points rule,
+ * so the choice is explicit before anything is committed.
  */
 export function ModePicker({ value, onChange }: {
   value: string;
@@ -49,6 +147,10 @@ export function ModePicker({ value, onChange }: {
               >
                 <span className="mode-card-name">{t(`format.${m.format}` as Key)}</span>
                 <span className="mode-card-meaning">{t(m.meaning)}</span>
+                <span className={`rule-tag st-${specFor(m.format).points.status}`}>
+                  {t(specFor(m.format).points.status === 'reporting' ? 'mode.status.reporting' : 'mode.status.required')}
+                  <span className="rule-tag-affects">{t(specFor(m.format).points.why)}</span>
+                </span>
               </button>
             ))}
           </div>
@@ -59,14 +161,20 @@ export function ModePicker({ value, onChange }: {
 }
 
 /**
- * What the chosen mode means: the plain reading, a checkable example, what it
- * suits and — just as important — what it does not do, so nobody discovers the
- * missing points table after generating the matches.
+ * Everything the organizer needs before committing to a mode: the plain reading,
+ * a checkable example, what it suits, what it does not do, and the six facts that
+ * make the format unambiguous — points, draws, group size, who goes forward, and
+ * what the structure contains.
  */
-export function ModeExplainer({ format }: { format: string }) {
+export function ModeExplainer({ format, rules, count }: {
+  format: string;
+  rules?: RuleSet;
+  count?: number | null;
+}) {
   const t = useT();
   const m = modeOf(format);
   const hidden = hiddenGroups(format);
+  const inert = inertFields(format);
   return (
     <div className="mode-explain">
       <p className="mode-explain-meaning">{t(m.meaning)}</p>
@@ -84,27 +192,23 @@ export function ModeExplainer({ format }: { format: string }) {
           <dd>{t(m.notIncluded)}</dd>
         </div>
       </dl>
+      <ModeRules format={format} rules={rules} count={count} />
       {hidden.length > 0 ? (
         <p className="f-hint">
-          {hidden.some(g => g === 'scoring' || g === 'tiebreak') ? t('mode.hiddenPoints') : t('mode.hiddenStructure')}
+          {hidden.some(g => g === 'scoring' || g === 'reporting')
+            ? t('mode.hiddenPoints')
+            : t('mode.hiddenStructure')}
         </p>
+      ) : null}
+      {inert.length > 0 ? (
+        <p className="f-hint">{t('mode.err.inertSettings', { names: inert.map(f => t(`rules.${f.field}` as Key)).join(', ') })}</p>
       ) : null}
     </div>
   );
 }
 
-/** The mode name as the rest of the app spells it. */
-export function modeLabel(format: string): string {
-  return describeFormat(format);
-}
-
-/** Every mode, for callers that need to iterate the catalogue. */
-export const allModes = MODES;
-
-/** The settings of a mode, typed for callers that build them. */
-export type { RuleSet };
-
 /* -------------------------------------------------- presets and the plan */
+
 const LEVEL_KEY: Record<Preset['level'], Key> = {
   simple: 'preset.level.simple',
   medium: 'preset.level.medium',
@@ -223,6 +327,8 @@ export function SetupSummary({ format, rules, count }: {
   );
 }
 
+/* ------------------------------------------------------------- glossary */
+
 /** The words the app will use, in one line each. */
 export function Glossary({ format }: { format: string }) {
   const t = useT();
@@ -249,17 +355,112 @@ export function Glossary({ format }: { format: string }) {
 }
 
 /* ----------------------------------------------------- mode-relevant rules */
-const GROUP_TITLE: Record<SettingGroup, Key> = {
-  scoring: 'rules.scoring',
-  tiebreak: 'rules.tiebreak',
-  seeding: 'rules.seeding',
-  groups: 'mode.set.groups',
-  rounds: 'mode.set.rounds',
-  meeting: 'mode.set.meeting',
-  byes: 'mode.set.byes',
-};
 
-const ALL_TIEBREAKS: TiebreakKey[] = ['points', 'wins', 'diff', 'scored', 'buchholz', 'seed', 'name'];
+/* ----------------------------------------------------- mode-relevant rules */
+
+/** The points block. In a table it builds the ranking; in a bracket it is kept
+ *  for reports, and says so next to every number. */
+function PointsFields({ format, rules, set, reporting }: {
+  format: string; rules: RuleSet; set: Patch; reporting: boolean;
+}) {
+  const t = useT();
+  const num = (field: 'winPoints' | 'drawPoints' | 'lossPoints' | 'walkoverWinnerPoints', label: Key) => {
+    const rule = fieldRule(format, field);
+    return (
+      <Field key={field} label={
+        <>
+          {t(label)}
+          {rule ? <RuleTag status={rule.status} affects={rule.affects} /> : null}
+        </>
+      } hint={rule ? t(rule.why) : undefined}>
+        <input type="number" min={0} value={rules[field]} onChange={e => set({ [field]: Number(e.target.value) })} />
+      </Field>
+    );
+  };
+  return (
+    <>
+      {reporting ? <p className="rule-note">{t('mode.points.bracket')}</p> : null}
+      <div className="grid2">
+        {num('winPoints', 'rules.win')}
+        {num('drawPoints', 'rules.draw')}
+        {num('lossPoints', 'rules.loss')}
+        {num('walkoverWinnerPoints', 'rules.walkoverWin')}
+      </div>
+    </>
+  );
+}
+
+/** Draws, and — in a bracket — the rule that settles a level match. */
+function DrawSettings({ format, rules, set, err }: {
+  format: string; rules: RuleSet; set: Patch; err: (f: string) => string | undefined;
+}) {
+  const t = useT();
+  const spec = specFor(format);
+  const drawsRule = fieldRule(format, 'allowDraws');
+  const resRule = fieldRule(format, 'drawResolution');
+  return (
+    <>
+      <Switch checked={rules.allowDraws} onChange={v => set({ allowDraws: v })}
+        label={<>{t('rules.allowDraws')}{drawsRule ? <RuleTag status={drawsRule.status} affects={drawsRule.affects} /> : null}</>}
+        hint={drawsRule ? t(drawsRule.why) : undefined} />
+      {spec.draws.policy === 'requires-resolution' ? (
+        <Field
+          label={<>{t('mode.rules.drawRule')}{resRule ? <RuleTag status={resRule.status} affects={resRule.affects} /> : null}</>}
+          hint={t('mode.why.drawResolution')}
+          error={err('drawResolution')}>
+          <select
+            value={rules.drawResolution ?? 'none'}
+            onChange={e => set({ drawResolution: e.target.value as DrawResolution })}
+            disabled={!rules.allowDraws}>
+            <option value="none">{t('mode.resolution.none')}</option>
+            {RESOLUTIONS.map(r => <option key={r} value={r}>{t(`mode.resolution.${r}` as Key)}</option>)}
+          </select>
+        </Field>
+      ) : null}
+    </>
+  );
+}
+
+/** One line under a group heading: how much the group's main setting matters. */
+function FieldTagLine({ format, field }: { format: string; field: keyof RuleSet }) {
+  const t = useT();
+  const rule = fieldRule(format, field);
+  if (!rule) return null;
+  return (
+    <p className="rule-note">
+      <RuleTag status={rule.status} affects={rule.affects} /> {t(rule.why)}
+    </p>
+  );
+}
+
+/** Group count, who advances, and the resulting sizes — stated, not implied. */
+function GroupSettings({ format, rules, set, count, err }: {
+  format: string; rules: RuleSet; set: Patch; count?: number | null; err: (f: string) => string | undefined;
+}) {
+  const t = useT();
+  const plan = groupPlan(rules, count);
+  const gc = fieldRule(format, 'groupCount');
+  const ap = fieldRule(format, 'advancePerGroup');
+  return (
+    <>
+      <div className="grid2">
+        <Field label={<>{t('common.groups')}{gc ? <RuleTag status={gc.status} affects={gc.affects} /> : null}</>}
+          error={err('groupCount')}>
+          <input type="number" min={2} value={rules.groupCount ?? 2} onChange={e => set({ groupCount: Number(e.target.value) })} />
+        </Field>
+        <Field label={<>{t('rules.advance')}{ap ? <RuleTag status={ap.status} affects={ap.affects} /> : null}</>}
+          hint={groupHint(count, rules.groupCount ?? 2)} error={err('advancePerGroup')}>
+          <input type="number" min={1} value={rules.advancePerGroup ?? 2} onChange={e => set({ advancePerGroup: Number(e.target.value) })} />
+        </Field>
+      </div>
+      <p className="rule-note">
+        {plan.uneven
+          ? t('mode.groupPlan.uneven', { sizes: plan.sizes.join(' / ') })
+          : t('mode.groupPlan.even', { n: plan.smallest })}
+      </p>
+    </>
+  );
+}
 
 /** "one group holds about 6" — the number that makes the advance field checkable. */
 function groupHint(count: number | null | undefined, groups: number): string | undefined {
@@ -278,7 +479,8 @@ function roundsHint(count: number | null | undefined): string | undefined {
 /**
  * The rules for this mode, and only these. A setting a format cannot use is not
  * greyed out and not tucked away — it is absent, because a points field in a
- * knockout teaches the wrong model of what the app will do.
+ * knockout teaches the wrong model of what the app will do. Every control that
+ * is present says how much it matters here and what changing it changes.
  */
 export function SettingsForMode({ format, rules, set, count, issues = [], groups: only }: {
   format: string;
@@ -291,93 +493,74 @@ export function SettingsForMode({ format, rules, set, count, issues = [], groups
 }) {
   const t = useT();
   const groups = ALL_GROUPS.filter(g => (only ?? visibleGroups(format)).includes(g));
-  const shown = new Set<keyof RuleSet>();
-  // A field may sit in more than one group (draws are both a result and a
-  // seeding decision); it is rendered once, in the first group that claims it.
-  const owns = (f: keyof RuleSet) => {
-    if (shown.has(f)) return false;
-    shown.add(f);
-    return true;
-  };
   const err = (field: string) => issues.find(i => i.field === field)?.message;
+  const inert = inertFields(format);
+  const inertHere = inert.filter(f => groups.includes(f.group));
+  const inertNote = inertHere.length > 0
+    ? t('mode.err.inertSettings', { names: inertHere.map(f => t(`rules.${f.field}` as Key)).join(', ') })
+    : null;
+  const tag = (field: keyof RuleSet) => {
+    const rule = fieldRule(format, field);
+    return rule ? <RuleTag status={rule.status} affects={rule.affects} /> : null;
+  };
 
   return (
     <>
       {groups.map(g => (
         <Panel key={g} title={t(GROUP_TITLE[g])}>
-          {g === 'scoring' ? (
+          {g === 'scoring' || g === 'reporting'
+            ? <PointsFields format={format} rules={rules} set={set} reporting={g === 'reporting'} />
+            : null}
+
+          {g === 'draws' ? <DrawSettings format={format} rules={rules} set={set} err={err} /> : null}
+
+          {g === 'tiebreak' ? (
             <>
-              <div className="grid4">
-                <Field label={t('rules.win')}><input type="number" value={rules.winPoints} onChange={e => set({ winPoints: Number(e.target.value) })} /></Field>
-                <Field label={t('rules.draw')}><input type="number" value={rules.drawPoints} onChange={e => set({ drawPoints: Number(e.target.value) })} /></Field>
-                <Field label={t('rules.loss')}><input type="number" value={rules.lossPoints} onChange={e => set({ lossPoints: Number(e.target.value) })} /></Field>
-                <Field label={t('rules.walkoverWin')}><input type="number" value={rules.walkoverWinnerPoints} onChange={e => set({ walkoverWinnerPoints: Number(e.target.value) })} /></Field>
-              </div>
-              {owns('allowDraws') ? (
-                <Switch checked={rules.allowDraws} onChange={v => set({ allowDraws: v })}
-                  label={t('rules.allowDraws')} hint={t('rules.allowDrawsHint')} />
-              ) : null}
+              <FieldTagLine format={format} field="tiebreakOrder" />
+              <TiebreakOrder order={rules.tiebreakOrder} set={set} />
             </>
           ) : null}
-
-          {g === 'tiebreak' ? <TiebreakOrder order={rules.tiebreakOrder} set={set} /> : null}
 
           {g === 'seeding' ? (
             <>
-              {owns('seeding') ? (
-                <Field label={t('rules.seeding')} hint={t('rules.seedingHint')}>
-                  <select value={rules.seeding} onChange={e => set({ seeding: e.target.value as RuleSet['seeding'] })}>
-                    <option value="seeded">{t('rules.seedingSeeded')}</option>
-                    <option value="random">{t('rules.seedingRandom')}</option>
-                    <option value="manual">{t('rules.seedingManual')}</option>
-                  </select>
-                </Field>
-              ) : null}
-              {owns('allowDraws') ? (
-                <Switch checked={rules.allowDraws} onChange={v => set({ allowDraws: v })}
-                  label={t('rules.allowDraws')} hint={t('rules.allowDrawsHint')} />
-              ) : null}
-              {owns('overtimeAllowed') ? (
+              <Field label={<>{t('rules.seeding')}{tag('seeding')}</>} hint={t('mode.why.seeding')}>
+                <select value={rules.seeding} onChange={e => set({ seeding: e.target.value as RuleSet['seeding'] })}>
+                  <option value="seeded">{t('rules.seedingSeeded')}</option>
+                  <option value="random">{t('rules.seedingRandom')}</option>
+                  <option value="manual">{t('rules.seedingManual')}</option>
+                </select>
+              </Field>
+              {fieldRule(format, 'overtimeAllowed') ? (
                 <Switch checked={!!rules.overtimeAllowed} onChange={v => set({ overtimeAllowed: v })}
-                  label={t('rules.overtime')} hint={t('rules.overtimeHint')} />
+                  label={<>{t('rules.overtime')}{tag('overtimeAllowed')}</>}
+                  hint={t('mode.why.overtime')} />
               ) : null}
+              {err('overtimeAllowed') ? <p className="f-err" role="alert">{err('overtimeAllowed')}</p> : null}
             </>
           ) : null}
 
-
-          {g === 'groups' ? (
-            <div className="grid2">
-              <Field label={t('common.groups')} error={err('groupCount')}>
-                <input type="number" min={2} value={rules.groupCount ?? 2} onChange={e => set({ groupCount: Number(e.target.value) })} />
-              </Field>
-              <Field label={t('rules.advance')} error={err('advancePerGroup')}
-                hint={groupHint(count, rules.groupCount ?? 2)}>
-                <input type="number" min={1} value={rules.advancePerGroup ?? 2} onChange={e => set({ advancePerGroup: Number(e.target.value) })} />
-              </Field>
-            </div>
-          ) : null}
+          {g === 'groups' ? <GroupSettings format={format} rules={rules} set={set} count={count} err={err} /> : null}
 
           {g === 'rounds' ? (
-            <div className="grid2">
-              <Field label={t('rules.swissRounds')} error={err('swissRounds')}
-                hint={roundsHint(count)}>
-                <input type="number" min={1} value={rules.swissRounds ?? 5} onChange={e => set({ swissRounds: Number(e.target.value) })} />
-              </Field>
-            </div>
+            <Field label={<>{t('rules.swissRounds')}{tag('swissRounds')}</>}
+              hint={roundsHint(count)} error={err('swissRounds')}>
+              <input type="number" min={1} value={rules.swissRounds ?? 5} onChange={e => set({ swissRounds: Number(e.target.value) })} />
+            </Field>
           ) : null}
 
           {g === 'meeting' ? (
             <Switch checked={!!rules.homeAway} onChange={v => set({ homeAway: v })}
-              label={t('rules.homeAway')} hint={t('rules.homeAwayHint')} />
+              label={<>{t('rules.homeAway')}{tag('homeAway')}</>}
+              hint={t('mode.why.homeAway')} />
           ) : null}
 
           {g === 'byes' ? (
-            <div className="grid2">
-              <Field label={t('rules.byePoints')}>
-                <input type="number" min={0} value={rules.byePoints ?? 3} onChange={e => set({ byePoints: Number(e.target.value) })} />
-              </Field>
-            </div>
+            <Field label={<>{t('rules.byePoints')}{tag('byePoints')}</>} hint={t('mode.why.byePoints')}>
+              <input type="number" min={0} value={rules.byePoints ?? 3} onChange={e => set({ byePoints: Number(e.target.value) })} />
+            </Field>
           ) : null}
+
+          {inertNote ? <p className="rule-note warn">{inertNote}</p> : null}
         </Panel>
       ))}
     </>

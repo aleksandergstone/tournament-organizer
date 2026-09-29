@@ -173,6 +173,13 @@ app.whenReady().then(async () => {
     await settle();
     await shot('16-rules-settings-and-preview');
 
+    // 4d) The rules screen of a two-stage format: points, group size, who advances
+    await nav('Home');
+    await openProject('City League 2026');
+    await expectH1('City League 2026');
+    await nav('Rules', 'Format & rules');
+    await shot('17-rules-groups-knockout');
+
     // 5) Event operations: display mode and venue schedule
     await nav('Home');
     await openProject('City League 2026');
