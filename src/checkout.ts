@@ -27,15 +27,18 @@ export const SUPPORT_EMAIL = '';
  * in the app" instead of making the customer find the key themselves.
  * Returns the bare URL when the store does not take query parameters.
  */
-export function checkoutUrl(appScheme = 'tournament-organizer'): string {
-  if (!CHECKOUT_URL) return '';
+export function checkoutUrl(base: string = CHECKOUT_URL, appScheme = 'tournament-organizer'): string {
+  if (!base) return '';
   try {
-    const url = new URL(CHECKOUT_URL);
+    const url = new URL(base);
+    // Only http(s). A checkout link is configured once, by us — but a value
+    // that somehow came from a project file must never become file:// or
+    // javascript:.
     if (!/^https?:$/.test(url.protocol)) return '';
     url.searchParams.set('checkout[custom][activate]', `${appScheme}://license?from=checkout`);
     return url.toString();
   } catch {
-    return '';
+    return '';   // an unparseable URL is "not configured", not a crash
   }
 }
 
