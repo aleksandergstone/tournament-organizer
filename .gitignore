@@ -33,6 +33,10 @@ desktop.ini
 # sells them. scripts/generate-license-key.mjs creates it.
 keys/
 
+# Issued licenses and order records from server/store.mjs. Customer
+# emails and license keys — never commit, never back up in plaintext.
+server/data/
+
 # NOTE: build/icon.png, build/icon.ico and build/make-icon.ps1 ARE tracked on
 # purpose — the icons are required by electron-builder on Linux/macOS CI
 # runners, where the PowerShell generator cannot run.

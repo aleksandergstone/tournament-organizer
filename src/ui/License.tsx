@@ -10,16 +10,10 @@ import {
   type LicenseFailure,
 } from '../engine/license';
 import { has, proFeatures } from '../engine/features';
+import { checkoutUrl, isPurchaseConfigured } from '../checkout';
 import { desktop } from '../engine/desktop';
 import { useT } from '../i18n';
 import { Alert, Field, Page, Panel, Empty } from './kit';
-
-/**
- * Where the purchase happens. Empty in this build on purpose: the store is not
- * set up, and a dead "Upgrade" button that pretends to sell something would be
- * worse than an honest one. Paste the hosted checkout link here and it goes live.
- */
-const CHECKOUT_URL = '';
 
 export default function License() {
   const t = useT();
@@ -55,8 +49,11 @@ export default function License() {
   };
 
   const buy = () => {
-    if (!CHECKOUT_URL) { setMsg({ kind: 'err', text: t('lic.checkoutMissing') }); return; }
-    void desktop.openExternal(CHECKOUT_URL).catch(() => setMsg({ kind: 'err', text: t('lic.checkoutMissing') }));
+    const url = checkoutUrl();
+    if (!url) { setMsg({ kind: 'err', text: t('lic.checkoutMissing') }); return; }
+    // The system browser, not a window inside the app: the checkout page is not
+    // ours, and the customer should be able to see where they are typing.
+    void desktop.openExternal(url).catch(() => setMsg({ kind: 'err', text: t('lic.checkoutMissing') }));
   };
 
   return (
@@ -92,7 +89,7 @@ export default function License() {
         </div>
         {!pro ? <p className="f-hint">{t('lic.buyHint')}</p> : <p className="f-hint">{t('lic.offline')}</p>}
         {pro ? <p className="f-hint">{t('lic.removeHint')}</p> : null}
-        {!pro && CHECKOUT_URL === '' ? <p className="f-hint">{t('lic.checkoutMissing')}</p> : null}
+        {!pro && !isPurchaseConfigured() ? <p className="f-hint">{t('lic.checkoutMissing')}</p> : null}
       </Panel>
 
       {!pro && (
