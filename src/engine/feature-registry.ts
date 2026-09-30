@@ -76,9 +76,9 @@ export const FEATURE_REGISTRY: readonly FeatureEntry[] = [
 
   // ---- Pro: decoration and professional workflow. ---------------------------
   { id: 'branding.documents', name: 'Branded documents (logo, title, footer, accent)', class: 'pro', why: 'The document works without it; only the letterhead costs.', label: 'lic.unlockBranding' },
-  { id: 'print.pack', name: 'The full print pack', class: 'pro', why: 'Bundling documents that already exist is convenience, not capability.', label: 'lic.unlockPack' },
-  { id: 'templates.saved', name: 'Saved templates for recurring events', class: 'pro', why: 'Pays off only after you have run several events.', label: 'lic.unlockTemplates' },
-  { id: 'schedule.resources', name: 'Advanced resource and conflict scheduling', class: 'pro', why: 'Basic scheduling stays free; resolving conflicts across venues is specialist work.', label: 'nav.schedule' },
+  { id: 'print.pack', name: 'The full print pack', class: 'planned', why: 'Bundling documents that already exist is convenience, not capability. Not built yet — declared so it is not forgotten.' },
+  { id: 'templates.saved', name: 'Saved templates for recurring events', class: 'planned', why: 'Pays off only after you have run several events. Not built yet.' },
+  { id: 'schedule.resources', name: 'Advanced resource and conflict scheduling', class: 'planned', why: 'Basic scheduling stays free; resolving conflicts across venues is specialist work. Not built yet.' },
 
   // ---- Planned: named, on purpose, not built. -------------------------------
   { id: 'codes.qr', name: 'QR check-in and quick result', class: 'planned', why: 'The screen is a ComingSoon placeholder today. Not an upsell yet.', label: 'soon.qr' },
