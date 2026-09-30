@@ -12,7 +12,7 @@ import Standings from './ui/Standings';
 import Output from './ui/Output';
 import Settings from './ui/Settings';
 import License from './ui/License';
-import { refreshLicense } from './engine/license';
+import { refreshLicense, revalidate } from './engine/license';
 import Import from './ui/Import';
 import Display from './ui/Display';
 import Schedule from './ui/Schedule';
@@ -47,9 +47,10 @@ export default function App() {
 
   // On a phone the hardware back button walks out of a screen; at the Home
   // screen it falls through to Android, which closes the app.
-  // One offline verification at startup: the license is read from disk,
-  // checked against the embedded public key, and never needs the network.
-  useEffect(() => { void refreshLicense(); }, []);
+  // One offline verification at startup. revalidate() is the local signature
+  // check; it only reaches for the network if a server has been configured, and
+  // it never blocks startup when there is not one.
+  useEffect(() => { void revalidate(); }, []);
 
   useEffect(() => {
     if (!isNativeApp()) return;

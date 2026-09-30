@@ -47,7 +47,14 @@ export const LICENSE_CLAIMS_VERSION = 1;
  * license, the signature check is.
  */
 let publicKeyOverride: string | null = null;
-export function setLicensePublicKey(b64: string | null): void { publicKeyOverride = b64; }
+export function setLicensePublicKey(b64: string | null): void {
+  // Compiled out of a production bundle: Vite replaces the check with a
+  // literal, so the dead branch is dropped and this becomes a no-op function.
+  // The point is that a real install has no reachable way to swap the key it
+  // verifies against, even from the devtools console.
+  if (import.meta.env?.PROD) return;
+  publicKeyOverride = b64;
+}
 const activePublicKey = (): string => publicKeyOverride ?? LICENSE_PUBLIC_KEY_B64;
 /** Where the signed envelope is cached. A file, never a boolean. */
 const LS_LICENSE = 'to:license';
@@ -167,26 +174,66 @@ function subtle(): SubtleCrypto {
   return c.subtle;
 }
 
-/** Structure first (cheap, and it gives a precise reason), then the signature. */
+/** Bounds for a claim. A license is machine-written, never prose. */
+const MAX_ID = 128;
+const MAX_EMAIL = 254;
+const MAX_NAME = 200;
+const MAX_FEATURES = 64;
+
+const malformed = (): LicenseCheck => ({ ok: false, reason: 'malformed' });
+const str = (v: unknown, max: number): boolean => typeof v === 'string' && v.length > 0 && v.length <= max;
+/** A count that must be a real, non-negative, finite integer. */
+const count = (v: unknown): boolean => Number.isInteger(v) && (v as number) >= 0;
+
+/**
+ * Structure and range, before the signature is even looked at.
+ *
+ * This is deliberately strict. Every field is checked for type, length and range,
+ * because a claim that slips through here as a string where a number belongs can
+ * turn an arithmetic comparison into `NaN >= NaN` — which is false, which reads
+ * as "limit not reached", which is the wrong way to fail. A malformed license
+ * must refuse, never shrug.
+ */
 function checkShape(env: LicenseEnvelope, now: Date): LicenseCheck {
+  if (typeof env !== 'object' || env === null) return malformed();
+  if (typeof env.signature !== 'string' || env.signature.length < 16 || env.signature.length > 256) return malformed();
+
   const c = env.claims;
-  if (typeof c !== 'object' || c === null) return { ok: false, reason: 'malformed' };
-  if (c.v !== LICENSE_CLAIMS_VERSION) return { ok: false, reason: 'malformed' };
+  if (typeof c !== 'object' || c === null) return malformed();
+  if (c.v !== LICENSE_CLAIMS_VERSION) return malformed();
   if (c.product !== LICENSE_PRODUCT) return { ok: false, reason: 'wrong-product' };
-  if (typeof c.licenseId !== 'string' || !c.licenseId) return { ok: false, reason: 'malformed' };
-  if (typeof c.customerEmail !== 'string' || !c.customerEmail.includes('@')) return { ok: false, reason: 'malformed' };
-  if (!Array.isArray(c.features) || c.features.length === 0) return { ok: false, reason: 'malformed' };
+
+  if (!str(c.licenseId, MAX_ID)) return malformed();
+  if (!str(c.customerEmail, MAX_EMAIL) || !c.customerEmail.includes('@')) return malformed();
+  if (c.customerName !== undefined && typeof c.customerName !== 'string') return malformed();
+  if (typeof c.customerName === 'string' && c.customerName.length > MAX_NAME) return malformed();
+
+  // An explicit revocation is honoured even when the signature is perfectly
+  // valid — that is the whole point of keeping the flag inside the signed bytes.
+  if (c.revoked !== undefined && typeof c.revoked !== 'boolean') return malformed();
   if (c.revoked === true) return { ok: false, reason: 'revoked' };
+  if (c.issuedBy !== undefined && typeof c.issuedBy !== 'string') return malformed();
+
   const issued = Date.parse(c.issuedAt);
-  if (!Number.isFinite(issued)) return { ok: false, reason: 'malformed' };
+  if (typeof c.issuedAt !== 'string' || !Number.isFinite(issued)) return malformed();
   // A day of clock skew, so a machine with a wrong date is not locked out.
   if (issued > now.getTime() + 24 * 3600_000) return { ok: false, reason: 'not-yet-valid' };
+
   // A perpetual license has expiresAt === null and never expires.
   if (c.expiresAt !== null) {
     const exp = Date.parse(c.expiresAt);
-    if (!Number.isFinite(exp)) return { ok: false, reason: 'malformed' };
+    if (typeof c.expiresAt !== 'string' || !Number.isFinite(exp)) return malformed();
     if (exp <= now.getTime()) return { ok: false, reason: 'expired' };
   }
+
+  // Limits: null (unlimited) or a real count. A negative, fractional, NaN or
+  // missing limit is a forged license, not a generous one.
+  if (c.activationLimit !== null && !count(c.activationLimit)) return malformed();
+  if (!count(c.activationUsage)) return malformed();
+
+  if (!Array.isArray(c.features) || c.features.length === 0 || c.features.length > MAX_FEATURES) return malformed();
+  if (!c.features.every(f => str(f, MAX_ID))) return malformed();
+
   return { ok: true, claims: c };
 }
 
@@ -451,14 +498,47 @@ export function setRevalidator(fn: ((env: LicenseEnvelope) => Promise<boolean>) 
   revalidator = fn;
 }
 
+/**
+ * How often to ask, if there is anything to ask. Six hours is a compromise:
+ * long enough that a laptop on a train never stalls on a network, short enough
+ * that a revoked license stops working within a working day.
+ *
+ * Without a revalidator configured this is never consulted — the app does not
+ * keep a timer running to discover there is no server.
+ */
+export const REVALIDATE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+const LS_LAST_REVALIDATE = 'to:license-revalidated-at';
+
+/**
+ * The revalidation policy, in one place so it cannot drift:
+ *   * verify the signature first, every time — offline or not;
+ *   * ask the server only when one is configured and the interval has passed;
+ *   * a network failure NEVER revokes. Offline-first is the product's promise,
+ *     and a train tunnel must not take someone's license away.
+ */
 export async function revalidate(now: Date = new Date()): Promise<LicenseState> {
   const env = loadLicense();
   if (!env || !revalidator) return refreshLicense(now);
+
   const verdict = await verifyLicense(env, activePublicKey(), now);
   if (!verdict.ok) return publish({ status: 'free', claims: null, reason: verdict.reason, checked: true });
+
+  const last = Number(store.getItem(LS_LAST_REVALIDATE) ?? 0);
+  if (Number.isFinite(last) && last > 0 && now.getTime() - last < REVALIDATE_INTERVAL_MS) {
+    // Too soon — keep the verified result rather than calling the server again.
+    return publish({ status: 'pro', claims: verdict.claims, reason: null, checked: true });
+  }
+
   let alive = true;
-  try { alive = await revalidator(env); } catch { alive = true; }   // offline keeps the license
+  try {
+    alive = await revalidator(env);
+  } catch {
+    alive = true;                       // unreachable server ≠ revoked license
+  }
   if (!alive) return publish({ status: 'free', claims: null, reason: 'revoked', checked: true });
+
+  store.setItem(LS_LAST_REVALIDATE, String(now.getTime()));
   return publish({ status: 'pro', claims: verdict.claims, reason: null, checked: true });
 }
 

@@ -258,12 +258,14 @@ describe('the activation count lives in the payload, and is still not the enforc
     expect(activationUsageOf(reissued)).toBe(2);
   });
 
-  it('defaults a missing activationUsage to zero rather than rejecting the license', async () => {
+  it('refuses a license with no activationUsage at all', async () => {
+    // This used to default to zero and be accepted. A signed claim that is
+    // missing a field is either a stale license or a forgery, and neither
+    // should be granted — so it is refused, not repaired.
     const c = claims();
     delete (c as Partial<LicenseClaims>).activationUsage;
     const v = await verifyLicense({ claims: c, signature: await sign(kp.privateKey, c) }, kp.publicB64, NOW);
-    expect(v.ok).toBe(true);
-    expect(activationUsageOf({ claims: c, signature: '' })).toBe(0);
+    expect(!v.ok && v.reason).toBe('malformed');
   });
 });
 
