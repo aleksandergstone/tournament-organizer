@@ -126,7 +126,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
     importFile: (text, path) => { const { file, warnings } = parseProject(text);
       const all = [...warnings];
       if (file.tournament.name === '' || file.tournament.name === '(untitled)') all.push(t('store.openedNoName', { path }));
-      else all.push(`Opened ${path}.`);
+      else all.push(t('store.openedPath', { path }));
       setHist(initHistory({ ...fromFile(file), audit: [...file.audit, { id: uid('a'), at: nowIso(), action: 'project.opened-file', detail: path }] }));
       setS({ ...DEFAULT_SETTINGS, ...file.settings }); setDirty(true); setHas(true); setScreen('overview'); return all; },
     hasProject,

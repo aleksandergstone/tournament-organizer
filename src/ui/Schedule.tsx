@@ -76,13 +76,13 @@ export default function Schedule() {
     update(d => ({ ...d, matches: d.matches.map(m => (m.id === matchId ? { ...m, ...p } : m)) }), msg2);
 
   const autoFill = () => {
-    if (resources.length === 0) { setErr('Add at least one court, table or station first.'); return; }
-    if (unscheduled.length === 0) { setMsg('Every match already has a time.'); setErr(''); return; }
+    if (resources.length === 0) { setErr(t('sch.errNoPlaces')); return; }
+    if (unscheduled.length === 0) { setMsg(t('sch.msgAllScheduled')); setErr(''); return; }
     const plan = suggestSlots(domain.matches, resources, {
       dayStart: new Date(dayStart).toISOString(),
       defaultDurationMin: DEFAULT_DURATION_MIN,
     });
-    if (plan.length === 0) { setErr('No free slot found — add more places or start later in the day.'); return; }
+    if (plan.length === 0) { setErr(t('sch.errNoSlot')); return; }
     setErr(''); setMsg(t(plan.length === 1 ? 'sch.autofilledOne' : 'sch.autofilled', { n: plan.length }));
     update(d => ({
       ...d,

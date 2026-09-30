@@ -2,6 +2,7 @@
 import { useApp } from '../state/store';
 import { describeFormat, hasPointTable } from '../engine/generate';
 import { knockoutPlaces } from '../engine/bracket-view';
+import { describeAudit } from '../engine/audit';
 import { Empty, Meta, Page, Panel } from './kit';
 import { useT } from '../i18n';
 
@@ -116,13 +117,16 @@ export default function Overview() {
         ) : (
           <div className="table-wrap">
             <table>
-              <tbody>{[...domain.audit].reverse().slice(0, 20).map(a => (
-                <tr key={a.id}>
-                  <td className="muted nowrap" style={{ width: 170 }}>{new Date(a.at).toLocaleString()}</td>
-                  <td>{a.action}</td>
-                  <td className="muted">{a.detail ?? ''}</td>
-                </tr>
-              ))}</tbody>
+              <tbody>{[...domain.audit].reverse().slice(0, 20).map(a => {
+                const line = describeAudit(a.action, a.detail);
+                return (
+                  <tr key={a.id}>
+                    <td className="muted nowrap" style={{ width: 170 }}>{new Date(a.at).toLocaleString()}</td>
+                    <td>{line.label}</td>
+                    <td className="muted">{line.detail}</td>
+                  </tr>
+                );
+              })}</tbody>
             </table>
           </div>
         )}

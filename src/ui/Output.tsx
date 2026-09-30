@@ -41,13 +41,13 @@ export default function Output() {
 
   const commitBranding = (next: Branding) => {
     setDraft(next);
-    update(d => ({ ...d, tournament: { ...d.tournament, branding: normalizeBranding(next) } }), 'Document branding updated');
+    update(d => ({ ...d, tournament: { ...d.tournament, branding: normalizeBranding(next) } }), 'branding.updated');
   };
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true); setMsg(null);
     try { await fn(); }
-    catch (e) { setMsg({ kind: 'err', text: e instanceof Error ? e.message : 'That did not work.' }); }
+    catch (e) { setMsg({ kind: 'err', text: e instanceof Error ? e.message : tr('err.actionFailed') }); }
     finally { setBusy(false); }
   };
   const savePdf = () => run(async () => {

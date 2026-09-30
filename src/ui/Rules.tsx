@@ -41,7 +41,8 @@ export default function Rules() {
     else if (f === 'groups-knockout') { const g = genGroupsKnockout(ps, r); matches = g.matches; groups = g.groups; }
     else if (f === 'swiss') { const st = new Map(ps.map(p => [p.id, 0])); matches = swissPairings(ps, [], st, 1); groups = []; }
     else if (f === 'double-elimination') { const g = genDoubleElim(ps, r); matches = recomputeBracket(g.matches); groups = []; }
-    update(() => ({ tournament: domain.tournament, participants: ps, groups, matches, audit: domain.audit, resources: domain.resources ?? [] }), `structure.generate ${f} (${matches.length} matches)`);
+    update(() => ({ tournament: domain.tournament, participants: ps, groups, matches, audit: domain.audit, resources: domain.resources ?? [] }), `structure.generate ${matches.length}`);
+    // The format name is data for the detail column, not part of the sentence.
     go('bracket');
   };
   const n = domain.participants.filter(p => p.active).length;

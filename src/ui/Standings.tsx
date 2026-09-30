@@ -61,7 +61,7 @@ export default function Standings() {
     update(() => ({
       tournament: { ...next.tournament, updatedAt: new Date().toISOString() },
       participants: next.participants, groups: next.groups, matches: next.matches,
-      audit: [...domain.audit, { id: uid('a'), at: new Date().toISOString(), action: 'knockout.seeded', detail: `${plan.qualifiers.length} qualifiers` }],
+      audit: [...domain.audit, { id: uid('a'), at: new Date().toISOString(), action: 'knockout.seeded', detail: String(plan.qualifiers.length) }],
       resources: domain.resources ?? [],
     }), `knockout.seed qualifiers=${plan.qualifiers.length}`);
     setPlan(null);
@@ -69,7 +69,7 @@ export default function Standings() {
   };
 
   const finish = () => {
-    if (settings.confirmDestructive && !window.confirm('Mark this tournament as finished?\n\nIt stays fully editable — you can reopen it at any time.')) return;
+    if (settings.confirmDestructive && !window.confirm(t('st.confirmFinish'))) return;
     update(d => ({ ...d, tournament: { ...d.tournament, archived: true } }), 'tournament.finished');
   };
   // Points decide a league, a Swiss run or a group stage — never a knockout.

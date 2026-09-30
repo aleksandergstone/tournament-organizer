@@ -23,7 +23,7 @@ export default function Import() {
     try {
       const f = await desktop.openText();
       if (!f) return;
-      if ((f as { error?: string }).error) { setErr('That file could not be read: ' + (f as { error?: string }).error); return; }
+      if ((f as { error?: string }).error) { setErr(t('err.fileUnreadable', { why: (f as { error?: string }).error ?? '' })); return; }
       setWarn(importFile(f.text, f.path));
     } catch (e) { setErr(e instanceof Error ? e.message : t('error.fileOpen')); }
   };

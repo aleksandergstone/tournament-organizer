@@ -1,8 +1,29 @@
-Strict mode-specific UI: no cross-mode leakage remains
+Final audit: the last English sentences are gone
 
-The creation form is now driven by one rule: a control appears only
-where the mode's generator really reads that field. Two leaks were
-still open after the last audit, and the new tests found two more.
+The history panel printed the raw audit action, so a Polish or
+German organizer read "participant.add Anna" and "result.score-draft"
+in the middle of their own language, and seven dialogs and errors
+were hard-coded English in every language.
+
+* engine/audit.ts turns an action into a sentence in the active
+  language and keeps the argument (a name, a count, a pairing) in
+  the detail column. An action it has never seen still renders as
+  itself, so an old project file never leaves a blank row.
+* Seven strings now come from the dictionary: the unreadable-file
+  error, the export failure message, three scheduling messages, the
+  "mark as finished" confirmation and the opened-file notice.
+* Two call sites wrote prose where a key belongs: the branding edit
+  and the structure generation now write machine keys, and the
+  knockout entry stores the qualifier count as data instead of the
+  word "qualifiers".
+
+Eight new tests hold it: every action the source writes has a
+sentence, the four languages differ, an unknown action still renders,
+and no screen may contain a hard-coded English dialog, error, message
+or panel title again.
+
+271 tests pass.
+
 
 Fixed here
 
