@@ -1364,5 +1364,10 @@ export const pl: Dict = {
   // Locked feature notice
   'lic.lockedTitle': 'Ta funkcja jest w Pro',
   'lic.lockedHint': 'Reszta zostaje darmowa — tworzenie, tabele, wyniki, eksport i wydruk działają bez ograniczeń.',
+  // Activation seats and removal
+  'lic.seats': 'Aktywowana na {used} z {limit} komputerów',
+  'lic.seatsUnlimited': 'Bez limitu komputerów',
+  'lic.remove': 'Usuń z tego komputera',
+  'lic.removeHint': 'Usuwa licencję z tego komputera, ale zachowuje zużytą aktywację — użyj, gdy przekazujesz komputer komuś innemu.',
 };
 

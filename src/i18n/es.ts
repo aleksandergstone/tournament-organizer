@@ -1364,5 +1364,10 @@ export const es: Dict = {
   // Locked feature notice
   'lic.lockedTitle': 'Esto es parte de Pro',
   'lic.lockedHint': 'Todo lo demás sigue gratis: crear, clasificaciones, resultados, export e impresión siguen funcionando.',
+  // Activation seats and removal
+  'lic.seats': 'Activada en {used} de {limit} equipo(s)',
+  'lic.seatsUnlimited': 'Equipos ilimitados',
+  'lic.remove': 'Quitar de este equipo',
+  'lic.removeHint': 'Quita la licencia aquí, pero mantiene la activación consumida: úsalo al prestar el equipo a otra persona.',
 };
 

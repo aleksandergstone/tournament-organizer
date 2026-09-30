@@ -1364,5 +1364,10 @@ export const de: Dict = {
   // Locked feature notice
   'lic.lockedTitle': 'Das gehört zu Pro',
   'lic.lockedHint': 'Alles andere bleibt kostenlos — Anlegen, Tabellen, Ergebnisse, Export und Druck funktionieren weiter.',
+  // Activation seats and removal
+  'lic.seats': 'Aktiviert auf {used} von {limit} Computer(n)',
+  'lic.seatsUnlimited': 'Unbegrenzte Computer',
+  'lic.remove': 'Von diesem Rechner entfernen',
+  'lic.removeHint': 'Entfernt die Lizenz hier, behält die Aktivierung aber verbraucht — richtig, wenn Sie den Rechner weitergeben.',
 };
 

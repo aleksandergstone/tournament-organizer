@@ -65,6 +65,18 @@ export interface LicenseClaims {
   expiresAt: string | null;
   /** How many devices may activate. null = unlimited. */
   activationLimit: number | null;
+  /**
+   * How many activations the ISSUER had recorded when it signed this license —
+   * normally 0 for a fresh sale.
+   *
+   * Be careful with this field. It cannot be the thing that enforces the limit:
+   * it is covered by the signature, so the app cannot increment it without
+   * invalidating the license it is reading. The app therefore treats it as the
+   * issuer's baseline and keeps the running count in its own device ledger
+   * (see activationUsageOf). Treat this as "what the seller knew when they sold",
+   * never as "what is true right now" — that is what makes it safe to sign.
+   */
+  activationUsage: number;
   /** Which features the license unlocks. '*' means every Pro feature. */
   features: string[];
   /** A license the issuer disabled keeps its signature but stops working. */
@@ -114,6 +126,7 @@ export function canonicalize(c: LicenseClaims): string {
     issuedAt: c.issuedAt,
     expiresAt: c.expiresAt,
     activationLimit: c.activationLimit,
+    activationUsage: c.activationUsage ?? 0,
     features: [...(c.features ?? [])].sort(),
     revoked: c.revoked === true,
     issuedBy: c.issuedBy ?? '',
@@ -230,6 +243,12 @@ export function loadLicense(): LicenseEnvelope | null {
 export function saveLicense(env: LicenseEnvelope): void {
   store.setItem(LS_LICENSE, JSON.stringify(env));
 }
+
+/**
+ * Wipe the cached entitlement AND the local device ledger. Internal: both
+ * public removal paths go through deactivateLicense() or removeLicense(), which
+ * differ on purpose.
+ */
 export function clearLicense(): void {
   store.removeItem(LS_LICENSE);
   store.removeItem(LS_ACTIVATIONS);
@@ -247,10 +266,26 @@ export function deviceId(): string {
   return id;
 }
 
-/** licenseId â†’ the devices that activated it on this machine. */
+/** licenseId → the devices that activated it on this machine. */
 function activations(): Record<string, string[]> {
   try { return JSON.parse(store.getItem(LS_ACTIVATIONS) ?? '{}') as Record<string, string[]>; }
   catch { return {}; }
+}
+
+/**
+ * The activation count the app actually enforces: the signed baseline plus any
+ * device recorded here that the issuer did not know about yet. Reported on the
+ * License screen so a customer and support see the same number, and so a reset
+ * is visible rather than silent.
+ *
+ * This is the honest limit of an offline design: it stops casual sharing, and a
+ * determined user can delete this ledger. Making it tamper-proof needs a server,
+ * which is exactly what `revalidate()` is for later.
+ */
+export function activationUsageOf(env: LicenseEnvelope): number {
+  const issued = Math.max(0, env.claims.activationUsage ?? 0);
+  const local = (activations()[env.claims.licenseId] ?? []).length;
+  return Math.max(issued, local);
 }
 
 function recordActivation(licenseId: string, device: string) {
@@ -264,14 +299,17 @@ function recordActivation(licenseId: string, device: string) {
 /**
  * Enforce the activation limit. Returns a reason when the license itself is
  * valid but this machine is not allowed to use it.
+ *
+ * The count is the signed baseline reconciled with the local ledger, so a
+ * license sold with one activation already used is refused on a second machine
+ * even if that machine's ledger is empty.
  */
 export function activationCheck(env: LicenseEnvelope, device: string = deviceId()): LicenseFailure | null {
   const limit = env.claims.activationLimit;
   if (limit === null || limit === undefined) return null;
-  const used = activations()[env.claims.licenseId] ?? [];
-  if (used.includes(device)) return null;
-  if (used.length >= limit) return 'activation-limit';
-  return null;
+  // A device already on this license is coming back, not taking a new seat.
+  if ((activations()[env.claims.licenseId] ?? []).includes(device)) return null;
+  return activationUsageOf(env) >= limit ? 'activation-limit' : null;
 }
 
 // ---- the verified state the whole app reads ---------------------------------
@@ -324,9 +362,29 @@ export async function activateLicense(text: string, now: Date = new Date()): Pro
 
 export const importLicenseFile = activateLicense;
 
-/** Give the license back: the app returns to Free and forgets this device. */
+/**
+ * Give the license back. The app returns to Free AND this device's seat is
+ * released, so the customer can activate it somewhere else — the operation the
+ * License screen offers when someone is moving machines.
+ */
 export function deactivateLicense(): void {
   clearLicense();
+  publish({ status: 'free', claims: null, reason: 'no-license', checked: true });
+}
+
+/**
+ * Remove the license from this machine WITHOUT giving the seat back.
+ *
+ * The distinction matters. Deactivate is a promise to the customer: the license
+ * moves. Remove is what you want on a machine you are handing to someone else or
+ * wiping — the entitlement is gone from this computer, and the seat stays
+ * consumed so the license cannot be quietly duplicated onto it.
+ *
+ * Re-importing the same license afterwards still works, because this device is
+ * still on the license's ledger; it simply stops being Pro until it does.
+ */
+export function removeLicense(): void {
+  store.removeItem(LS_LICENSE);
   publish({ status: 'free', claims: null, reason: 'no-license', checked: true });
 }
 

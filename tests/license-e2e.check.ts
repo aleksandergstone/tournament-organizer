@@ -3,10 +3,12 @@
 // public key that is compiled into the bundle. This is the one test that proves
 // the issuer and the app agree — if the canonical form ever drifts, it fails here.
 //
-// It needs keys/license-private.json on the machine running it, so it is not part
-// of the normal suite; run it deliberately after issuing a license:
-//   node scripts/sign-license.mjs --email anna@example.com > e2e-out.txt
-//   node node_modules/vitest/vitest.mjs run tests/license-e2e.check.ts
+// It needs keys/license-private.json and the artifact it checks, so it is not
+// part of the normal suite. To run it:
+//   node scripts/sign-license.mjs --email anna@example.com --name "Anna K" \
+//        --devices 3 --used 1 > e2e-out.txt
+//   copy tests/license-e2e.check.ts tests/zz-e2e.test.ts   (vitest glob)
+//   node node_modules/vitest/vitest.mjs run tests/zz-e2e.test.ts
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { LICENSE_PUBLIC_KEY_B64, formatLicenseKey, parseLicense, verifyLicense } from '../src/engine/license';
@@ -21,10 +23,11 @@ describe('a real issued license verifies against the embedded public key', () =>
     expect(env).not.toBeNull();
   });
 
-  it('carries a perpetual, device-limited, all-features entitlement', () => {
+  it('carries a perpetual entitlement with the allowance it was issued with', () => {
     expect(env!.claims.product).toBe('tournament-organizer-pro');
     expect(env!.claims.expiresAt).toBeNull();          // never expires
-    expect(env!.claims.activationLimit).toBe(1);
+    expect(env!.claims.activationLimit).toBe(3);
+    expect(env!.claims.activationUsage).toBe(1);        // one seat already sold
     expect(env!.claims.features).toEqual(['*']);
     expect(env!.claims.customerEmail).toBe('anna@example.com');
     expect(env!.claims.customerName).toBe('Anna K');
@@ -40,8 +43,12 @@ describe('a real issued license verifies against the embedded public key', () =>
     expect(formatLicenseKey(env!)).toBe(key);
   });
 
-  it('is refused the moment one claim is changed', async () => {
-    const forged = { ...env!, claims: { ...env!.claims, activationLimit: 99 } };
-    expect((await verifyLicense(forged, LICENSE_PUBLIC_KEY_B64)).ok).toBe(false);
+  it('is refused the moment any single claim is changed', async () => {
+    for (const tamper of [
+      { activationLimit: 99 }, { activationUsage: 0 }, { expiresAt: '2030-01-01T00:00:00.000Z' },
+    ]) {
+      const forged = { ...env!, claims: { ...env!.claims, ...tamper } };
+      expect((await verifyLicense(forged, LICENSE_PUBLIC_KEY_B64)).ok, JSON.stringify(tamper)).toBe(false);
+    }
   });
 });

@@ -43,6 +43,7 @@ const claims = {
   issuedAt: new Date().toISOString(),
   expiresAt: null,               // perpetual: never expires
   activationLimit: Number.isFinite(devices) ? devices : null,
+  activationUsage: Number(arg('used', '0')) || 0,   // seats already sold
   features,
   revoked: false,
   issuedBy: 'sign-license.mjs',
@@ -58,6 +59,7 @@ const canonical = JSON.stringify({
   issuedAt: claims.issuedAt,
   expiresAt: claims.expiresAt,
   activationLimit: claims.activationLimit,
+  activationUsage: claims.activationUsage ?? 0,
   features: [...claims.features].sort(),
   revoked: claims.revoked === true,
   issuedBy: claims.issuedBy ?? '',

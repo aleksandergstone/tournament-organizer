@@ -5,9 +5,9 @@
 // runs (WebCrypto Ed25519 over the canonical claims).
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  LICENSE_PRODUCT, activateLicense, activationCheck, canonicalize, currentTier,
-  deactivateLicense, deviceId, exportLicenseInfo, formatLicenseKey, hasFeature,
-  isProActive, loadLicense, parseLicense, refreshLicense, revalidate, saveLicense,
+  LICENSE_PRODUCT, activateLicense, activationCheck, activationUsageOf, canonicalize,
+  currentTier, deactivateLicense, deviceId, exportLicenseInfo, formatLicenseKey, hasFeature,
+  isProActive, loadLicense, parseLicense, refreshLicense, removeLicense, revalidate, saveLicense,
   setLicenseStore, verifyLicense, setRevalidator, setLicensePublicKey,
   type LicenseClaims, type LicenseEnvelope,
 } from '../src/engine/license';
@@ -34,6 +34,7 @@ function claims(over: Partial<LicenseClaims> = {}): LicenseClaims {
     v: 1, product: LICENSE_PRODUCT, licenseId: 'lic-1',
     customerEmail: 'anna@example.com', customerName: 'Anna',
     issuedAt: '2026-01-15T10:00:00.000Z', expiresAt: null, activationLimit: 1,
+    activationUsage: 0,
     features: ['*'], revoked: false, issuedBy: 'test', ...over,
   };
 }
@@ -218,6 +219,94 @@ describe('the activation limit is enforced per device', () => {
     expect(activationCheck(env, 'some-other-device')).toBeNull();
   });
 });
+describe('the activation count lives in the payload, and is still not the enforcer', () => {
+  it('carries activationUsage as a signed claim', async () => {
+    const env = await issue(kp.privateKey, { activationUsage: 0 });
+    expect(env.claims.activationUsage).toBe(0);
+    // It is covered by the signature: editing it alone must fail.
+    const forged = { ...env, claims: { ...env.claims, activationUsage: 99 } };
+    const v = await verifyLicense(forged, kp.publicB64, NOW);
+    expect(!v.ok && v.reason).toBe('bad-signature');
+  });
+
+  it('treats a signed baseline as seats already sold, even on a fresh machine', async () => {
+    const env = await issue(kp.privateKey, { activationLimit: 1, activationUsage: 1 });
+    expect(activationUsageOf(env)).toBe(1);
+    expect(activationCheck(env)).toBe('activation-limit');
+    expect((await activateLicense(JSON.stringify(env), NOW)).ok).toBe(false);
+    expect(isProActive()).toBe(false);
+  });
+
+  it('reports the higher of the baseline and the local ledger', async () => {
+    const env = await issue(kp.privateKey, { activationLimit: 3, activationUsage: 0 });
+    expect(activationUsageOf(env)).toBe(0);
+    await activateLicense(JSON.stringify(env), NOW);
+    expect(activationUsageOf(env)).toBe(1);
+    // A reissued license carrying a higher number wins over a stale local count.
+    const reissued = { ...env, claims: { ...env.claims, activationUsage: 2 } };
+    expect(activationUsageOf(reissued)).toBe(2);
+  });
+
+  it('defaults a missing activationUsage to zero rather than rejecting the license', async () => {
+    const c = claims();
+    delete (c as Partial<LicenseClaims>).activationUsage;
+    const v = await verifyLicense({ claims: c, signature: await sign(kp.privateKey, c) }, kp.publicB64, NOW);
+    expect(v.ok).toBe(true);
+    expect(activationUsageOf({ claims: c, signature: '' })).toBe(0);
+  });
+});
+
+describe('removing and deactivating are different promises', () => {
+  it('deactivate frees the seat so the license can move', async () => {
+    const env = await issue(kp.privateKey, { activationLimit: 1 });
+    await activateLicense(JSON.stringify(env), NOW);
+    deactivateLicense();
+    expect(isProActive()).toBe(false);
+    expect(activationCheck(env)).toBeNull();          // seat released
+    expect((await activateLicense(JSON.stringify(env), NOW)).ok).toBe(true);
+  });
+
+  it('remove deletes the license but keeps the seat consumed', async () => {
+    const env = await issue(kp.privateKey, { activationLimit: 1 });
+    await activateLicense(JSON.stringify(env), NOW);
+    removeLicense();
+    expect(isProActive()).toBe(false);
+    expect(loadLicense()).toBeNull();
+    // The seat is still spent, so another machine cannot now take it — that is
+    // the whole difference from deactivate.
+    expect(activationCheck(env, '00000000000000de')).toBe('activation-limit');
+  });
+
+  it('remove leaves this device on the license, so it can come straight back', async () => {
+    const env = await issue(kp.privateKey, { activationLimit: 1 });
+    await activateLicense(JSON.stringify(env), NOW);
+    removeLicense();
+    // Same device: still recognised, no second seat needed.
+    expect(activationCheck(env)).toBeNull();
+  });
+
+  it('remove leaves this device able to re-import its own license', async () => {
+    const env = await issue(kp.privateKey, { activationLimit: 1 });
+    await activateLicense(JSON.stringify(env), NOW);
+    const key = exportLicenseInfo();
+    removeLicense();
+    expect((await activateLicense(key, NOW)).ok).toBe(true);
+    expect(isProActive()).toBe(true);
+  });
+
+  it('never leaves a stale Pro behind, whichever path was taken', async () => {
+    const env = await issue(kp.privateKey);
+    await activateLicense(JSON.stringify(env), NOW);
+    removeLicense();
+    expect(isProActive()).toBe(false);
+    expect(hasFeature('branding.documents')).toBe(false);
+    await activateLicense(JSON.stringify(env), NOW);
+    deactivateLicense();
+    expect(isProActive()).toBe(false);
+    expect(hasFeature('branding.documents')).toBe(false);
+  });
+});
+
 describe('license files move between machines', () => {
   it('exports the active license as a key that re-imports', async () => {
     const env = await issue(kp.privateKey);

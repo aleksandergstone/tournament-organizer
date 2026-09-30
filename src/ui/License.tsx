@@ -5,8 +5,8 @@
 // hasFeature() like every other gate in the app.
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
-  activateLicense, deactivateLicense, exportLicenseInfo, importLicenseFile,
-  isProActive, licenseStore, licenseSummary, refreshLicense,
+  activateLicense, activationUsageOf, deactivateLicense, exportLicenseInfo, importLicenseFile,
+  isProActive, licenseStore, licenseSummary, loadLicense, refreshLicense, removeLicense,
   type LicenseFailure,
 } from '../engine/license';
 import { has, proFeatures } from '../engine/features';
@@ -34,6 +34,15 @@ export default function License() {
   const pro = isProActive();
   const { status, detail } = licenseSummary();
 
+  // How many of the allowed computers this license is on. Read from the
+  // verified claims and the local ledger — never from a setting.
+  const env = pro ? loadLicense() : null;
+  const seats = env
+    ? (env.claims.activationLimit === null
+        ? t('lic.seatsUnlimited')
+        : t('lic.seats', { used: String(activationUsageOf(env)), limit: String(env.claims.activationLimit) }))
+    : '';
+
   const run = async (fn: () => Promise<{ ok: boolean; reason?: LicenseFailure }>) => {
     setBusy(true); setMsg(null);
     try {
@@ -54,6 +63,7 @@ export default function License() {
     <Page title={t('lic.title')} sub={t('lic.sub')}>
       <Panel title={status}>
         {detail ? <p className="f-hint">{detail}</p> : null}
+        {pro && seats ? <p className="f-hint">{seats}</p> : null}
         {msg ? <Alert tone={msg.kind} title={msg.kind === 'err' ? t('common.unknown') : undefined}>{msg.text}</Alert> : null}
         <div className="row" style={{ marginTop: 10 }}>
           {!pro ? (
@@ -71,10 +81,17 @@ export default function License() {
                 onClick={() => { deactivateLicense(); setMsg({ kind: 'ok', text: t('lic.statusFree') }); }}>
                 {t('lic.deactivate')}
               </button>
+              <button
+                className="btn quiet"
+                disabled={busy}
+                onClick={() => { removeLicense(); setMsg({ kind: 'ok', text: t('lic.statusFree') }); }}>
+                {t('lic.remove')}
+              </button>
             </>
           )}
         </div>
         {!pro ? <p className="f-hint">{t('lic.buyHint')}</p> : <p className="f-hint">{t('lic.offline')}</p>}
+        {pro ? <p className="f-hint">{t('lic.removeHint')}</p> : null}
         {!pro && CHECKOUT_URL === '' ? <p className="f-hint">{t('lic.checkoutMissing')}</p> : null}
       </Panel>
 

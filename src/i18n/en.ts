@@ -1363,5 +1363,10 @@ export const en = {
   // Locked feature notice
   'lic.lockedTitle': 'This one is part of Pro',
   'lic.lockedHint': 'Everything else stays free — creating, standings, results, exports and printing all keep working.',
+  // Activation seats and removal
+  'lic.seats': 'Activated on {used} of {limit} computer(s)',
+  'lic.seatsUnlimited': 'Unlimited computers',
+  'lic.remove': 'Remove from this computer',
+  'lic.removeHint': 'Deletes the license here but keeps the activation used up — use this when you are handing the computer to someone else.',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };
