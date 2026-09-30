@@ -1,25 +1,16 @@
 ﻿// A free user must be able to finish a tournament end to end.
 //
-// This is the test that matters most for the whole licensing idea, and it is
-// written against behaviour rather than against feature flags: with no license
-// present it builds a real event, plays it out and produces a printable document.
+// Every user is now a free user: there is no license to hold, activate or
+// miss. Written against behaviour rather than feature flags — it builds a real
+// event, plays it out and produces a printable document.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CORE_FEATURE_IDS, classOf } from '../src/engine/feature-registry';
 import { has, tierOf } from '../src/engine/features';
-import { deactivateLicense, hasFeature, refreshLicense, setLicenseStore } from '../src/engine/license';
 import { genRoundRobin } from '../src/engine/generate';
 import { DEFAULT_RULES, DEFAULT_SETTINGS, nowIso, uid, type Participant, type Tournament } from '../src/engine/types';
 
-beforeEach(async () => {
-  const map = new Map<string, string>();
-  setLicenseStore({
-    getItem: k => map.get(k) ?? null,
-    setItem: (k, v) => { map.set(k, v); },
-    removeItem: k => { map.delete(k); },
-  });
-  deactivateLicense();
-  await refreshLicense();
-});
+// No setup needed any more. There is no license to hold, clear or refresh, so
+// every test below starts from exactly the state a real user is in.
 
 const tournament: Tournament = {
   ...({} as Tournament), id: 't1', name: 'Autumn Open', format: 'round-robin',
@@ -61,8 +52,7 @@ describe('a free user runs a whole tournament', () => {
     expect(Array.isArray(matches)).toBe(true);
   });
 
-  it('does all of it with Pro genuinely switched off', () => {
-    expect(hasFeature('branding.documents')).toBe(false);
+  it('does all of it with nothing switched off, because nothing is gated', () => {
     for (const id of CORE_FEATURE_IDS) {
       expect(has(id), id).toBe(true);
       expect(classOf(id), id).toBe('free');
@@ -104,10 +94,11 @@ describe('every core step answers "free" without a license', () => {
 });
 
 describe('a preview context cannot quietly unlock the app', () => {
-  it('shows a Pro feature to a preview but does not grant it', () => {
-    expect(has('branding.documents', { tier: 'pro' })).toBe(true);   // what the upsell advertises
-    expect(has('branding.documents')).toBe(false);                  // what the app decides
-    expect(hasFeature('branding.documents')).toBe(false);
+  // There is no paid tier left, so the context has nothing to unlock. These
+  // tests pin that down: a stray { tier: 'pro' } must never be a way in.
+  it('grants nothing extra, because there is nothing extra to grant', () => {
+    expect(has('display.kiosk', { tier: 'pro' })).toBe(has('display.kiosk'));
+    expect(has('sync.lan', { tier: 'pro' })).toBe(has('sync.lan'));
   });
 
   it('never grants a feature that was not built, even in preview', () => {

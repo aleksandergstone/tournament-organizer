@@ -780,32 +780,38 @@ tr.champion td.rank { color: var(--acc); }
   .rule-block > div { grid-template-columns: 1fr; gap: 2px; }
 }
 
-/* ---- Pro boundary --------------------------------------------------------
-   The badge is the only new visual idea here. It sits inline with a nav label
-   and is deliberately quiet: a locked feature should look labelled, not broken.
-   Colour is not the only signal — the word "Pro" is there for anyone who cannot
-   distinguish the accent from the background. */
+/* ---- Voluntary support note -----------------------------------------------
+   Deliberately the quietest thing on the screen. It sits with other text,
+   has no border to make it look like a dialog, and takes up one line. If it
+   were mistaken for an error or a purchase prompt it would be doing harm. */
 
-.pro-badge {
-  margin-left: 6px;
-  padding: 1px 6px;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  opacity: .75;
-  vertical-align: middle;
+.support-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 18px 0 4px;
+  padding: 8px 2px;
+  border-top: 1px solid var(--line, #e2e2e2);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted, #777);
 }
 
-nav button.pro-locked { opacity: .8; }
-nav button.pro-locked:hover { opacity: 1; }
+.support-text { margin: 0; }
+.support-text b { font-weight: 600; color: var(--fg, #444); }
+.support-desc { display: block; }
+.support-acts { display: inline-flex; align-items: center; gap: 8px; }
+.support-optional { opacity: .7; }
 
-.pro-locked {
-  border: 1px dashed var(--line, #ccc);
-  border-radius: 8px;
-  padding: 16px 18px;
+.support-note.compact { margin-top: 10px; padding-top: 6px; font-size: 11px; }
+
+.btn.tiny {
+  padding: 2px 9px;
+  font-size: 11px;
+  border-radius: 5px;
 }
 
-.pro-locked-title { margin: 0 0 4px; font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) {
+  .support-note { transition: opacity .15s ease; }
+}

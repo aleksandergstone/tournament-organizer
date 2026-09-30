@@ -18,9 +18,9 @@ export interface DesktopBridge {
   /** Opens the read-only Display Mode in a second window (desktop only). */
   openDisplay(fullscreen?: boolean): Promise<boolean>;
   /**
-   * Hands a URL to the system browser — used for the hosted checkout. Only
-   * https and mailto are allowed, so a value that ever came from a project file
-   * can never become a file:// or javascript: link.
+   * Hands a URL to the system browser — used for the optional support link.
+   * Only https and mailto are allowed, so a value that ever came from a config
+   * or project file can never become a file:// or javascript: link.
    */
   openExternal(url: string): Promise<boolean>;
   /** LAN sync: host side (needs the desktop app; a browser cannot listen on a port). */

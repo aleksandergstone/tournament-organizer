@@ -11,8 +11,6 @@ import Matches from './ui/Matches';
 import Standings from './ui/Standings';
 import Output from './ui/Output';
 import Settings from './ui/Settings';
-import License from './ui/License';
-import { refreshLicense, revalidate } from './engine/license';
 import Import from './ui/Import';
 import Display from './ui/Display';
 import Schedule from './ui/Schedule';
@@ -20,9 +18,6 @@ import ComingSoon from './ui/ComingSoon';
 import ErrorBoundary from './ui/ErrorBoundary';
 import { Alert } from './ui/kit';
 import { parseDeepLink, resolveDeepLink } from './engine/deeplink';
-import { SCREEN_FEATURE } from './engine/screen-features';
-import { has } from './engine/features';
-import ProGate, { ProBadge } from './ui/ProGate';
 import { hasBracket } from './engine/generate';
 import { isNativeApp } from './engine/mobile-bridge';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -47,11 +42,6 @@ export default function App() {
 
   // On a phone the hardware back button walks out of a screen; at the Home
   // screen it falls through to Android, which closes the app.
-  // One offline verification at startup. revalidate() is the local signature
-  // check; it only reaches for the network if a server has been configured, and
-  // it never blocks startup when there is not one.
-  useEffect(() => { void revalidate(); }, []);
-
   useEffect(() => {
     if (!isNativeApp()) return;
     let detach: (() => void) | undefined;
@@ -128,23 +118,9 @@ export default function App() {
           return (
             <span className="nav-group" key={gi}>
               {gi > 0 ? <span className="divider" /> : null}
-              {items.map(([k, label]) => {
-                // A Pro screen keeps its place in the menu and stays clickable:
-                // clicking it opens the screen and explains the upgrade there.
-                // Hiding it would read as a broken build, disabling it would be a
-                // button that does nothing.
-                const pro = SCREEN_FEATURE[k];
-                const locked = Boolean(pro) && !has(pro as string);
-                return (
-                  <button
-                    key={k}
-                    className={(screen === k ? 'on ' : '') + (locked ? 'pro-locked' : '')}
-                    onClick={() => go(k)}
-                    disabled={(k !== 'home' && !hasProject)}>
-                    {t(label)}{locked ? <ProBadge /> : null}
-                  </button>
-                );
-              })}
+              {items.map(([k, label]) => (
+                <button key={k} className={screen === k ? 'on' : ''} onClick={() => go(k)} disabled={(k !== 'home' && !hasProject)}>{t(label)}</button>
+              ))}
             </span>
           );
         })}</nav>
@@ -181,13 +157,10 @@ export default function App() {
       {screen === 'matches' && (hasProject ? <Matches /> : <Home />)}
       {screen === 'standings' && (hasProject ? <Standings /> : <Home />)}
       {screen === 'schedule' && (hasProject ? <Schedule /> : <Home />)}
-      {screen === 'display' && (hasProject
-        ? <ProGate featureId="display.kiosk"><Display /></ProGate>
-        : <Home />)}
+      {screen === 'display' && (hasProject ? <Display /> : <Home />)}
       {screen === 'codes' && <ComingSoon title="codes" />}
       {screen === 'export' && (hasProject ? <Output /> : <Home />)}
       {screen === 'settings' && <Settings />}
-      {screen === 'license' && <License />}
       {screen === 'import' && <Import />}
     </div>
   );

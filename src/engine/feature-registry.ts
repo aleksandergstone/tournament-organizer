@@ -1,12 +1,12 @@
-﻿// The feature registry â€” the single place that says what this product has and
+﻿// The feature registry — the single place that says what this product has and
 // what it costs. No imports, no license, no UI: this is data, so the engine, the
 // UI, the docs and any future packaging step all read one table and cannot drift.
 //
-// Four classes, answering two different questions â€” deliberately:
+// Four classes, answering two different questions — deliberately:
 //
 //   free      access. Always available. The core product.
 //   pro       access. Available with a license. A value-add, never the product.
-//   reporting capability. Exists and works, but produces information only â€” it
+//   reporting capability. Exists and works, but produces information only — it
 //             never changes a result. (Bracket points are the one case today.)
 //   planned   capability. Declared, deliberately not built yet.
 //
@@ -26,12 +26,12 @@
 /** How a feature is classified. See the note above. */
 export type FeatureClass = 'free' | 'pro' | 'reporting' | 'planned';
 
-/** Who may use it. Derived from the class â€” see `accessOf`. */
+/** Who may use it. Derived from the class — see `accessOf`. */
 export type FeatureAccess = 'always' | 'license' | 'none';
 
 export interface FeatureEntry {
   id: string;
-  /** Short human name for the docs table. Not a translation key â€” screens keep
+  /** Short human name for the docs table. Not a translation key — screens keep
    *  their own labels; nothing here has to be translated. */
   name: string;
   class: FeatureClass;
@@ -59,12 +59,11 @@ export const FEATURE_REGISTRY: readonly FeatureEntry[] = [
   { id: 'export.print', name: 'Print any document', class: 'free', why: 'Printing is how the output reaches anyone.', label: 'nav.output' },
   { id: 'export.pdf', name: 'Save a PDF', class: 'free', why: 'Same document, same button. Only the decoration is paid.', label: 'feat.print.summary' },
   { id: 'export.csv', name: 'Export CSV', class: 'free', why: 'Data out, always. A paid exit door is hostile.', label: 'nav.output' },
-  // Shipped free to everyone until Pro launched, then moved: a projector
-  // display and multi-computer sync are what a paid coordinator actually buys.
-  // This is a deliberate downgrade for existing users, recorded here so nobody
-  // "fixes" it back by accident.
-  { id: 'display.kiosk', name: 'Display mode for a projector', class: 'pro', why: 'The live court-side view. Moved to Pro when monetisation started.', label: 'feat.display.kiosk' },
-  { id: 'sync.lan', name: 'LAN sync with your own computers', class: 'pro', why: 'Several scorers, one tournament. Moved to Pro when monetisation started.', label: 'feat.sync.lan' },
+  // Restored to free. These shipped free to everyone, were moved behind a Pro
+  // boundary during a monetisation attempt, and are free again — the app is
+  // fully open while a voluntary support link is considered instead.
+  { id: 'display.kiosk', name: 'Display mode for a projector', class: 'free', why: 'Part of running an event on the day.', label: 'feat.display.kiosk' },
+  { id: 'sync.lan', name: 'LAN sync with your own computers', class: 'free', why: 'Several scorers on the same network, no account, no server.', label: 'feat.sync.lan' },
   { id: 'app.offline', name: 'Works fully offline', class: 'free', why: 'The defining constraint of the product.', label: 'app.footer' },
   { id: 'audit.trail', name: 'Audit trail of every change', class: 'free', why: 'Trust depends on being able to check what changed.', label: 'nav.overview' },
   { id: 'undo.redo', name: 'Undo and redo', class: 'free', why: 'Correcting a mis-click is not a premium feature.', label: 'nav.settings' },
@@ -74,11 +73,9 @@ export const FEATURE_REGISTRY: readonly FeatureEntry[] = [
   // ---- Reporting-only: real, but never changes an outcome. ------------------
   { id: 'points.reporting', name: 'Points kept for reports only', class: 'reporting', why: 'In a bracket, points are a record, not a decision. Shown so nobody wonders where the numbers went; never sold.', label: 'mode.points.bracket' },
 
-  // ---- Pro: decoration and professional workflow. ---------------------------
-  { id: 'branding.documents', name: 'Branded documents (logo, title, footer, accent)', class: 'pro', why: 'The document works without it; only the letterhead costs.', label: 'lic.unlockBranding' },
-  { id: 'print.pack', name: 'The full print pack', class: 'planned', why: 'Bundling documents that already exist is convenience, not capability. Not built yet — declared so it is not forgotten.' },
-  { id: 'templates.saved', name: 'Saved templates for recurring events', class: 'planned', why: 'Pays off only after you have run several events. Not built yet.' },
-  { id: 'schedule.resources', name: 'Advanced resource and conflict scheduling', class: 'planned', why: 'Basic scheduling stays free; resolving conflicts across venues is specialist work. Not built yet.' },
+  // ---- Pro: none. The app is entirely free while support is voluntary. ----
+  // The class is kept in the model so that a paid tier can return without
+  // reshaping anything, but nothing is classified 'pro' today.
 
   // ---- Planned: named, on purpose, not built. -------------------------------
   { id: 'codes.qr', name: 'QR check-in and quick result', class: 'planned', why: 'The screen is a ComingSoon placeholder today. Not an upsell yet.', label: 'soon.qr' },
@@ -102,7 +99,7 @@ export function classOf(id: string): FeatureClass | null {
   return entryOf(id)?.class ?? null;
 }
 
-/** Access is derived from the class, never declared by hand â€” see the header. */
+/** Access is derived from the class, never declared by hand — see the header. */
 export function accessOf(id: string): FeatureAccess {
   switch (classOf(id)) {
     case 'free': case 'reporting': return 'always';
@@ -116,7 +113,7 @@ export const idsWithClass = (c: FeatureClass): string[] =>
 
 /**
  * Everything a free install may use. The license module reads this list instead
- * of keeping its own â€” that duplication was the one place the two could drift.
+ * of keeping its own — that duplication was the one place the two could drift.
  */
 export const FREE_FEATURE_IDS: readonly string[] = FEATURE_REGISTRY
   .filter(e => e.class === 'free' || e.class === 'reporting')

@@ -2,13 +2,14 @@
 // Everything here is optional; the app works with the defaults.
 import { useApp } from '../state/store';
 import { describeEdition as editionOf } from '../engine/features';
-import { isProActive } from '../engine/license';
 import { APP_NAME, APP_VERSION } from '../version';
 import { LOCALES, LOCALE_NAMES, resolveLocale, useT } from '../i18n';
 import type { LocalePreference } from '../i18n';
 import { Page, Panel, Segmented, Switch } from './kit';
 import SyncPanel from './SyncPanel';
-import ProGate from './ProGate';
+import SupportBanner, { ResetSupportButton } from './SupportBanner';
+
+
 
 export default function Settings() {
   const { settings, setSettings, go } = useApp();
@@ -63,9 +64,7 @@ export default function Settings() {
       </Panel>
 
       <Panel title={t('sync.title')} sub={t('sync.sub')}>
-        <ProGate featureId="sync.lan">
-          <SyncPanel />
-        </ProGate>
+        <SyncPanel />
       </Panel>
 
       <Panel title={t('settings.about')}>
@@ -81,10 +80,11 @@ export default function Settings() {
             </tbody>
           </table>
         </div>
-        <div className="row" style={{ marginTop: 10 }}>
-          <button className="btn quiet" onClick={() => go('license')}>{t('lic.title')}</button>
-        </div>
         <p className="table-note">{t('settings.aboutNote', { action: t('settings.aboutAction') })}</p>
+        <SupportBanner compact />
+        <div className="row" style={{ marginTop: 6 }}>
+          <ResetSupportButton />
+        </div>
       </Panel>
     </Page>
   );

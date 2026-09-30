@@ -1369,5 +1369,12 @@ export const pl: Dict = {
   'lic.seatsUnlimited': 'Bez limitu komputerów',
   'lic.remove': 'Usuń z tego komputera',
   'lic.removeHint': 'Usuwa licencję z tego komputera, ale zachowuje zużytą aktywację — użyj, gdy przekazujesz komputer komuś innemu.',
+  // Voluntary support banner
+  'support.title': 'Jeśli ta aplikacja Ci pomaga, możesz wesprzeć jej rozwój.',
+  'support.desc': 'W pełni darmowa, bez konta, bez abonamentu.',
+  'support.button': 'Wesprzyj projekt',
+  'support.dismiss': 'Ukryj',
+  'support.optional': 'Wyłącznie dobrowolne',
+  'support.showAgain': 'Pokaż notkę o wsparciu ponownie',
 };
 

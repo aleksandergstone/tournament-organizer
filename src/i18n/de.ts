@@ -1369,5 +1369,12 @@ export const de: Dict = {
   'lic.seatsUnlimited': 'Unbegrenzte Computer',
   'lic.remove': 'Von diesem Rechner entfernen',
   'lic.removeHint': 'Entfernt die Lizenz hier, behält die Aktivierung aber verbraucht — richtig, wenn Sie den Rechner weitergeben.',
+  // Voluntary support banner
+  'support.title': 'Wenn dir diese App hilft, kannst du ihre Entwicklung unterstützen.',
+  'support.desc': 'Vollständig kostenlos, ohne Konto, ohne Abo.',
+  'support.button': 'Projekt unterstützen',
+  'support.dismiss': 'Ausblenden',
+  'support.optional': 'Rein freiwillig',
+  'support.showAgain': 'Hinweis erneut anzeigen',
 };
 

@@ -1369,5 +1369,12 @@ export const es: Dict = {
   'lic.seatsUnlimited': 'Equipos ilimitados',
   'lic.remove': 'Quitar de este equipo',
   'lic.removeHint': 'Quita la licencia aquí, pero mantiene la activación consumida: úsalo al prestar el equipo a otra persona.',
+  // Voluntary support banner
+  'support.title': 'Si esta app te ayuda, puedes apoyar su desarrollo.',
+  'support.desc': 'Totalmente gratis, sin cuenta, sin suscripción.',
+  'support.button': 'Apoyar el proyecto',
+  'support.dismiss': 'Ocultar',
+  'support.optional': 'Solo voluntario',
+  'support.showAgain': 'Mostrar la nota de apoyo de nuevo',
 };
 

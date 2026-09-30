@@ -7,6 +7,9 @@ import { Alert, Empty, Panel } from './kit';
 import { describeFormat } from '../engine/generate';
 import { useT } from '../i18n';
 import type { Translate } from '../i18n';
+import SupportBanner from './SupportBanner';
+
+
 
 /** Compact, scannable timestamps: "Today 21:40", "Yesterday", "12 Sep 2026". */
 function when(iso: string, t: Translate): string {
@@ -45,6 +48,7 @@ export default function Home() {
     }
   };
   return (
+    <>
     <div className="wrap">
       <section className="card hero">
         <h1>{t('app.name')}</h1>
@@ -105,6 +109,11 @@ export default function Home() {
       )}
 
       <p className="appfoot">{t('app.footer', { name: APP_NAME, version: APP_VERSION })}</p>
+
+      {/* The only place on a working screen where support appears: under the
+          footer, next to nothing that matters, never over an action. */}
+      <SupportBanner />
     </div>
+    </>
   );
 }

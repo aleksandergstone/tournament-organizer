@@ -1368,5 +1368,12 @@ export const en = {
   'lic.seatsUnlimited': 'Unlimited computers',
   'lic.remove': 'Remove from this computer',
   'lic.removeHint': 'Deletes the license here but keeps the activation used up — use this when you are handing the computer to someone else.',
+  // Voluntary support banner
+  'support.title': 'If this app helps you, you can support development.',
+  'support.desc': 'Entirely free, no account, no subscription.',
+  'support.button': 'Support the project',
+  'support.dismiss': 'Dismiss',
+  'support.optional': 'Voluntary only',
+  'support.showAgain': 'Show the support note again',
 } as const;
 export type Dict = { [K in keyof typeof en]: string };
