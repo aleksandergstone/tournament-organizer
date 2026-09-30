@@ -1,7 +1,8 @@
 // Settings — grouped by how often the organizer touches them.
 // Everything here is optional; the app works with the defaults.
 import { useApp } from '../state/store';
-import { describeEdition } from '../engine/features';
+import { describeEdition as editionOf } from '../engine/features';
+import { isProActive } from '../engine/license';
 import { APP_NAME, APP_VERSION } from '../version';
 import { LOCALES, LOCALE_NAMES, resolveLocale, useT } from '../i18n';
 import type { LocalePreference } from '../i18n';
@@ -9,7 +10,7 @@ import { Page, Panel, Segmented, Switch } from './kit';
 import SyncPanel from './SyncPanel';
 
 export default function Settings() {
-  const { settings, setSettings } = useApp();
+  const { settings, setSettings, go } = useApp();
   const t = useT();
   const pref: LocalePreference = settings.locale ?? 'system';
   const effective = resolveLocale(pref);
@@ -70,12 +71,15 @@ export default function Settings() {
             <tbody>
               <tr><td className="muted">{t('settings.aboutApp')}</td><td className="name">{APP_NAME}</td></tr>
               <tr><td className="muted">{t('settings.aboutVersion')}</td><td>{APP_VERSION}</td></tr>
-              <tr><td className="muted">{t('settings.aboutEdition')}</td><td>{describeEdition('free')}</td></tr>
+              <tr><td className="muted">{t('settings.aboutEdition')}</td><td className="name">{editionOf()}</td></tr>
               <tr><td className="muted">{t('language.title')}</td><td>{LOCALE_NAMES[effective]}</td></tr>
               <tr><td className="muted">{t('settings.aboutDataLabel')}</td><td>{t('settings.aboutData')}</td></tr>
               <tr><td className="muted">{t('settings.aboutLicense')}</td><td>MIT</td></tr>
             </tbody>
           </table>
+        </div>
+        <div className="row" style={{ marginTop: 10 }}>
+          <button className="btn quiet" onClick={() => go('license')}>{t('lic.title')}</button>
         </div>
         <p className="table-note">{t('settings.aboutNote', { action: t('settings.aboutAction') })}</p>
       </Panel>

@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('toDesktop', {
   savePdf: (filename, html) => ipcRenderer.invoke('file:save-pdf', filename, html),
   printHtml: (html) => ipcRenderer.invoke('file:print', html),
   openText: () => ipcRenderer.invoke('file:open'),
+  openExternal: (url) => ipcRenderer.invoke('shell:open', url),
   // display mode (second window)
   openDisplay: (fullscreen) => ipcRenderer.invoke('window:open-display', !!fullscreen),
   // LAN sync host (local network only)

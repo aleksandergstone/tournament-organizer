@@ -40,6 +40,15 @@ export function installMobileBridge(): boolean {
   if (typeof window === 'undefined' || window.toDesktop || !isNativeApp()) return false;
   const needsDesktop = { ok: false, error: t('sync.errNoDesktop') };
   window.toDesktop = {
+    openExternal: (url: string) => {
+      // The native shells hand a link to the system browser, same rules as the
+      // desktop bridge: https and mailto only.
+      if (!/^(https:\/\/|mailto:)/i.test(url)) return Promise.reject(new Error(t('error.fileOpen')));
+      const w = window as unknown as { open?: (u: string, target?: string, rel?: string) => void };
+      if (typeof w.open !== 'function') return Promise.reject(new Error(t('error.fileOpen')));
+      w.open(url, '_blank', 'noopener,noreferrer');
+      return Promise.resolve({ ok: true });
+    },
     saveText: async (filename, text) => {
       const mime = filename.endsWith('.csv') ? 'text/csv'
         : filename.endsWith('.json') ? 'application/json' : 'text/plain';

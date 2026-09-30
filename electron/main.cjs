@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, screen, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -227,6 +227,14 @@ ipcMain.handle('file:save-pdf', async (_e, filename, html) => {
 });
 
 // An organizer pressing "Print" in a browser should get the same dialog.
+// Opening a link in the user's own browser. Restricted to https and mailto so
+// nothing in the renderer can turn it into file:// or javascript:.
+ipcMain.handle('shell:open', async (_e, url) => {
+  if (typeof url !== 'string' || !/^(https:\/\/|mailto:)/i.test(url)) return { error: 'Only https links can be opened.' };
+  await shell.openExternal(url);
+  return { ok: true };
+});
+
 ipcMain.handle('file:print', async (_e, html) => {
   let w = null;
   let tmp = null;

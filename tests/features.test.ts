@@ -1,10 +1,25 @@
-import { describe, expect, it } from 'vitest';
-import { DEFAULT_TIER, FEATURES, availableFeatures, describeEdition, has } from '../src/engine/features';
+// The boundary is now decided by a verified license, not by a parameter, so
+// these tests describe behaviour: free means "no license on the machine".
+import { beforeEach, describe, expect, it } from 'vitest';
+import { DEFAULT_TIER, FEATURES, availableFeatures, describeEdition, has, proFeatures, tierOf } from '../src/engine/features';
+import { deactivateLicense, refreshLicense, setLicenseStore } from '../src/engine/license';
+
+beforeEach(async () => {
+  const map = new Map<string, string>();
+  setLicenseStore({
+    getItem: k => map.get(k) ?? null,
+    setItem: (k, v) => { map.set(k, v); },
+    removeItem: k => { map.delete(k); },
+  });
+  deactivateLicense();
+  await refreshLicense();
+});
 
 describe('free/pro feature boundary', () => {
-  it('grants every feature on the free tier when tier is free', () => {
+  it('grants every feature the catalogue declares free', () => {
     for (const f of FEATURES.filter(x => x.tier === 'free')) {
-      expect(has(f.id, { tier: 'free' })).toBe(true);
+      expect(has(f.id), f.id).toBe(true);
+      expect(tierOf(f.id)).toBe('free');
     }
   });
   it('core workflow features are never pro-gated', () => {
@@ -15,24 +30,24 @@ describe('free/pro feature boundary', () => {
       expect(has(id), id).toBe(true);
     }
   });
-  it('pro features stay locked at free tier and unlock at pro', () => {
-    for (const f of FEATURES.filter(x => x.tier === 'pro')) {
-      expect(has(f.id, { tier: 'free' })).toBe(false);
-      expect(has(f.id, { tier: 'pro' })).toBe(true);
-    }
+  it('pro features stay locked with no license and unlock with one', () => {
+    // No license: every declared Pro feature is locked.
+    for (const f of proFeatures()) expect(has(f.id), f.id).toBe(false);
+    // A preview context can still show them, and grants nothing for real.
+    for (const f of proFeatures()) expect(has(f.id, { tier: 'pro' }), f.id).toBe(true);
   });
   it('unknown feature ids are denied, never granted', () => {
     expect(has('does.not.exist')).toBe(false);
     expect(has('does.not.exist', { tier: 'pro' })).toBe(false);
+    expect(tierOf('does.not.exist')).toBeNull();
   });
-  it('local flags override tier (opt-in / testing)', () => {
-    expect(has('export.pdf', { tier: 'free', flags: { 'export.pdf': true } })).toBe(true);
-    expect(has('project.export', { tier: 'pro', flags: { 'project.export': false } })).toBe(false);
-  });
-  it('defaults are free tier with all core features available', () => {
+  it('defaults are free tier and the edition reads Free without a license', () => {
     expect(DEFAULT_TIER).toBe('free');
-    expect(availableFeatures('free').length).toBeGreaterThan(0);
-    expect(describeEdition('free')).toContain('Free');
+    expect(availableFeatures().length).toBeGreaterThan(0);
+    expect(describeEdition()).toContain('Free');
     expect(describeEdition('pro')).toBe('Pro');
+  });
+  it('no licence file exists until one is activated', () => {
+    expect(availableFeatures('pro').length).toBe(availableFeatures().length);
   });
 });

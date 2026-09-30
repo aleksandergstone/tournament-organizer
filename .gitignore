@@ -28,6 +28,11 @@ desktop.ini
 .env
 .env.*
 
+# The private half of the Pro license signing key. It can issue licenses, so it
+# must never be committed, never be packaged, and never leave the machine that
+# sells them. scripts/generate-license-key.mjs creates it.
+keys/
+
 # NOTE: build/icon.png, build/icon.ico and build/make-icon.ps1 ARE tracked on
 # purpose — the icons are required by electron-builder on Linux/macOS CI
 # runners, where the PowerShell generator cannot run.
@@ -43,3 +48,6 @@ s-out.txt
 s-err.txt
 tools-setup.log
 tools-setup.err
+
+# One-off artifacts from a manual license issuance check
+e2e-out.txt

@@ -14,6 +14,7 @@ import { fileNameFor, serializeProject } from '../engine/storage';
 import { nowIso } from '../engine/types';
 import { Alert, Empty, Page, Panel, Toolbar } from './kit';
 import { BrandingForm } from './Branding';
+import ProGate from './ProGate';
 import { useT } from '../i18n';
 
 export default function Output() {
@@ -108,7 +109,9 @@ export default function Output() {
 
       <Panel title={tr('brand.title')} sub={tr('brand.sub')}>
         <div onBlur={() => { if (draft) commitBranding(draft); }}>
-          <BrandingForm branding={branding} onChange={setDraft} />
+          <ProGate featureId="branding.documents">
+            <BrandingForm branding={branding} onChange={setDraft} />
+          </ProGate>
         </div>
       </Panel>
 

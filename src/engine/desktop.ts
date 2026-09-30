@@ -17,6 +17,12 @@ export interface DesktopBridge {
   openText(): Promise<{ path: string; text: string } | null>;
   /** Opens the read-only Display Mode in a second window (desktop only). */
   openDisplay(fullscreen?: boolean): Promise<boolean>;
+  /**
+   * Hands a URL to the system browser — used for the hosted checkout. Only
+   * https and mailto are allowed, so a value that ever came from a project file
+   * can never become a file:// or javascript: link.
+   */
+  openExternal(url: string): Promise<boolean>;
   /** LAN sync: host side (needs the desktop app; a browser cannot listen on a port). */
   lanStart(): Promise<LanInfo>;
   lanStop(): Promise<void>;
@@ -46,6 +52,7 @@ declare global {
     printHtml(html: string): Promise<{ ok?: boolean; error?: string }>;
     openText(): Promise<OpenResult | { path: string; text: string } | null>;
     openDisplay(fullscreen?: boolean): Promise<{ ok?: boolean; error?: string }>;
+    openExternal(url: string): Promise<{ ok?: boolean; error?: string }>;
     lanStart(): Promise<LanInfo>;
     lanStop(): Promise<{ ok: boolean }>;
     lanStatus(): Promise<LanInfo>;
@@ -161,6 +168,21 @@ export const desktop: DesktopBridge = {
     const r = await window.toDesktop.openDisplay(fullscreen);
     if (r && r.error) throw new Error(r.error);
     return !!(r && r.ok);
+  },
+
+  // ---- the system browser --------------------------------------------------
+  async openExternal(url) {
+    if (!/^(https:\/\/|mailto:)/i.test(url)) throw new Error(t('error.fileOpen'));
+    if (window.toDesktop) {
+      const r = await window.toDesktop.openExternal(url);
+      if (r && r.error) throw new Error(r.error);
+      return !!(r && r.ok);
+    }
+    // Browser: a plain anchor keeps the app tab in place.
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    a.click();
+    return true;
   },
 
   // ---- LAN sync: host -----------------------------------------------------

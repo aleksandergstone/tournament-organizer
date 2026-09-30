@@ -1,27 +1,25 @@
-// Free / Pro product boundary — pure logic, no UI, no payments, no network.
+// Free / Pro product boundary — the catalogue of what exists and who gets it.
 //
-// This module is the single place where feature entitlements live. The UI
-// asks `has()` before enabling an optional capability; everything the app
-// does today is declared `free`, so current behaviour never changes.
+// The decision is no longer made here: `has()` asks the license engine, which
+// derives the answer from a verified signature. This file is the single place
+// where a feature is declared, so "is this Pro?" has one answer per feature and
+// the License screen can list them without inventing anything.
 //
-// Future monetization path (deliberately deferred):
-//   1. Add a Pro feature id below and mark it `tier: 'pro'`.
-//   2. Ship a license activator that sets `tier: 'pro'` in AppSettings
-//      (stored offline in the project file — no account system required).
-//   3. Nothing else changes: the engine, import/export and all core
-//      workflows stay fully functional on the free tier, offline.
-
+// Core workflow features MUST stay 'free' — a free install can create a
+// tournament, add participants, generate a structure, enter results, read
+// standings, schedule, export and print. Pro adds the professional document
+// tools on top; it never withholds the product itself.
 import { t, type Dict } from '../i18n';
+import { hasFeature, isProActive } from './license';
 
 export type Tier = 'free' | 'pro';
 
 export interface FeatureDef {
   id: string;
   labelKey: keyof Dict;  // translated by the UI, never frozen at load time
-  tier: Tier;        // lowest tier that includes the feature
+  tier: Tier;            // lowest tier that includes the feature
 }
 
-// Register features here. Core workflow features MUST stay 'free'.
 export const FEATURES: readonly FeatureDef[] = [
   { id: 'project.create',     labelKey: 'feat.project.create',   tier: 'free' },
   { id: 'project.import',     labelKey: 'feat.project.import',   tier: 'free' },
@@ -29,37 +27,49 @@ export const FEATURES: readonly FeatureDef[] = [
   { id: 'results.entry',      labelKey: 'feat.results.entry',    tier: 'free' },
   { id: 'standings.view',     labelKey: 'feat.standings.view',   tier: 'free' },
   { id: 'print.summary',      labelKey: 'feat.print.summary',    tier: 'free' },
-  // Reserved for a future Pro edition — referenced by nothing yet, so they
-  // cannot block or break the current offline workflow.
-  { id: 'export.pdf',         labelKey: 'feat.export.pdf',         tier: 'pro' },
-  { id: 'templates.saved',    labelKey: 'feat.templates.saved',    tier: 'pro' },
+  // Shipped today and deliberately free: they are part of what the app is, not
+  // an upsell. Locking them would remove functionality users already have.
+  { id: 'display.kiosk',      labelKey: 'feat.display.kiosk',    tier: 'free' },
+  { id: 'sync.lan',           labelKey: 'feat.sync.lan',         tier: 'free' },
+  { id: 'schedule.venues',    labelKey: 'feat.schedule.venues',  tier: 'free' },
+  // Pro: the professional document tools.
+  { id: 'branding.documents', labelKey: 'lic.unlockBranding',    tier: 'pro' },
+  { id: 'print.pack',         labelKey: 'lic.unlockPack',        tier: 'pro' },
+  { id: 'templates.saved',    labelKey: 'lic.unlockTemplates',   tier: 'pro' },
 ];
 
 export const DEFAULT_TIER: Tier = 'free';
 
 export interface EntitlementContext {
+  /** Overrides the verified tier. For previews and tests only — the UI never
+   *  passes this, so a button cannot grant itself a license. */
   tier?: Tier;
-  /** Local overrides (e.g. beta unlocks). Absent = no override. */
-  flags?: Record<string, boolean>;
 }
 
-/** Is a feature available given tier + optional local overrides? */
-export function has(featureId: string, ctx: EntitlementContext = {}): boolean {
-  // Local flags win — useful for testing and opt-in betas, never shipped by default.
-  const flag = ctx.flags?.[featureId];
-  if (typeof flag === 'boolean') return flag;
-  const f = FEATURES.find(x => x.id === featureId);
-  if (!f) return false; // unknown features are never silently granted
-  const tier = ctx.tier ?? DEFAULT_TIER;
-  return f.tier === 'free' || tier === 'pro';
+/** The declared tier of a feature, ignoring any license. */
+export function tierOf(featureId: string): Tier | null {
+  return FEATURES.find(x => x.id === featureId)?.tier ?? null;
 }
 
-/** All feature ids available at a tier — handy for UI badges and About text. */
-export function availableFeatures(tier: Tier = DEFAULT_TIER): string[] {
-  return FEATURES.filter(f => has(f.id, { tier })).map(f => f.id);
+/** The live answer: the license decides, and a Pro license lists its features. */
+export function has(featureId: string, ctx?: EntitlementContext): boolean {
+  if (!FEATURES.some(f => f.id === featureId)) return false;  // unknown ids are never granted
+  if (ctx?.tier === 'pro') return true;          // previews and tests only
+  return hasFeature(featureId);
 }
 
-/** Human-readable edition name for Settings/About. */
-export function describeEdition(tier: Tier = DEFAULT_TIER): string {
+/** The features a Pro license would add on top of the free product. */
+export function proFeatures(): FeatureDef[] {
+  return FEATURES.filter(f => f.tier === 'pro');
+}
+
+/** All feature ids available at the current license state. */
+export function availableFeatures(_tier: Tier = DEFAULT_TIER): string[] {
+  return FEATURES.filter(f => has(f.id)).map(f => f.id);
+}
+
+/** Human-readable edition name for Settings/About and the License screen. */
+export function describeEdition(tier: Tier = isProActive() ? 'pro' : 'free'): string {
   return t(tier === 'pro' ? 'feat.tierPro' : 'feat.tierFree');
 }
+
