@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import React from 'react';
 import { SettingsForMode, SetupSummary } from '../src/ui/modes';
 import {
-  ALL_GROUPS, hiddenGroups, inertFields, labelOfField, MODES, specFor,
+  ALL_GROUPS, fieldEffect, hiddenGroups, inertFields, labelOfField, MODES, specFor,
   validateModeSetup, visibleFields, visibleGroups,
 } from '../src/engine/mode-info';
 import { DEFAULT_RULES } from '../src/engine/types';
@@ -46,14 +46,17 @@ describe('the settings a mode shows are the settings it has', () => {
     }
   });
 
-  it('shows a group count only where the generator reads one', () => {
+  it('never renders a group count, not even when asked for every group', () => {
+    // Custom has a rule for groupCount, but a flat pairing list never reads it,
+    // so it is not a control — even when the whole catalogue is requested.
     for (const m of MODES) {
       const html = renderToStaticMarkup(React.createElement(SettingsForMode, {
         format: m.format, rules: rules(), set: () => {}, count: 8,
         groups: ALL_GROUPS, issues: [],
       }));
       const rendered = labelsOf(html).join(' | ');
-      expect(rendered.includes(en['rules.advance']), `${m.format} advance field`).toBe(showsGroups(m.format));
+      const real = showsGroups(m.format) && fieldEffect(m.format, 'groupCount') !== 'none';
+      expect(rendered.includes(en['rules.advance']), `${m.format} advance field`).toBe(real);
     }
   });
 });

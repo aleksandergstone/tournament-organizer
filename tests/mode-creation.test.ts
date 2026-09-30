@@ -622,7 +622,8 @@ describe('the exact mechanics of each mode', () => {
     expect(s.points).toMatchObject({ status: 'required', affects: 'ranking' });
     expect(s.draws.policy).toBe('allowed');
     expect(fieldStatus('round-robin', 'allowDraws')).toBe('required');
-    expect(fieldEffect('round-robin', 'homeAway')).toBe('none');
+    // genRoundRobin builds a second half from this, so it is not powerless.
+    expect(fieldEffect('round-robin', 'homeAway')).toBe('progression');
     expect(translate('en', s.draws.why)).toContain('draw points');
   });
 
@@ -663,10 +664,14 @@ describe('the exact mechanics of each mode', () => {
 
   it('custom: every combination on show, and the inert ones are named out loud', () => {
     const s = specFor('custom');
-    // Custom shows every group on purpose. The only one it leaves out is the
-    // reporting-only group, because here the points really do build the table.
+    // Custom declares every group on purpose, but only the ones with a live
+    // field are rendered: a flat pairing list has no groups and no rounds, so
+    // those two panels are not shown. The reporting group is never rendered
+    // anywhere, because the points really do build the table in Custom.
     expect(s.groups).toEqual([...ALL_GROUPS].filter(g => g !== 'reporting'));
-    expect(hiddenGroups('custom')).toEqual(['reporting']);
+    expect(visibleGroups('custom')).toEqual(
+      ['scoring', 'draws', 'tiebreak', 'seeding', 'meeting', 'byes', 'structure']);
+    expect(hiddenGroups('custom')).toEqual(['groups', 'rounds', 'reporting']);
     const inert = inertFields('custom').map(f => f.field);
     expect(inert).toContain('groupCount');
     expect(inert).toContain('advancePerGroup');

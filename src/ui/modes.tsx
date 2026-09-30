@@ -7,7 +7,7 @@
 import {
   MODES, PICKER_GROUPS, modesInGroup, pickerGroupTitle, modeOf, hiddenGroups,
   previewStructure, summaryRows, glossaryFor, visibleGroups, ALL_GROUPS,
-  specFor, fieldRule, groupPlan, inertFields, stagePlan, manualSteps, previewWarning, labelOfField,
+  specFor, fieldRule, fieldEffect, groupPlan, inertFields, stagePlan, manualSteps, previewWarning, labelOfField,
   type PickerGroup, type SettingGroup, type StructurePreview,
   type FieldRule, type ScoreEffect, type SettingStatus, type ModeSpec,
 } from '../engine/mode-info';
@@ -235,6 +235,8 @@ export function ModeExplainer({ format, rules, count }: {
   const m = modeOf(format);
   const hidden = hiddenGroups(format);
   const inert = inertFields(format);
+  /** Would this field do anything in this mode? */
+  const live = (f: keyof RuleSet) => fieldEffect(format, f) !== 'none';
   return (
     <div className="mode-explain">
       <p className="mode-explain-meaning">{t(m.meaning)}</p>
@@ -255,9 +257,9 @@ export function ModeExplainer({ format, rules, count }: {
       <ModeRules format={format} rules={rules} count={count} />
       {hidden.length > 0 ? (
         <p className="f-hint">
-          {hidden.some(g => g === 'scoring' || g === 'reporting')
-            ? t('mode.hiddenPoints')
-            : t('mode.hiddenStructure')}
+          {!live('winPoints') ? t('mode.hiddenPoints')
+            : !live('groupCount') && !live('swissRounds') && !live('homeAway') ? t('mode.hiddenStructure')
+              : null}
         </p>
       ) : null}
       {inert.length > 0 ? (
@@ -444,8 +446,11 @@ function PointsFields({ format, rules, set, reporting }: {
   const t = useT();
   const num = (field: 'winPoints' | 'drawPoints' | 'lossPoints' | 'walkoverWinnerPoints', label: Key) => {
     const rule = fieldRule(format, field);
+    // No rule for this field in this mode means no control: a walkover rule in a
+    // format that has no walkover is a setting the engine would ignore.
+    if (!rule) return null;
     return (
-      <Field key={field} label={
+      <Field key={field} field={field} label={
         <>
           {t(label)}
           {rule ? <RuleTag status={rule.status} affects={rule.affects} /> : null}
@@ -478,11 +483,12 @@ function DrawSettings({ format, rules, set, err }: {
   const resRule = fieldRule(format, 'drawResolution');
   return (
     <>
-      <Switch checked={rules.allowDraws} onChange={v => set({ allowDraws: v })}
+      <Switch field="allowDraws" checked={rules.allowDraws} onChange={v => set({ allowDraws: v })}
         label={<>{t('rules.allowDraws')}{drawsRule ? <RuleTag status={drawsRule.status} affects={drawsRule.affects} /> : null}</>}
         hint={drawsRule ? t(drawsRule.why) : undefined} />
       {spec.draws.policy === 'requires-resolution' ? (
         <Field
+          field="drawResolution"
           label={<>{t('mode.rules.drawRule')}{resRule ? <RuleTag status={resRule.status} affects={resRule.affects} /> : null}</>}
           hint={t('mode.why.drawResolution')}
           error={err('drawResolution')}>
@@ -522,11 +528,11 @@ function GroupSettings({ format, rules, set, count, err }: {
   return (
     <>
       <div className="grid2">
-        <Field label={<>{t('common.groups')}{gc ? <RuleTag status={gc.status} affects={gc.affects} /> : null}</>}
+        <Field field="groupCount" label={<>{t('common.groups')}{gc ? <RuleTag status={gc.status} affects={gc.affects} /> : null}</>}
           error={err('groupCount')}>
           <input type="number" min={2} value={rules.groupCount ?? 2} onChange={e => set({ groupCount: Number(e.target.value) })} />
         </Field>
-        <Field label={<>{t('rules.advance')}{ap ? <RuleTag status={ap.status} affects={ap.affects} /> : null}</>}
+        <Field field="advancePerGroup" label={<>{t('rules.advance')}{ap ? <RuleTag status={ap.status} affects={ap.affects} /> : null}</>}
           hint={groupHint(count, rules.groupCount ?? 2)} error={err('advancePerGroup')}>
           <input type="number" min={1} value={rules.advancePerGroup ?? 2} onChange={e => set({ advancePerGroup: Number(e.target.value) })} />
         </Field>
@@ -585,6 +591,8 @@ export function SettingsForMode({ format, rules, set, count, issues = [], groups
     const rule = fieldRule(format, field);
     return rule ? <RuleTag status={rule.status} affects={rule.affects} /> : null;
   };
+  /** A field is rendered only when the mode's generator really reads it. */
+  const live = (field: keyof RuleSet) => fieldEffect(format, field) !== 'none';
 
   return (
     <>
@@ -594,18 +602,18 @@ export function SettingsForMode({ format, rules, set, count, issues = [], groups
             ? <PointsFields format={format} rules={rules} set={set} reporting={g === 'reporting'} />
             : null}
 
-          {g === 'draws' ? <DrawSettings format={format} rules={rules} set={set} err={err} /> : null}
+          {g === 'draws' && live('allowDraws') ? <DrawSettings format={format} rules={rules} set={set} err={err} /> : null}
 
-          {g === 'tiebreak' ? (
+          {g === 'tiebreak' && live('tiebreakOrder') ? (
             <>
               <FieldTagLine format={format} field="tiebreakOrder" />
               <TiebreakOrder order={rules.tiebreakOrder} set={set} />
             </>
           ) : null}
 
-          {g === 'seeding' ? (
+          {g === 'seeding' && live('seeding') ? (
             <>
-              <Field label={<>{t('rules.seeding')}{tag('seeding')}</>} hint={t('mode.why.seeding')}>
+              <Field field="seeding" label={<>{t('rules.seeding')}{tag('seeding')}</>} hint={t('mode.why.seeding')}>
                 <select value={rules.seeding} onChange={e => set({ seeding: e.target.value as RuleSet['seeding'] })}>
                   <option value="seeded">{t('rules.seedingSeeded')}</option>
                   <option value="random">{t('rules.seedingRandom')}</option>
@@ -613,7 +621,7 @@ export function SettingsForMode({ format, rules, set, count, issues = [], groups
                 </select>
               </Field>
               {fieldRule(format, 'overtimeAllowed') ? (
-                <Switch checked={!!rules.overtimeAllowed} onChange={v => set({ overtimeAllowed: v })}
+                <Switch field="overtimeAllowed" checked={!!rules.overtimeAllowed} onChange={v => set({ overtimeAllowed: v })}
                   label={<>{t('rules.overtime')}{tag('overtimeAllowed')}</>}
                   hint={t('mode.why.overtime')} />
               ) : null}
@@ -621,31 +629,33 @@ export function SettingsForMode({ format, rules, set, count, issues = [], groups
             </>
           ) : null}
 
-          {g === 'groups' ? <GroupSettings format={format} rules={rules} set={set} count={count} err={err} /> : null}
+          {g === 'groups' && live('groupCount')
+            ? <GroupSettings format={format} rules={rules} set={set} count={count} err={err} /> : null}
 
-          {g === 'rounds' ? (
-            <Field label={<>{t('rules.swissRounds')}{tag('swissRounds')}</>}
+          {g === 'rounds' && live('swissRounds') ? (
+            <Field field="swissRounds" label={<>{t('rules.swissRounds')}{tag('swissRounds')}</>}
               hint={roundsHint(count)} error={err('swissRounds')}>
               <input type="number" min={1} value={rules.swissRounds ?? 5} onChange={e => set({ swissRounds: Number(e.target.value) })} />
             </Field>
           ) : null}
 
-          {g === 'meeting' ? (
-            <Switch checked={!!rules.homeAway} onChange={v => set({ homeAway: v })}
+          {g === 'meeting' && live('homeAway') ? (
+            <Switch field="homeAway" checked={!!rules.homeAway} onChange={v => set({ homeAway: v })}
               label={<>{t('rules.homeAway')}{tag('homeAway')}</>}
               hint={t('mode.why.homeAway')} />
           ) : null}
 
-          {g === 'byes' ? (
-            <Field label={<>{t('rules.byePoints')}{tag('byePoints')}</>} hint={t('mode.why.byePoints')}>
+          {g === 'byes' && live('byePoints') ? (
+            <Field field="byePoints" label={<>{t('rules.byePoints')}{tag('byePoints')}</>} hint={t('mode.why.byePoints')}>
               <input type="number" min={0} value={rules.byePoints ?? 3} onChange={e => set({ byePoints: Number(e.target.value) })} />
             </Field>
           ) : null}
 
-          {g === 'structure' ? (
+          {g === 'structure' && live('customStage') ? (
             <>
               <FieldTagLine format={format} field="customStage" />
               <Field
+                field="customStage"
                 label={<>{t('rules.customStage')}{tag('customStage')}</>}
                 hint={t('mode.why.customStage')}
                 error={err('customStage')}>
@@ -690,7 +700,7 @@ export function TiebreakOrder({ order, set }: { order: TiebreakKey[]; set: Patch
   };
   const unused = ALL_TIEBREAKS.filter(k => !order.includes(k));
   return (
-    <div className="tiebreak">
+    <div className="tiebreak" data-field="tiebreakOrder">
       <p className="f-hint">{t('rules.tiebreakHint')}</p>
       <ol className="tiebreak-list">
         {order.map((key, i) => (

@@ -93,12 +93,14 @@ export function Empty({ title, hint, action }: { title: ReactNode; hint?: ReactN
 }
 
 
-export function Field({ label, hint, error, required, children, className = '' }: {
+export function Field({ label, hint, error, required, children, className = '', field }: {
   label: ReactNode; hint?: ReactNode; error?: ReactNode; required?: boolean;
   children: ReactNode; className?: string;
+  /** The rule field this control edits, so a test can see exactly what is shown. */
+  field?: string;
 }) {
   return (
-    <label className={'f ' + className}>
+    <label className={'f ' + className} data-field={field}>
       <span className="f-label">{label}{required ? <span className="req" aria-hidden> *</span> : null}</span>
       <span className="f-ctl">{children}</span>
       {hint && !error ? <span className="f-hint">{hint}</span> : null}
@@ -107,11 +109,13 @@ export function Field({ label, hint, error, required, children, className = '' }
   );
 }
 
-export function Switch({ checked, onChange, label, hint }: {
+export function Switch({ checked, onChange, label, hint, field }: {
   checked: boolean; onChange(v: boolean): void; label: ReactNode; hint?: ReactNode;
+  /** The rule field this switch edits, so a test can see exactly what is shown. */
+  field?: string;
 }) {
   return (
-    <label className="switch">
+    <label className="switch" data-field={field}>
       <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} />
       <span className="switch-box" aria-hidden />
       <span className="switch-text">

@@ -1,7 +1,79 @@
-Every mode is now a complete, code-backed specification
+Strict mode-specific UI: no cross-mode leakage remains
 
-A mode used to explain some of itself. Each one now answers the same
-fifteen questions from data in the engine, in all four languages.
+The creation form is now driven by one rule: a control appears only
+where the mode's generator really reads that field. Two leaks were
+still open after the last audit, and the new tests found two more.
+
+Fixed here
+
+* Custom rendered group count, advance per group, Swiss rounds and
+  draw resolution as ordinary controls. They are real rules of Custom
+  and they change nothing in a flat pairing list, so the app now names
+  them in the mode note and offers no input. The group and rounds
+  panels disappear with them, because a panel whose every field is
+  inert is not rendered.
+* The points panel rendered all four point inputs for every mode, so
+  Swiss - which has no walkover rule - was offered a "Walkover win"
+  field. A point input now needs a rule for that mode to appear.
+* Home & away was tagged "changes nothing here" in every table mode,
+  while genRoundRobin really does build a second half from it. The
+  effect tag is now progression, which is what it does.
+* The "hidden here" note guessed from the group list, so Swiss - which
+  shows scoring but not the reporting group - was told points were
+  hidden. It now asks the live fields.
+
+The schema behind it
+
+* renderableFields() is the set a mode may show: everything it has a
+  rule for, minus the fields whose generator never reads them.
+* visibleGroups() is built from that set, so a group with no live
+  field is not a panel, and summaryRows() and the preview inherit the
+  rule from the same place.
+* Every rendered control carries data-field, so a test can ask exactly
+  which fields a mode shows instead of matching on label text.
+
+20 new tests, one per requirement: per-mode field lists, no group or
+Swiss field in a knockout, no knockout field in Swiss, groups +
+knockout showing only group and qualifier fields, round robin and
+league showing only table and schedule fields, custom leaking nothing,
+a mode change removing the previous mode's controls, the preview and
+summary ignoring fields the mode does not have, reporting-only points
+in their own labelled panel, and not-applicable fields carrying no
+control at all.
+
+263 tests pass.
+
+
+1. "Advanced settings" showed settings with no effect. The block
+   rendered the groups a format does not have, so a single-elimination
+   bracket offered a group count, an advance count, Swiss rounds, home &
+   away, bye points and a custom stage - none of which its generator
+   reads - and a round robin offered a group count. The block is gone:
+   every setting a mode has is already rendered in its own panel, and
+   the mode explanation already names what is hidden. SettingsForMode
+   now refuses to render a group the format has no field in, whatever a
+   caller asks for.
+
+2. A custom tournament could not be created. validateModeSetup turned
+   the informational "these settings change nothing" note into a
+   blocking issue, and the wizard blocks creation on any issue. Custom
+   always has such fields, so Custom was never creatable. The note is a
+   note again - it is still shown in the settings panel and in the mode
+   explanation. The stage rule is untouched: a missing or unbuildable
+   stage is still refused.
+
+3. The confirmation summary contradicted the preview above it.
+   SetupSummary dropped the participant count, so a 12-player
+   groups + knockout read "4 / 4" in the summary while the preview said
+   "6 / 6". Both now use the same field size.
+
+4. A message could print a dictionary key. Naming a setting built the
+   name as "rules.<field>", and four fields have no such key, so the
+   organizer saw "rules.groupCount" in the note. labelOfField() maps
+   every field to the label it is actually shown under.
+
+243 tests pass, ten of them new, holding the fixed behaviour.
+
 
 The specification gained the parts that were missing:
 
