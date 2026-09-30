@@ -1,8 +1,9 @@
-// The boundary is now decided by a verified license, not by a parameter, so
-// these tests describe behaviour: free means "no license on the machine".
+// How the boundary behaves against a real license. The classification rules
+// themselves live in feature-registry.test.ts; this file is about the live answer.
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DEFAULT_TIER, FEATURES, availableFeatures, describeEdition, has, proFeatures, tierOf } from '../src/engine/features';
-import { deactivateLicense, refreshLicense, setLicenseStore } from '../src/engine/license';
+import { availableFeatures, describeEdition, entryOf, has, proFeatures, tierOf } from '../src/engine/features';
+import { FEATURE_REGISTRY } from '../src/engine/feature-registry';
+import { deactivateLicense, isProActive, refreshLicense, setLicenseStore } from '../src/engine/license';
 
 beforeEach(async () => {
   const map = new Map<string, string>();
@@ -16,38 +17,39 @@ beforeEach(async () => {
 });
 
 describe('free/pro feature boundary', () => {
-  it('grants every feature the catalogue declares free', () => {
-    for (const f of FEATURES.filter(x => x.tier === 'free')) {
-      expect(has(f.id), f.id).toBe(true);
-      expect(tierOf(f.id)).toBe('free');
-    }
-  });
-  it('core workflow features are never pro-gated', () => {
-    for (const id of ['project.create', 'project.import', 'project.export', 'results.entry', 'standings.view', 'print.summary']) {
-      const f = FEATURES.find(x => x.id === id);
-      expect(f, id).toBeDefined();
-      expect(f!.tier, id).toBe('free');
-      expect(has(id), id).toBe(true);
-    }
-  });
-  it('pro features stay locked with no license and unlock with one', () => {
-    // No license: every declared Pro feature is locked.
-    for (const f of proFeatures()) expect(has(f.id), f.id).toBe(false);
-    // A preview context can still show them, and grants nothing for real.
-    for (const f of proFeatures()) expect(has(f.id, { tier: 'pro' }), f.id).toBe(true);
-  });
-  it('unknown feature ids are denied, never granted', () => {
-    expect(has('does.not.exist')).toBe(false);
-    expect(has('does.not.exist', { tier: 'pro' })).toBe(false);
-    expect(tierOf('does.not.exist')).toBeNull();
-  });
-  it('defaults are free tier and the edition reads Free without a license', () => {
-    expect(DEFAULT_TIER).toBe('free');
-    expect(availableFeatures().length).toBeGreaterThan(0);
+  it('starts Free and stays Free with nothing installed', () => {
+    expect(isProActive()).toBe(false);
     expect(describeEdition()).toContain('Free');
     expect(describeEdition('pro')).toBe('Pro');
   });
-  it('no licence file exists until one is activated', () => {
-    expect(availableFeatures('pro').length).toBe(availableFeatures().length);
+
+  it('grants every feature the registry calls free or reporting', () => {
+    for (const e of FEATURE_REGISTRY.filter(x => x.class === 'free' || x.class === 'reporting')) {
+      expect(has(e.id), e.id).toBe(true);
+      expect(tierOf(e.id), e.id).toBe('free');
+    }
+  });
+
+  it('locks every Pro feature while free', () => {
+    for (const f of proFeatures()) expect(has(f.id), f.id).toBe(false);
+  });
+
+  it('lets a preview context show Pro features, but not grant them', () => {
+    for (const f of proFeatures()) {
+      expect(has(f.id, { tier: 'pro' }), f.id).toBe(true);
+      expect(has(f.id), f.id).toBe(false);      // the real answer is still no
+    }
+  });
+
+  it('lists the same features for any tier argument — the license decides', () => {
+    expect(availableFeatures('pro')).toEqual(availableFeatures('free'));
+    expect(availableFeatures().length).toBeGreaterThan(0);
+  });
+
+  it('keeps every core workflow entry in the registry as free', () => {
+    for (const id of ['project.create', 'participants.manage', 'generation.structure',
+      'results.entry', 'standings.view', 'schedule.generate', 'export.csv', 'app.offline']) {
+      expect(entryOf(id)?.class, id).toBe('free');
+    }
   });
 });

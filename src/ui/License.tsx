@@ -83,7 +83,7 @@ export default function License() {
           <ul className="summary-rules">
             {proFeatures().map(f => (
               <li key={f.id} className={has(f.id) ? '' : 'muted'}>
-                <b>{t(f.labelKey as never)}</b>
+                <b>{f.name}</b>
                 {has(f.id) ? '' : ` — ${t('lic.statusFree')}`}
               </li>
             ))}

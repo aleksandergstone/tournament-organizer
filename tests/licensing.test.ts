@@ -75,7 +75,7 @@ describe('a free install works and is not Pro', () => {
 
   it('keeps the whole core workflow available', () => {
     for (const id of ['project.create', 'project.import', 'project.export', 'results.entry',
-      'standings.view', 'print.summary', 'display.kiosk', 'sync.lan', 'schedule.venues']) {
+      'standings.view', 'export.print', 'display.kiosk', 'sync.lan', 'schedule.venues']) {
       expect(hasFeature(id), id).toBe(true);
       expect(has(id), id).toBe(true);
       expect(tierOf(id), id).toBe('free');
