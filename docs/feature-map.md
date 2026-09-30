@@ -59,8 +59,6 @@ case, a launch discount or a feature request.
 | `export.print` | Print any document | Printing is how the output reaches anyone. |
 | `export.pdf` | Save a PDF | Same document, same button. Only the decoration is paid. |
 | `export.csv` | Export CSV | Data out, always. A paid exit door is hostile. |
-| `display.kiosk` | Display mode for a projector | Shipped to everyone. Locking it would remove a feature people use. |
-| `sync.lan` | LAN sync with your own computers | Staying on the same LAN, with no account and no server, is the offline promise. |
 | `app.offline` | Works fully offline | The defining constraint of the product. |
 | `audit.trail` | Audit trail of every change | Trust depends on being able to check what changed. |
 | `undo.redo` | Undo and redo | Correcting a mis-click is not a premium feature. |
@@ -78,6 +76,8 @@ case, a launch discount or a feature request.
 | Id | Feature | Why it is worth paying for |
 |---|---|---|
 | `branding.documents` | Branded documents (logo, title, footer, accent) | The document works without it; only the letterhead costs. |
+| `display.kiosk` | Display mode for a projector | **Moved from free.** Shipped free to every user, then moved when monetisation started. |
+| `sync.lan` | LAN sync with your own computers | **Moved from free.** Several scorers, one tournament. |
 | `print.pack` | The full print pack | Bundling documents that already exist is convenience, not capability. |
 | `templates.saved` | Saved templates for recurring events | Pays off only after you have run several events. |
 | `schedule.resources` | Advanced resource and conflict scheduling | Basic scheduling stays free; resolving conflicts across venues is specialist work. |
@@ -123,12 +123,22 @@ Good candidates:
 - **Multi-event workflow** — templates, recurring structures. The value only
   appears after the second or third event.
 
-Deliberately **not** candidates, even though they were on the original list:
+### A boundary that moved
 
-- **Display/kiosk mode** and **LAN sync**. Both ship today to everyone. Gating
-  them takes away a shipped feature; that reads as a downgrade, not an upgrade.
+Display/kiosk mode and LAN sync shipped **free to every user** and were moved
+to Pro when monetisation started. This was a deliberate product decision with a
+real consequence: **existing users lost two working features.** It is recorded
+here rather than quietly edited, because a boundary that moves should be visible.
+
+The argument for keeping them free was that they ship today and that taking them
+back reads as a downgrade. The argument for moving them is that a projector view
+and multi-scoring are what a paid coordinator actually buys, and that Pro
+otherwise amounts to a letterhead.
+
+### Still **not** candidates
+
 - **QR check-in.** It is not built. Selling a placeholder would be selling a
-  promise.
+  promise. It sits at `planned`, outside the navigation.
 - **Any tournament format.** Restricting formats splits the product by budget
   and is the fastest way to make people evaluate the free tier as a trial
   instead of as the real thing.

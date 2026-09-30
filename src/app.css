@@ -779,3 +779,33 @@ tr.champion td.rank { color: var(--acc); }
   .mode-explain-list > div, .preset-list > div, .glossary-list > div { grid-template-columns: 1fr; gap: 1px; }
   .rule-block > div { grid-template-columns: 1fr; gap: 2px; }
 }
+
+/* ---- Pro boundary --------------------------------------------------------
+   The badge is the only new visual idea here. It sits inline with a nav label
+   and is deliberately quiet: a locked feature should look labelled, not broken.
+   Colour is not the only signal — the word "Pro" is there for anyone who cannot
+   distinguish the accent from the background. */
+
+.pro-badge {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  opacity: .75;
+  vertical-align: middle;
+}
+
+nav button.pro-locked { opacity: .8; }
+nav button.pro-locked:hover { opacity: 1; }
+
+.pro-locked {
+  border: 1px dashed var(--line, #ccc);
+  border-radius: 8px;
+  padding: 16px 18px;
+}
+
+.pro-locked-title { margin: 0 0 4px; font-weight: 600; }

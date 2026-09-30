@@ -8,6 +8,7 @@ import { LOCALES, LOCALE_NAMES, resolveLocale, useT } from '../i18n';
 import type { LocalePreference } from '../i18n';
 import { Page, Panel, Segmented, Switch } from './kit';
 import SyncPanel from './SyncPanel';
+import ProGate from './ProGate';
 
 export default function Settings() {
   const { settings, setSettings, go } = useApp();
@@ -62,7 +63,9 @@ export default function Settings() {
       </Panel>
 
       <Panel title={t('sync.title')} sub={t('sync.sub')}>
-        <SyncPanel />
+        <ProGate featureId="sync.lan">
+          <SyncPanel />
+        </ProGate>
       </Panel>
 
       <Panel title={t('settings.about')}>

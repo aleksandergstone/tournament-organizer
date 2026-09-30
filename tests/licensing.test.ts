@@ -76,7 +76,7 @@ describe('a free install works and is not Pro', () => {
 
   it('keeps the whole core workflow available', () => {
     for (const id of ['project.create', 'project.import', 'project.export', 'results.entry',
-      'standings.view', 'export.print', 'display.kiosk', 'sync.lan', 'schedule.venues']) {
+      'standings.view', 'export.print', 'schedule.venues']) {
       expect(hasFeature(id), id).toBe(true);
       expect(has(id), id).toBe(true);
       expect(tierOf(id), id).toBe('free');
@@ -85,6 +85,17 @@ describe('a free install works and is not Pro', () => {
 
   it('locks every declared Pro feature', () => {
     for (const f of proFeatures()) expect(hasFeature(f.id), f.id).toBe(false);
+  });
+
+  // Display mode and LAN sync shipped free to everyone and were moved to Pro when
+  // monetisation started. This test exists so that move is a recorded decision
+  // rather than a silent regression: if either comes back to free, it fails.
+  it('keeps the features moved to Pro at Pro', () => {
+    for (const id of ['display.kiosk', 'sync.lan']) {
+      expect(tierOf(id), id).toBe('pro');
+      expect(hasFeature(id), id).toBe(false);
+      expect(has(id), id).toBe(false);
+    }
   });
 });
 

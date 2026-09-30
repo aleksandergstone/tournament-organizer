@@ -59,8 +59,12 @@ export const FEATURE_REGISTRY: readonly FeatureEntry[] = [
   { id: 'export.print', name: 'Print any document', class: 'free', why: 'Printing is how the output reaches anyone.', label: 'nav.output' },
   { id: 'export.pdf', name: 'Save a PDF', class: 'free', why: 'Same document, same button. Only the decoration is paid.', label: 'feat.print.summary' },
   { id: 'export.csv', name: 'Export CSV', class: 'free', why: 'Data out, always. A paid exit door is hostile.', label: 'nav.output' },
-  { id: 'display.kiosk', name: 'Display mode for a projector', class: 'free', why: 'Shipped to everyone. Locking it would remove a feature people use.', label: 'feat.display.kiosk' },
-  { id: 'sync.lan', name: 'LAN sync with your own computers', class: 'free', why: 'Staying on the same LAN, with no account and no server, is the offline promise.', label: 'feat.sync.lan' },
+  // Shipped free to everyone until Pro launched, then moved: a projector
+  // display and multi-computer sync are what a paid coordinator actually buys.
+  // This is a deliberate downgrade for existing users, recorded here so nobody
+  // "fixes" it back by accident.
+  { id: 'display.kiosk', name: 'Display mode for a projector', class: 'pro', why: 'The live court-side view. Moved to Pro when monetisation started.', label: 'feat.display.kiosk' },
+  { id: 'sync.lan', name: 'LAN sync with your own computers', class: 'pro', why: 'Several scorers, one tournament. Moved to Pro when monetisation started.', label: 'feat.sync.lan' },
   { id: 'app.offline', name: 'Works fully offline', class: 'free', why: 'The defining constraint of the product.', label: 'app.footer' },
   { id: 'audit.trail', name: 'Audit trail of every change', class: 'free', why: 'Trust depends on being able to check what changed.', label: 'nav.overview' },
   { id: 'undo.redo', name: 'Undo and redo', class: 'free', why: 'Correcting a mis-click is not a premium feature.', label: 'nav.settings' },
