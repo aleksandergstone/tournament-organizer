@@ -36,7 +36,7 @@ Windows · macOS · Linux · MIT licensed
 ## Screens
 
 Real screens from the app, generated from a demo tournament — see all nine in the
-[launch page]([site/index.html](https://aleksandergstone.github.io/tournament-organizer/)).
+[launch page](https://aleksandergstone.github.io/tournament-organizer/).
 
 | | |
 |---|---|
