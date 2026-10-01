@@ -9,6 +9,9 @@
   --ink: #161c24;
   --ink-2: #3a434f;
   --muted: #697386;
+  /* Select chevron: a token so the dark theme inherits it instead of having to
+     re-declare the gradient (see the note above `select`). */
+  --chev: #8b95a5;
   --line: #e3e7ed;
   --line-2: #cfd6e0;
   --acc: #1f5eff;
@@ -31,12 +34,30 @@
 
 * { box-sizing: border-box; }
 
+/* --------------------------------------------------------------- overflow ---
+   Flex and grid children default to min-width:auto, which means they refuse to
+   shrink below their content. One long German label is then enough to push a
+   card, a table or the whole page past the viewport. These two rules make every
+   text-bearing child shrinkable by default, so wrapping and the existing
+   ellipsis rules actually get a chance to run. Layout is unchanged on desktop. */
+img, svg, video, canvas { max-width: 100%; }
+:where(.page-head-text, .panel-head-text, .alert-body, .switch-text, .empty-hint) { min-width: 0; }
+/* Long unbroken tokens (urls, hashes, names without spaces) must break rather
+   than push. Real words still wrap at spaces. */
+:where(.code-link, .mono, .hex-input, .mcard-sides, .bmatch .nm, .card, .alert, .empty) {
+  overflow-wrap: anywhere;
+}
+
+/* Buttons keep their label on one line, but may wrap their row. */
+.btn, .seg-btn, .variant, .mode-card, .pill { min-width: 0; }
+
 body {
   margin: 0;
   font: var(--fs-body)/1.5 -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
   background: var(--bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 h1 { font-size: var(--fs-h1); line-height: 1.25; font-weight: 650; letter-spacing: -.2px; margin: 0; }
@@ -215,8 +236,13 @@ input:focus, select:focus, textarea:focus {
 input:disabled, select:disabled, textarea:disabled { background: #f4f6f8; color: var(--muted); cursor: default; }
 input::placeholder, textarea::placeholder { color: #9aa4b2; }
 textarea { resize: vertical; font-size: 13px; line-height: 1.5; }
+/* One definition of the chevron. The colour is a token so the dark theme never
+   has to re-declare the gradient: re-declaring `background-image` alone is the
+   trap here, because the `background` shorthand used for the dark input surface
+   resets background-size/position to their initial values, and the gradient
+   then renders at full box size. */
 select { appearance: none; padding-right: 26px;
-  background-image: linear-gradient(45deg, transparent 50%, #8b95a5 50%), linear-gradient(135deg, #8b95a5 50%, transparent 50%);
+  background-image: linear-gradient(45deg, transparent 50%, var(--chev) 50%), linear-gradient(135deg, var(--chev) 50%, transparent 50%);
   background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
   background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
 input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--acc); }
@@ -340,9 +366,10 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
   padding: 10px 12px; margin-bottom: 12px;
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
 }
-.toolbar .sp { flex: 1; }
+.toolbar .sp { flex: 1; min-width: 0; }
 .toolbar .count { font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
-.toolbar input[type="search"], .toolbar input[type="text"], .toolbar .search { max-width: 260px; }
+/* Search takes the free space but never squeezes the buttons beside it. */
+.toolbar input[type="search"], .toolbar input[type="text"], .toolbar .search { flex: 1 1 200px; min-width: 0; max-width: 260px; }
 .keyhint { font-size: var(--fs-xs); color: var(--muted); margin-top: 12px; }
 .meta { display: flex; gap: 26px; flex-wrap: wrap; margin: 0; }
 .meta div { display: flex; flex-direction: column; gap: 2px; }
@@ -365,9 +392,12 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
 .mcard-head .venue { font-size: var(--fs-xs); color: var(--muted); }
 .mcard-head .sp { flex: 1; }
 .mcard-body { display: flex; align-items: center; gap: 14px; padding: 13px 16px; flex-wrap: wrap; }
-.mcard-sides { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; font-size: 14.5px; }
-.mcard-sides .side { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 22ch; }
-.mcard-sides .vs { color: var(--muted); font-size: var(--fs-xs); }
+.mcard-sides { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 220px; font-size: 14.5px; }
+/* Team names are data, not chrome: truncating them loses the thing the organizer
+   is looking for. They wrap instead, and only shrink to ellipsis once the card
+   genuinely runs out of room. max-width stays as the last-resort cap. */
+.mcard-sides .side { font-weight: 600; overflow-wrap: break-word; min-width: 0; max-width: 100%; }
+.mcard-sides .vs { color: var(--muted); font-size: var(--fs-xs); flex: none; }
 .mcard-sides .side.win { color: var(--ok); }
 .mcard-score { display: flex; align-items: center; gap: 6px; }
 .mcard-score input {
@@ -376,7 +406,9 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
 }
 .mcard-score .sep { color: var(--muted); font-weight: 600; }
 .mcard-extra { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 16px 13px; }
-.mcard-extra select { width: auto; min-width: 190px; }
+/* auto + min-width means this select used to force a 190px floor on a 360px
+   phone. The floor is dropped on narrow screens below; here it is only a hint. */
+.mcard-extra select { width: auto; min-width: 0; flex: 1 1 190px; }
 .mcard.done .mcard-sides .side { color: var(--ink-2); }
 
 .disclosure > summary {
@@ -406,9 +438,11 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   font-size: 11px; color: var(--muted); margin-bottom: 5px;
 }
-.bmatch .nm { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; font-size: 13px; }
-.bmatch .nm span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bmatch .nm b { font-variant-numeric: tabular-nums; }
+.bmatch .nm { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; font-size: 13px; min-width: 0; }
+/* Same reasoning as .mcard-sides .side: an ellipsised name in a 232px round
+   column is unreadable, so the name wraps and only the score stays fixed. */
+.bmatch .nm span { min-width: 0; overflow-wrap: break-word; }
+.bmatch .nm b { font-variant-numeric: tabular-nums; flex: none; }
 .bmatch .nm.w { font-weight: 700; color: var(--ink); }
 .bmatch .nm.l { color: var(--muted); }
 
@@ -479,8 +513,11 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
 :root[data-theme="dark"] .topbar nav button:hover:not(:disabled),
 :root[data-theme="dark"] .topbar .acts button:hover:not(:disabled) { background: #1c2430; }
 :root[data-theme="dark"] input,
-:root[data-theme="dark"] select,
 :root[data-theme="dark"] textarea { background: #10141b; }
+/* select is deliberately excluded: the `background` shorthand resets
+   background-size/position, which would destroy the chevron gradient. Its dark
+   surface is set with background-color instead, which changes nothing else. */
+:root[data-theme="dark"] select { background-color: #10141b; }
 :root[data-theme="dark"] input::placeholder, :root[data-theme="dark"] textarea::placeholder { color: #6c7787; }
 :root[data-theme="dark"] .btn:hover:not(:disabled) { background: #1f2733; border-color: #3a4453; }
 :root[data-theme="dark"] .btn.quiet { background: transparent; }
@@ -504,6 +541,39 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
 :root[data-theme="dark"] .alert-warn { color: #f7d08a; }
 :root[data-theme="dark"] .alert-err { color: #f7b5b0; }
 :root[data-theme="dark"] option { background: #10141b; color: var(--ink); }
+
+/* --- dark theme: states the token swap alone does not cover -------------------
+   Colours that were hard-coded outside :root cannot be fixed by changing a
+   variable, so every one of them is overridden here. Anything added later must
+   either use a token or get a rule in this block, or it will stay light. */
+:root[data-theme="dark"] .btn:hover:not(:disabled) { background: #1f2733; border-color: #3a4453; }
+:root[data-theme="dark"] .btn.quiet:hover:not(:disabled) { background: #1f2733; }
+:root[data-theme="dark"] .btn.ghost:hover:not(:disabled) { background: var(--panel-2); }
+:root[data-theme="dark"] .btn.primary:active:not(:disabled) { background: var(--acc-d); }
+:root[data-theme="dark"] input:hover:not(:disabled),
+:root[data-theme="dark"] select:hover:not(:disabled),
+:root[data-theme="dark"] textarea:hover:not(:disabled) { border-color: #414c5d; }
+:root[data-theme="dark"] input:disabled,
+:root[data-theme="dark"] select:disabled,
+:root[data-theme="dark"] textarea:disabled { background: #171c25; color: var(--muted); }
+:root[data-theme="dark"] .pill { background: #1b212b; }
+:root[data-theme="dark"] tbody tr.selected { background: var(--acc-soft); }
+:root[data-theme="dark"] .mode-card:hover { border-color: #3a4453; }
+:root[data-theme="dark"] .mode-card.on,
+:root[data-theme="dark"] .variant.on { border-color: var(--acc); }
+:root[data-theme="dark"] .steps li { background: var(--panel); }
+:root[data-theme="dark"] .steps li.on { border-color: var(--acc); background: var(--acc-soft); }
+:root[data-theme="dark"] .switch + .switch { border-top-color: var(--line); }
+:root[data-theme="dark"] .chip { background: #1b212b; color: var(--ink-2); }
+:root[data-theme="dark"] .rule-note { background: var(--acc-soft); }
+:root[data-theme="dark"] .variant:hover { background: var(--panel); border-color: var(--line-2); }
+:root[data-theme="dark"] .color-input,
+:root[data-theme="dark"] .logo-preview { background: #fff; }
+:root[data-theme="dark"] .output-preview { background: #fff; }
+:root[data-theme="dark"] .empty { border-color: var(--line-2); }
+:root[data-theme="dark"] ::selection { background: #2b4272; }
+/* scrollbars follow the theme instead of staying a light grey band */
+:root[data-theme="dark"] * { scrollbar-color: #39434f transparent; }
 
 /* ------------------------------------------------------------------ display */
 /* Display Mode — a projector screen: big, calm, read-only. */
@@ -541,12 +611,26 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
 /* ------------------------------------------------------------- narrow windows */
 
 @media (max-width: 900px) {
-  .grid2, .grid3 { grid-template-columns: 1fr; }
-  .hero-steps { grid-template-columns: 1fr; }
-  .display-main, .display-bottom { grid-template-columns: 1fr; }
+  /* `1fr` is not enough on its own: a grid track's automatic minimum is
+     min-content, so one long word in a German card still widens the column.
+     minmax(0, 1fr) is the track that actually allows shrinking. */
+  .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); }
+  .hero-steps { grid-template-columns: minmax(0, 1fr); }
+  .display-main, .display-bottom { grid-template-columns: minmax(0, 1fr); }
   .display-head h1 { font-size: 30px; }
   .topbar { height: auto; padding: 6px 10px; flex-wrap: wrap; }
   thead th { top: 0; }
+
+  /* Tablet widths: the 132px label track is too generous once the value column
+     has to hold a sentence, so it collapses to a stacked pair. */
+  .rule-block > div,
+  .mode-explain-list > div, .preset-list > div,
+  .glossary-list > div { grid-template-columns: minmax(0, 132px) minmax(0, 1fr); gap: 10px; }
+  /* Two-up card grids still fit a tablet, but the 232/268px floors do not. */
+  .mode-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .variants { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .output-preview { height: 70vh; }
+  .wrap { padding: 18px 16px 72px; }
 }
 
 /* ------------------------------------------------------------------- phones */
@@ -573,6 +657,18 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
   .topbar .acts button { min-height: 38px; }
   .topbar .acts .save-state { display: none; }
 
+  /* Undo/Redo/Save/Settings sit on their own scrollable row. German labels
+     ("Rückgängig", "Wiederholen", "Einstellungen") are far longer than the
+     English ones, and at 320px the row no longer fits beside the brand. */
+  .topbar .acts {
+    order: 2; width: 100%; flex-wrap: nowrap; overflow-x: auto;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .topbar .acts::-webkit-scrollbar { display: none; }
+  .topbar .acts button { flex: 0 0 auto; white-space: nowrap; }
+  .topbar .divider { display: none; }
+
   .wrap { padding: 14px 12px 96px; }
   .page-head { margin-bottom: 12px; }
   h1 { font-size: 20px; }
@@ -582,26 +678,61 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
   .page-actions, .panel-actions { gap: 6px; }
   .page-actions .btn, .panel-actions .btn { flex: 1 1 auto; }
 
+  /* The page header stacks. With the actions sitting beside it, the title was
+     squeezed into a one-word-per-line column (min-width:0 lets the text column
+     shrink, so the actions must move below it instead of crushing it). */
+  .page-head, .panel-head { flex-direction: column; align-items: stretch; gap: 10px; }
+  .page-head-text, .panel-head-text { width: 100%; }
+  .page-actions, .panel-actions { width: 100%; }
+
   /* 16px keeps the on-screen keyboard from zooming the layout. */
   input, select, textarea { font-size: 16px; min-height: 40px; }
 
   table { font-size: 13px; }
   th, td { padding: 7px 8px; }
 
+  /* The footbar used to be nowrap + overflow-x:auto, which meant "Continue" could
+     sit off-screen with no indication it was there. It wraps instead: every
+     primary action stays reachable without a sideways swipe. */
   .footbar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
-    flex-wrap: nowrap; overflow-x: auto; gap: 8px;
+    flex-wrap: wrap; gap: 8px;
     margin: 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
     background: var(--panel); border-top: 1px solid var(--line);
+    box-shadow: 0 -1px 3px rgba(16, 24, 40, .08);
   }
   .footbar .sp { display: none; }
   .footbar .muted { display: none; }
-  .footbar .btn { flex: 0 0 auto; }
+  .footbar .btn { flex: 1 1 auto; min-width: 40%; }
+  :root[data-theme="dark"] .footbar { box-shadow: 0 -1px 3px rgba(0, 0, 0, .5); }
 
   .empty { padding: 28px 16px; }
   .bracket-svg svg { min-width: 560px; }
   .hero-steps .card, .grid2 .card { padding: 12px; }
+
+  /* The app has no modal/dialog component (alerts are inline .alert blocks, so
+     .alert already has min-width:0 above), but if one is added later this keeps
+     it from being sized in fixed pixels. */
+  .modal, .dialog { max-width: 100%; max-height: 88vh; }
+
+  /* 620px of preview on a 640px screen is the whole viewport. */
+  .output-preview { height: 60vh; min-height: 320px; }
+
+  /* Toolbars stack: search above the actions rather than beside them. */
+  .toolbar { padding: 10px; gap: 8px; }
+  .toolbar input[type="search"], .toolbar input[type="text"], .toolbar .search { max-width: none; flex: 1 1 100%; }
+  .toolbar .sp { flex-basis: 100%; height: 0; }
+
+  /* Tables are allowed to scroll inside their own frame; the page itself must
+     never scroll sideways. */
+  .table-wrap { margin: 0 -12px; padding: 0 12px; }
+  .meta { gap: 14px 20px; }
 }
+
+/* Narrow-screen overrides for .variants, .mode-grid, .preset-grid and
+   .output-preview live in the final responsive section at the end of this file:
+   their base rules are declared further down, and at equal specificity the
+   later declaration wins, so an override here would be silently ignored. */
 
 
 /* ------------------------------------------------- output & branding screen */
@@ -661,6 +792,8 @@ tr.champion td.rank { color: var(--acc); }
   display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer;
   padding: 11px 13px; border: 1px solid var(--line-2); border-radius: var(--r);
   background: var(--panel); color: var(--ink); box-shadow: var(--sh-1);
+  /* A long German word in the description was setting the grid track width. */
+  min-width: 0; max-width: 100%; overflow-wrap: break-word;
   transition: border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
 }
 .mode-card:hover { border-color: #b9c2cf; background: var(--panel-2); }
@@ -671,22 +804,30 @@ tr.champion td.rank { color: var(--acc); }
 .mode-explain { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
 .mode-explain-meaning { margin: 0; font-size: var(--fs-body); }
 .mode-explain-list, .preset-list, .glossary-list { margin: 0; display: flex; flex-direction: column; gap: 6px; }
-.mode-explain-list > div, .preset-list > div, .glossary-list > div { display: grid; grid-template-columns: 132px 1fr; gap: 10px; }
-.mode-explain-list dt, .preset-list dt, .glossary-list dt { font-size: var(--fs-xs); color: var(--muted); }
-.mode-explain-list dd, .preset-list dd, .glossary-list dd { margin: 0; font-size: var(--fs-sm); }
+/* The label column is a fixed track, so it can never be squeezed by a long
+   German value. min-width:0 on both cells is what actually lets the value
+   column shrink and wrap instead of widening the grid. */
+.mode-explain-list > div, .preset-list > div, .glossary-list > div {
+  display: grid; grid-template-columns: minmax(0, 132px) minmax(0, 1fr); gap: 10px;
+}
+.mode-explain-list dt, .preset-list dt, .glossary-list dt { font-size: var(--fs-xs); color: var(--muted); overflow-wrap: break-word; }
+.mode-explain-list dd, .preset-list dd, .glossary-list dd { margin: 0; font-size: var(--fs-sm); overflow-wrap: break-word; }
 
 /* Preset cards: what it does, why, who it fits, what it generates. */
 .preset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 12px; }
 .preset-card {
   display: flex; flex-direction: column; gap: 10px; padding: 13px;
   border: 1px solid var(--line); border-radius: var(--r); background: var(--panel-2);
+  min-width: 0; max-width: 100%; overflow-wrap: break-word;
 }
 .preset-card.on { border-color: var(--ok-line); background: var(--ok-soft); }
 .preset-head { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .preset-card .btn { align-self: flex-start; }
 .chip {
   font-size: 11px; font-weight: 600; letter-spacing: .2px; padding: 2px 7px;
-  border-radius: 999px; background: #eef1f6; color: var(--ink-2); white-space: nowrap;
+  border-radius: 999px; background: #eef1f6; color: var(--ink-2);
+  /* Chips carry short labels, but a translated one can still be long. */
+  white-space: normal; overflow-wrap: break-word;
 }
 .chip.ok { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok-line); }
 
@@ -728,7 +869,11 @@ tr.champion td.rank { color: var(--acc); }
 /* The rule tags: how much a setting matters here, and what it changes. */
 .rule-tag {
   display: inline-flex; align-items: baseline; gap: 6px; margin-left: 8px;
-  font-size: 11px; font-weight: 500; vertical-align: middle; white-space: nowrap;
+  font-size: 11px; font-weight: 500; vertical-align: middle;
+  /* Was nowrap: a tag like "Reporting only — shown in reports, decides
+     nothing" is a sentence, and in German it is longer still. It stuck out of
+     the card at 320px and pushed the whole page sideways. */
+  white-space: normal; overflow-wrap: break-word; max-width: 100%;
 }
 .rule-tag b { font-weight: 650; }
 .rule-tag-affects { color: var(--muted); }
@@ -739,9 +884,9 @@ tr.champion td.rank { color: var(--acc); }
 
 /* The six facts about a mode, shown before the organizer commits to it. */
 .rule-block { margin: 12px 0 0; display: flex; flex-direction: column; gap: 7px; }
-.rule-block > div { display: grid; grid-template-columns: 132px 1fr; gap: 10px; align-items: baseline; }
-.rule-block dt { font-size: var(--fs-xs); color: var(--muted); }
-.rule-block dd { margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.rule-block > div { display: grid; grid-template-columns: minmax(0, 132px) minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.rule-block dt { font-size: var(--fs-xs); color: var(--muted); overflow-wrap: break-word; }
+.rule-block dd { margin: 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: break-word; }
 .rule-block .rule-tag { margin-left: 0; }
 
 /* A line under a heading: the one fact about that group. */
@@ -776,8 +921,8 @@ tr.champion td.rank { color: var(--acc); }
 .glossary > summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
 .glossary > .f-hint { margin: 8px 0; }
 @media (max-width: 620px) {
-  .mode-explain-list > div, .preset-list > div, .glossary-list > div { grid-template-columns: 1fr; gap: 1px; }
-  .rule-block > div { grid-template-columns: 1fr; gap: 2px; }
+  .mode-explain-list > div, .preset-list > div, .glossary-list > div { grid-template-columns: minmax(0, 1fr); gap: 1px; }
+  .rule-block > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
 }
 
 /* ---- Voluntary support note -----------------------------------------------
@@ -792,16 +937,18 @@ tr.champion td.rank { color: var(--acc); }
   gap: 8px 14px;
   margin: 18px 0 4px;
   padding: 8px 2px;
-  border-top: 1px solid var(--line, #e2e2e2);
+  border-top: 1px solid var(--line);
   font-size: 12px;
   line-height: 1.5;
-  color: var(--muted, #777);
+  color: var(--muted);
 }
 
 .support-text { margin: 0; }
-.support-text b { font-weight: 600; color: var(--fg, #444); }
+/* --fg never existed as a token; the fallback was doing all the work, so this
+   text was pinned to #444 even in dark mode and stayed grey-on-grey. */
+.support-text b { font-weight: 600; color: var(--ink-2); }
 .support-desc { display: block; }
-.support-acts { display: inline-flex; align-items: center; gap: 8px; }
+.support-acts { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .support-optional { opacity: .7; }
 
 .support-note.compact { margin-top: 10px; padding-top: 6px; font-size: 11px; }
@@ -814,4 +961,19 @@ tr.champion td.rank { color: var(--acc); }
 
 @media (prefers-reduced-motion: no-preference) {
   .support-note { transition: opacity .15s ease; }
+}
+/* ============================================================================
+   Narrow-screen overrides — LAST in the file, on purpose.
+   These selectors have base rules declared above this point. A media query adds
+   no specificity, so an override placed earlier would lose to the later base
+   declaration and silently do nothing. Keeping every late-selector override
+   here is what makes them actually apply.
+   ============================================================================ */
+
+@media (max-width: 640px) {
+  /* The 190–268px floors cannot fit a 320px screen once padding is taken off. */
+  .variants { grid-template-columns: minmax(0, 1fr); }
+  .mode-grid, .preset-grid { grid-template-columns: minmax(0, 1fr); }
+  /* 620px of preview fills a 640px screen; tie it to the viewport instead. */
+  .output-preview { height: 60vh; min-height: 320px; }
 }

@@ -3,6 +3,45 @@
 All notable changes to Tournament Organizer.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semver.
 
+## [1.4.01] — 2026-10-01
+
+A UI-only pass: text that escaped its box, an incomplete dark theme, and cramped
+layouts on small screens. No behaviour or feature changed.
+
+### Fixed
+
+- **Text no longer pushes the layout sideways.** Flex and grid children are now
+  allowed to shrink below their content, long unbroken tokens break instead of
+  widening a card, and the page itself can no longer scroll horizontally. Team and
+  player names now wrap rather than being truncated to an ellipsis — the name is
+  the thing you are scanning for, so it stays readable.
+- **Long German labels fit.** The label column beside a rule, a preset or a
+  glossary entry is a fixed 132px track with an unshrinkable value column, which
+  pushed the page sideways with strings like "Rückgängig" or "Niedriglage ist
+  Schluss". Undo / Redo / Save / Settings now have their own scrollable row on a
+  phone instead of sitting beside the brand.
+- **Primary actions stay reachable.** The foot bar on a phone was
+  `nowrap` + sideways scroll, so "Continue" could sit off-screen with nothing to
+  show it was there. It wraps now.
+- **Page and panel headers stack on a phone.** Titles were being squeezed to one
+  word per line by the action buttons beside them.
+- **The dark theme covers the states a token swap cannot reach.** Hover,
+  disabled, selected and ghost states on buttons, pills, chips, cards and
+  inputs were still using light-mode colours; scrollbars stayed light grey.
+- **The support note was grey-on-grey in dark mode** — it referenced a `--fg`
+  token that never existed, so it fell back to a hard-coded `#444`.
+- **The drop-down chevron rendered as a huge triangle in dark mode.** `background`
+  is a shorthand and was resetting the gradient's size and position; the chevron
+  is now drawn from a token so the theme never re-declares it.
+
+### Changed
+
+- Cards, mode pickers and preset grids collapse to one column on a phone; the
+  document preview is sized to the viewport instead of a fixed 620px.
+- Narrow-screen rules for selectors declared late in the stylesheet moved to the
+  end of the file: a media query adds no specificity, so an override written
+  before the base rule silently did nothing.
+
 ## [1.4.0] — 2026-09-30
 
 ### Changed
