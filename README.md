@@ -5,7 +5,7 @@ cups, leagues and club nights: create the bracket, enter results as they happen,
 standings — **offline, without an account, on your own machine.**
 
 [![CI](https://github.com/aleksandergstone/tournament-organizer/actions/workflows/ci.yml/badge.svg)](https://github.com/aleksandergstone/tournament-organizer/actions/workflows/ci.yml)
-[![Latest release](https://github.com/aleksandergstone/tournament-organizer/releases/latest/badge.svg)](https://github.com/aleksandergstone/tournament-organizer/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/aleksandergstone/tournament-organizer?label=release)](https://github.com/aleksandergstone/tournament-organizer/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **[⬇ Download the latest release](https://github.com/aleksandergstone/tournament-organizer/releases/latest)** ·
