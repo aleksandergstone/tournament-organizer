@@ -3,6 +3,31 @@
 All notable changes to Tournament Organizer.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semver.
 
+## [1.4.0] — 2026-09-30
+
+### Changed
+
+- **Tournament Organizer is now completely free and always will be.** There is no Pro
+  edition, no licence key, no activation, no subscription and no payment anywhere in the
+  app. Version 1.3.0 introduced a paid edition; this release removes it. Nothing that
+  worked behind a paywall in 1.2.0 is behind one now.
+  - Kiosk display and LAN sync — which 1.3.0 put behind the paywall — are free again.
+  - Removed: the Pro feature registry, the Pro gates in the UI, the licence screen and
+    its Settings entry, the licence check at startup, the checkout and payment wiring,
+    the licence-signing server and its scripts.
+  - Existing Pro licences simply stop mattering. Nothing is checked, so there is nothing
+    to enter and nothing to reclaim.
+- **Support instead of a paywall.** If you would like to support development, there is an
+  optional one-line note on the Home screen and in Settings → About. It links to a
+  support page, it is never a modal, never blocks anything, has one dismiss button and
+  reappears only after 90 days. It is written out of the box: no support link appears
+  until you configure one in `src/support.ts`.
+
+### Fixed
+
+- `display.kiosk` and `sync.lan` are advertised as available again, matching what the
+  build actually does — 1.3.0 claimed them as paid features that were never shipped.
+
 ## [1.3.0] — 2026-09-28
 
 ### Added

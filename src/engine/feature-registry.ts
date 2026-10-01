@@ -77,10 +77,9 @@ export const FEATURE_REGISTRY: readonly FeatureEntry[] = [
   // The class is kept in the model so that a paid tier can return without
   // reshaping anything, but nothing is classified 'pro' today.
 
-  // ---- Planned: named, on purpose, not built. -------------------------------
-  { id: 'codes.qr', name: 'QR check-in and quick result', class: 'planned', why: 'The screen is a ComingSoon placeholder today. Not an upsell yet.', label: 'soon.qr' },
-  { id: 'operator.roles', name: 'Role-based operator tools', class: 'planned', why: 'Named for the Pro plan. Not built; listed so it is not forgotten.', label: 'nav.settings' },
-  { id: 'license.multiSeat', name: 'Multi-seat and organisational license', class: 'planned', why: 'Second product variant, deliberately deferred.', label: 'lic.title' },
+  // Nothing is listed as 'planned' either: the previous planned entries all
+  // assumed a paid tier that no longer exists, so carrying them forward would
+  // only reserve names for a product nobody is building.
 ];
 
 /** The core product. A test fails if any of these stops being `free`. */

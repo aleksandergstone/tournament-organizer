@@ -146,6 +146,8 @@ gh release create v1.1.0 release/* --title "Tournament Organizer 1.1.0" --notes-
   and regenerable via `build/make-icon.ps1`.
 - **Project files:** never change the `.top.json` format without updating
   `sanitizeImport` / `migrateProject` in `src/engine/validate.ts` and the import tests.
-- **Free/Pro:** new Pro capabilities are only *registered* in `src/engine/features.ts` and
-  must stay dormant — no gating, no payments, no accounts.
+- **The app stays free.** Do not register a paid tier, a licence, a gate or a purchase
+  prompt. `tests/free-and-support.test.ts` enforces this and will fail the build if any
+  comes back. Support, if ever wanted, is a voluntary link configured only in
+  `src/support.ts`.
 

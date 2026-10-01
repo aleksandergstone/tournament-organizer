@@ -81,6 +81,24 @@ describe('the screens contain no gate', () => {
     }
   });
 
+  it('the licence screen copy is gone from every language', () => {
+    // Version 1.3.0 shipped these strings. They are what a stale build shows
+    // the user, so they must not exist even as unused dictionary entries.
+    for (const lang of ['en', 'pl', 'de', 'es']) {
+      const s = read(join(SRC, 'i18n', `${lang}.ts`));
+      expect(s, lang).not.toMatch(/'lic\./);
+    }
+  });
+
+  it('nothing left in the app offers a paid tier', () => {
+    // Anything that would let a gate creep back in by rename.
+    const marketing = /upgrade to pro|buy pro|subscribe now|start trial|pay now|unlock premium/i;
+    for (const file of ALL) {
+      expect(read(file), file).not.toMatch(marketing);
+    }
+  });
+});
+
 // ------------------------------------------------------------ support config
 
 describe('the support link is configured in one place', () => {
@@ -145,6 +163,8 @@ describe('the support note', () => {
     const store = memoryStore();
     store.setItem(SUPPORT_DISMISSED_KEY, 'not a number');
     expect(() => shouldShowSupport(store)).not.toThrow();
+  });
+});
 
 describe('where the banner is allowed to appear', () => {
   it('appears on Home and in Settings, and nowhere else', () => {
@@ -167,10 +187,22 @@ describe('where the banner is allowed to appear', () => {
     expect(s).not.toMatch(/useEffect/);          // no auto-show timer
   });
 
-  it('offers one optional link and one dismissal, nothing else', () => {
+  it('the banner itself offers one optional link and one dismissal', () => {
     const s = read(join(SRC, 'ui', 'SupportBanner.tsx'));
-    expect((s.match(/<button/g) ?? []).length).toBe(2);
+    // Counted on the banner only: the file also exports ResetSupportButton,
+    // which lives in Settings and is not part of the banner.
+    const banner = s.slice(0, s.indexOf('/** Settings uses this'));
+    expect((banner.match(/<button/g) ?? []).length).toBe(2);
     expect(s).toContain('openExternal');         // opens a browser, never navigates
+  });
+
+  it('the Settings reset is hidden while no support page is configured', () => {
+    // Otherwise Settings would offer a way to re-show a banner that can never
+    // appear — a dead control that only exists because support was planned.
+    const s = read(join(SRC, 'ui', 'SupportBanner.tsx'));
+    const reset = s.slice(s.indexOf('export function ResetSupportButton'));
+    expect(reset).toContain('isSupportConfigured');
+    expect(reset).toContain('return null');
   });
 
   it('translates its copy rather than hardcoding English', () => {
@@ -186,11 +218,6 @@ describe('where the banner is allowed to appear', () => {
       expect(read(file), file).not.toMatch(loud);
     }
   });
-});
-
-  });
-});
-
 
   it('no screen routes to a license screen', () => {
     const store = read(join(SRC, 'state', 'store.tsx'));

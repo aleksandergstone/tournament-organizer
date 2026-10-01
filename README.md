@@ -251,9 +251,13 @@ tools\jdk21\bin\keytool.exe -genkeypair -v -keystore android\to-release.keystore
 
 - `localStorage` autosave (~800ms, failures surface as a banner — never silent);
   `.top.json` portable backup; standings/matches CSV; print stylesheet.
-- Free/Pro feature boundary lives in `src/engine/features.ts` — all core features
-  are declared `free`; future Pro features are registered but not wired to any UI,
-  so entitlement logic can be added later without touching the engine or offline use.
+- The app is free. There is no Pro edition, no licence and no entitlement: every
+  feature in `src/engine/features.ts` is declared `free`, `has()` reads no licence
+  state, and no screen can be gated. `tests/free-and-support.test.ts` fails if a gate,
+  a Pro badge or purchase wording reappears.
+- Voluntary support is configured in one place, `src/support.ts`. The URL is empty by
+  design, so nothing renders until a support page exists; when one is set, a small
+  dismissible note appears on Home and in Settings only.
 
 ### Project layout
 

@@ -60,6 +60,9 @@ export default function SupportBanner({ compact = false }: { compact?: boolean }
 /** Settings uses this to let someone undo a dismissal. */
 export function ResetSupportButton() {
   const t = useT();
+  // Hidden while unconfigured, for the same reason the banner is: a button that
+  // re-shows nothing is worse than no button.
+  if (!isSupportConfigured()) return null;
   return (
     <button className="btn quiet" onClick={() => { resetSupport(store()); }}>
       {t('support.showAgain')}
