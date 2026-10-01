@@ -75,7 +75,7 @@ npm.cmd start     # production build + desktop window (Electron)
 ## Launch assets (public presentation)
 
 - `site/index.html` is the public launch page (GitHub Pages or any static host). It uses
-  `OWNER/REPO` placeholders in its links — replace them once the GitHub repository exists.
+  links point at `github.com/aleksandergstone/tournament-organizer`.
 - Screenshots in `site/assets/screens/` are **generated from the real app**, never mocked:
   `npm run screenshots` builds the app, runs `scripts/demo-fixture.ts` (the actual tournament
   engine) to create a demo tournament, then drives the UI and captures each screen with

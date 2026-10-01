@@ -4,11 +4,11 @@
 cups, leagues and club nights: create the bracket, enter results as they happen, print final
 standings — **offline, without an account, on your own machine.**
 
-[![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ci.yml)
-[![Latest release](https://github.com/OWNER/REPO/releases/latest/badge.svg)](https://github.com/OWNER/REPO/releases/latest)
+[![CI](https://github.com/aleksandergstone/tournament-organizer/actions/workflows/ci.yml/badge.svg)](https://github.com/aleksandergstone/tournament-organizer/actions/workflows/ci.yml)
+[![Latest release](https://github.com/aleksandergstone/tournament-organizer/releases/latest/badge.svg)](https://github.com/aleksandergstone/tournament-organizer/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**[⬇ Download the latest release](https://github.com/OWNER/REPO/releases/latest)** ·
+**[⬇ Download the latest release](https://github.com/aleksandergstone/tournament-organizer/releases/latest)** ·
 Windows · macOS · Linux · MIT licensed
 
 ## What it does
@@ -224,7 +224,7 @@ tools\jdk21\bin\keytool.exe -genkeypair -v -keystore android\to-release.keystore
 ### Launch assets
 
 - `site/` — the static launch page (GitHub Pages via `.github/workflows/pages.yml`, or any
-  static host). It links to `OWNER/REPO` placeholders; replace them after the first push.
+  static host). Its links point at `github.com/aleksandergstone/tournament-organizer`.
 - `site/assets/screens/*.png` — screenshots captured from the real app by
   `npm run screenshots`: it builds the app, generates a demo tournament with the actual engine
   (`scripts/demo-fixture.ts`) and photographs real screens (`scripts/screenshots.cjs`).

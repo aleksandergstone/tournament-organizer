@@ -1,16 +1,15 @@
 // Voluntary support — the one place a support link lives.
 //
 // The app is entirely free. Nothing here gates anything: this is a small,
-// dismissible invitation, not a paywall. Point SUPPORT_URL at Patronite,
-// Ko-fi, Buy Me a Coffee, GitHub Sponsors or anywhere else and that is the only
-// edit needed.
+// dismissible invitation, not a paywall. Point SUPPORT_URL at Tipply, Patronite, Ko-fi, Buy Me a Coffee, GitHub
+// Sponsors or anywhere else and that is the only edit needed.
 //
 // Empty URL means "not set up yet" and the banner simply does not render. That
 // is deliberate: no placeholder, no dead button, nothing that looks like a
 // broken purchase flow.
 
 /** Where "Support the project" goes. Empty = no banner is shown at all. */
-export const SUPPORT_URL = '';
+export const SUPPORT_URL = 'https://tipply.pl/@stone_yt';
 
 /** Storage key for "I dismissed this, stop asking". Reset from Settings. */
 export const SUPPORT_DISMISSED_KEY = 'to:support-dismissed';

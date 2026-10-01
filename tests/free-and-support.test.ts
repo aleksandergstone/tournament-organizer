@@ -104,14 +104,16 @@ describe('the screens contain no gate', () => {
 // ------------------------------------------------------------ support config
 
 describe('the support link is configured in one place', () => {
-  it('is empty until a support page exists', () => {
-    // Deliberate: no placeholder URL, no dead button.
-    expect(SUPPORT_URL).toBe('');
-    expect(isSupportConfigured()).toBe(false);
+  it('is a real destination, never a placeholder', () => {
+    // The rule is not "empty" but "valid or absent": a placeholder such as
+    // example.invalid would render a button that goes nowhere, which is worse
+    // than no button at all.
+    expect(SUPPORT_URL).not.toMatch(/example\.(invalid|com)|placeholder|your-?url/i);
+    expect(/^https:\/\//.test(SUPPORT_URL)).toBe(isSupportConfigured());
   });
 
   it('the URL is defined exactly once across the source tree', () => {
-    const hits = ALL.filter(f => /(patreon|ko-?fi|buymeacoffee|github\.com\/sponsors)/i.test(read(f)));
+    const hits = ALL.filter(f => /(patreon|ko-?fi|buymeacoffee|tipply|github\.com\/sponsors)/i.test(read(f)));
     expect(hits.map(f => f.split(/[\\/]/).pop())).toEqual(['support.ts']);
   });
 
@@ -137,8 +139,15 @@ function memoryStore() {
 }
 
 describe('the support note', () => {
-  it('stays hidden while no support page is configured', () => {
-    expect(shouldShowSupport(memoryStore())).toBe(false);
+  it('shows on a fresh install while a support page is configured', () => {
+    expect(isSupportConfigured()).toBe(true);
+    expect(shouldShowSupport(memoryStore())).toBe(true);
+  });
+
+  it('never shows while no support page is configured', () => {
+    // The banner's own guard: unconfigured means invisible, whatever the store
+    // says. Checked by hand because SUPPORT_URL is a build-time constant.
+    expect(shouldShowSupport({ getItem: () => null, setItem: () => {} })).toBe(isSupportConfigured());
   });
 
   it('dismisses, and a dismissal is remembered', () => {
