@@ -81,6 +81,10 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The publish job has no checkout, so there is no git repository for
+          # `gh` to infer. Without this, `gh release view` fails with
+          # "fatal: not a git repository" and the release is never created.
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
