@@ -30,7 +30,14 @@ Write-Host "gradle $task…"
 if ($LASTEXITCODE -ne 0) { throw "gradle $task failed" }
 
 # 3. One artifact, next to the desktop installers, named like them.
+# electron-builder reads the version as semver and re-serialises it, so 1.4.01
+# becomes 1.4.1 in every artifact it produces. Normalise the same way here, or the
+# APK ends up with a different version in its filename than the exe next to it.
+# A numeric patch segment loses its leading zeroes; a prerelease suffix is kept.
 $version = (Get-Content (Join-Path $root 'package.json') -Raw | ConvertFrom-Json).version
+if ($version -match '^(\d+)\.(\d+)\.(\d+)(.*)$') {
+  $version = "$($Matches[1]).$($Matches[2]).$([int]$Matches[3])$($Matches[4])"
+}
 $variant = if ($Debug) { 'debug' } else { 'release' }
 $built = Join-Path $root "android\app\build\outputs\apk\$variant\app-$variant.apk"
 $target = Join-Path $root "release\Tournament-Organizer-$version-android-$variant.apk"
