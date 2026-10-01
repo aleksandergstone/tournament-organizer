@@ -24,7 +24,9 @@ function sourceFiles(dir = SRC, out: string[] = []): string[] {
   return out;
 }
 const ALL = sourceFiles();
-const UI = ALL.filter(p => p.includes('ui') || p.endsWith('App.tsx'));
+/** Only real ui/ screens. Matched on path segments, because an absolute path
+ *  can contain "ui" anywhere (".../build/…"), which would silently widen the scan. */
+const UI = ALL.filter(p => /[/\\]ui[/\\]/.test(p) || p.endsWith('App.tsx'));
 
 // ---------------------------------------------------------------- no paywall
 

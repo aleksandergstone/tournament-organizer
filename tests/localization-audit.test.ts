@@ -3,6 +3,7 @@
 // hard-coded English in every language; these tests make that impossible again.
 import { describe, expect, it, afterEach } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
+import { join, sep } from 'node:path';
 import { LOCALES, setLocale, translate } from '../src/i18n';
 import { en } from '../src/i18n/en';
 import { pl } from '../src/i18n/pl';
@@ -10,11 +11,12 @@ import { de } from '../src/i18n/de';
 import { es } from '../src/i18n/es';
 import { describeAudit, KNOWN_AUDIT_ACTIONS } from '../src/engine/audit';
 
-const root = 'C:/Users/Aleksander G/Desktop/tournament-organizer/src/';
+// Resolved from this file, not hard-coded: the suite runs on Linux CI too.
+const root = join(__dirname, '..', 'src') + sep;
 const DICTS = { en, pl, de, es };
 const sources = () => readdirSync(root + 'ui').filter(f => f.endsWith('.tsx'))
-  .map(f => readFileSync(root + 'ui/' + f, 'utf8'))
-  .concat([readFileSync(root + 'state/store.tsx', 'utf8')]);
+  .map(f => readFileSync(root + 'ui' + sep + f, 'utf8'))
+  .concat([readFileSync(root + 'state' + sep + 'store.tsx', 'utf8')]);
 
 afterEach(() => setLocale('en'));
 
