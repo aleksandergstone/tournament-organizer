@@ -1,7 +1,7 @@
 {
   "name": "tournament-organizer",
   "private": true,
-  "version": "1.4.01",
+  "version": "1.4.2",
   "description": "Desktop-first offline-first tournament & league organizer",
   "license": "MIT",
   "author": "Tournament Organizer contributors",
@@ -16,7 +16,8 @@
     "test": "vitest run",
     "electron": "electron .",
     "version:check": "node scripts/check-version.mjs",
-    "release:check": "npm run version:check && npm run test && npm run build",
+    "version:check:selftest": "node scripts/version-check-selftest.mjs",
+    "release:check": "npm run version:check && npm run version:check:selftest && npm run test && npm run build",
     "android:toolchain": "powershell -ExecutionPolicy Bypass -File scripts/setup-android-toolchain.ps1",
     "android:sync": "npm run build && cap sync android",
     "android:apk": "powershell -ExecutionPolicy Bypass -File scripts/build-android.ps1",

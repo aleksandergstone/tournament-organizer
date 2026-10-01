@@ -37,16 +37,25 @@ describe('app identity', () => {
   });
 
   it('ships the version once, in package.json, and the changelog agrees', () => {
-    expect(pkg.version).toMatch(/^\d+\.\d+\.\d+$/);
+    // Semver forbids leading zeros: "1.4.01" looks fine under a naive x.y.z
+    // pattern but is not valid semver, so build tools coerce it to "1.4.1" while
+    // the UI prints the raw string, and the released files end up disagreeing
+    // with the app about which version they are. Only the canonical form passes.
+    expect(pkg.version).toMatch(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
     const top = read('CHANGELOG.md').match(/^## \[([^\]]+)\]/m);
     expect(top?.[1]).toBe(pkg.version);
   });
 
   it('builds the phone app from the same sources, at the same version', () => {
     // One codebase, two builds: the Android project wraps the same web bundle,
-    // so its versionName must never drift from package.json.
+    // so its version must be derived from package.json rather than repeating the
+    // literal, and versionCode must rise with it or Android rejects the update.
     const gradle = read('android/app/build.gradle');
-    expect(gradle.match(/versionName\s+"([^"]+)"/)?.[1]).toBe(pkg.version);
+    expect(gradle).toContain('rootProject.file("../package.json")');
+    expect(gradle).toMatch(/versionName\s+"\$\{pkgVersionParts/);
+    expect(gradle).toMatch(/versionCode\s+pkgVersionParts\[0\]\s*\*\s*10000/);
+    expect(gradle).not.toMatch(/versionName\s+"\d+\.\d+\.\d+"/);
+    expect(gradle).not.toMatch(/versionCode\s+\d+\s*$/m);
     expect(read('capacitor.config.ts')).toContain("webDir: 'dist'");
     // The renderer talks to the phone through the same desktop bridge contract.
     const bridge = read('src/engine/mobile-bridge.ts');

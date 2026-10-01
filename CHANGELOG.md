@@ -3,6 +3,29 @@
 All notable changes to Tournament Organizer.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semver.
 
+## [1.4.2] — 2026-10-01
+
+Version housekeeping. No user-visible change to the app: everything that
+disagreed about the version now agrees.
+
+### Fixed
+
+- **One version string everywhere.** `1.4.01` is not valid semver. Build tools
+  parse it as `1.4.1`, so every downloaded file, the installer's version
+  resource and Windows' list of installed programs all said 1.4.1, while the app
+  itself printed `1.4.01` in Settings and in the footer. The version is now the
+  canonical `1.4.2` in `package.json`, and everything reads from there.
+- **The Android version is no longer a second, hand-maintained copy.**
+  `versionName` and `versionCode` are both derived from `package.json`, so the
+  phone build cannot drift from the desktop build again.
+- **`versionCode` now rises with the version.** It was pinned to `1`, so an
+  update over an already-installed 1.4.x APK would have been rejected by Android
+  for a lower version code. It is now computed as
+  `major * 10000 + minor * 100 + patch`.
+- **The version guard rejects leading zeros.** Both `check-version.mjs` and the
+  release test accepted `1.4.01` under a plain `x.y.z` pattern, which is exactly
+  how this slipped through. They now require canonical semver.
+
 ## [1.4.01] — 2026-10-01
 
 A UI-only pass: text that escaped its box, an incomplete dark theme, and cramped

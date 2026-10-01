@@ -15,7 +15,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// The check can be pointed at a different tree so its own behaviour can be
+// verified without editing the real project: `node scripts/check-version.mjs /tmp/x`.
+const root = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(path.join(root, p), 'utf8');
 const errors = [];
 const fail = (m) => errors.push(m);
@@ -23,8 +27,13 @@ const fail = (m) => errors.push(m);
 const pkg = JSON.parse(read('package.json'));
 const version = pkg.version;
 
-if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
-  fail(`package.json version "${version}" is not semver (x.y.z)`);
+// Semver forbids leading zeros in the numeric parts. "1.4.01" passes a naive
+// x.y.z pattern but is not a valid semver, and tooling that parses the version
+// (electron-builder, the Android plugin, npm) coerces it to "1.4.1" while the
+// app UI would still print the raw "1.4.01" — the exact drift this guard exists
+// to prevent. Reject it here, at the source, instead of downstream.
+if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
+  fail(`package.json version "${version}" is not semver (x.y.z, no leading zeros)`);
 }
 
 let changelog = '';
@@ -51,9 +60,11 @@ if (!artifactName.includes('${version}')) {
   fail('build.artifactName must include ${version} so release files carry the version');
 }
 
-// The Android build is the same app, so it carries the same version. The file is
-// only checked when the Android project exists (a fresh clone without Capacitor
-// still passes the desktop-only checks).
+// The Android build is the same app, so it carries the same version. It must
+// derive it from package.json rather than repeat the literal: a second copy is
+// a second thing to forget, and it is exactly how 1.4.01 and 1.4.1 drifted.
+// versionCode is derived for the same reason, plus Android rejects an update
+// whose versionCode does not strictly increase.
 let gradle = '';
 try {
   gradle = read('android/app/build.gradle');
@@ -61,9 +72,17 @@ try {
   gradle = '';
 }
 if (gradle) {
-  const versionName = gradle.match(/versionName\s+"([^"]+)"/)?.[1];
-  if (versionName !== version) {
-    fail(`android/app/build.gradle versionName is ${versionName ?? 'missing'} but package.json is ${version}`);
+  if (!/rootProject\.file\("\.\.\/package\.json"\)/.test(gradle)) {
+    fail('android/app/build.gradle must read the version from ../package.json, not a repeated literal');
+  }
+  if (!/versionName\s+"\$\{pkgVersionParts/.test(gradle)) {
+    fail('android/app/build.gradle versionName must be derived from pkgVersionParts');
+  }
+  if (!/versionCode\s+pkgVersionParts\[0\]\s*\*\s*10000/.test(gradle)) {
+    fail('android/app/build.gradle versionCode must be derived from the version, not hardcoded');
+  }
+  if (/versionCode\s+\d+\s*$|versionName\s+"\d/.test(gradle)) {
+    fail('android/app/build.gradle still contains a hardcoded version literal');
   }
 }
 
