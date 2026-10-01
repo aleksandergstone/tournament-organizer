@@ -1,11 +1,15 @@
-# Generates build/icon.png (256px) and build/icon.ico (16/32/48/256 PNG-compressed)
+# Generates build/icon.png (1024px) and build/icon.ico (16/32/48/256 PNG-compressed)
 # Identity: blue rounded square with white "TO". Deterministic, no design tools needed.
 # Run: powershell -ExecutionPolicy Bypass -File build\make-icon.ps1
+#
+# 1024px because electron-builder refuses a macOS icon smaller than 512x512
+# ("Icon must be at least 512x512 pixels"). Everything is drawn once at 1024 and
+# downsampled, so the small sizes stay consistent with the large one.
 Add-Type -AssemblyName System.Drawing
 
 $dir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$size = 256
-$r = 44
+$size = 1024
+$r = 176
 
 $bmp = New-Object System.Drawing.Bitmap $size, $size
 $g = [System.Drawing.Graphics]::FromImage($bmp)
@@ -23,7 +27,7 @@ $brush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(
 $g.FillPath($brush, $path)
 $path.Dispose()
 
-$font = New-Object System.Drawing.Font('Segoe UI', 104, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
+$font = New-Object System.Drawing.Font('Segoe UI', 416, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
 $sf = New-Object System.Drawing.StringFormat
 $sf.Alignment = 'Center'
 $sf.LineAlignment = 'Center'
