@@ -10,6 +10,9 @@ release/
 logs/
 *.log
 npm-debug.log*
+# npm and the build scripts write stderr to a sibling .err; without this the
+# next person to run a build has a pile of them in `git status`.
+*.err
 
 # Generated demo data for screenshots (regenerate with `npm run screenshots`)
 .cache/

@@ -43,7 +43,17 @@ const run = () => {
 const CASES = [
   ['baseline, everything in step', () => {}, 0],
   ['leading zero in a version part (1.4.02)', () => setPkgVersion('1.4.02'), 1],
-  ['changelog ahead of package.json', () => patch('CHANGELOG.md', '## [1.4.2]', '## [9.9.9]'), 1],
+  // The heading to mutate is whichever one is on top right now. Hardcoding a
+  // version here meant the mutation silently stopped landing once the next
+  // release was added, and this case passed for the wrong reason — the check it
+  // guards was never actually exercised.
+  ['changelog ahead of package.json', () => {
+    const p = path.join(tmp, 'CHANGELOG.md');
+    const before = readFileSync(p, 'utf8');
+    const top = (before.match(/^## \[([^\]]+)\]/m) ?? [])[1];
+    if (!top) throw new Error('CHANGELOG.md has no "## [x.y.z]" entry to mutate');
+    writeFileSync(p, before.replace(`## [${top}]`, '## [9.9.9]'));
+  }, 1],
   ['android versionCode hardcoded again', () => patch('android/app/build.gradle',
     'versionCode pkgVersionParts[0] * 10000', 'versionCode 1'), 1],
   ['android versionName back to a literal', () => patch('android/app/build.gradle',
