@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { validateTournament, ValidationIssue } from '../engine/validate';
 import { adaptRulesToFormat, validateModeSetup, visibleGroups } from '../engine/mode-info';
 import { applyPreset, type Preset } from '../engine/presets';
+import { applyDiscipline, DISCIPLINES, type DisciplineId } from '../engine/discipline';
 import { uid, nowIso } from '../engine/types';
 import { describeFormat } from '../engine/generate';
 import { Alert, Field, Page, Panel, StepBar } from './kit';
@@ -47,6 +48,21 @@ export default function Wizard() {
     }));
   };
   const usePreset = (preset: Preset) => setRules(applyPreset(f.rules, preset));
+
+  /**
+   * The discipline is a starting point, not a lock: it brings its own rules and
+   * its own kind of competitor, and the organizer can still change every value
+   * below. It is applied to the wizard state, not to the engine, so nothing here
+   * can quietly override a later manual edit.
+   */
+  const pickDiscipline = (id: DisciplineId | null) => {
+    setF(s => {
+      const next = applyDiscipline({ ...s, discipline: id, rules: s.rules, individualOrTeam: s.individualOrTeam }, id);
+      // The format may have been chosen before the discipline. Its own shape
+      // still wins over the discipline's generic rules, so re-adapt afterwards.
+      return { ...next, rules: { ...next.rules, ...adaptRulesToFormat(next.format, next.rules) } };
+    });
+  };
   const submit = () => {
     const t = { ...f, id: f.id.startsWith('t_') ? f.id : uid('t'), createdAt: f.createdAt || nowIso(), updatedAt: nowIso(), archived: false };
     const bad = validateTournament(t);
@@ -84,6 +100,16 @@ export default function Wizard() {
         </div>
       </Panel>
 
+
+      <Panel title={t('disc.pick')} sub={t('disc.pickHint')}>
+        <Field label={t('disc.pick')} hint={t('disc.namesHint')}>
+          <select
+            value={f.discipline ?? 'generic'}
+            onChange={e => pickDiscipline(e.target.value as DisciplineId)}>
+            {DISCIPLINES.map(d => <option key={d.id} value={d.id}>{t(d.label)}</option>)}
+          </select>
+        </Field>
+      </Panel>
 
       <Panel title={t('mode.pickTitle')} sub={t('mode.pickSub')}>
         <ModePicker value={f.format} onChange={pickFormat} />

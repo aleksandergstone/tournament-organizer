@@ -30,7 +30,8 @@ function slug(s: string): string {
 
 /** Suggested file name, e.g. `winter-league-standings.pdf`. */
 export function reportFileName(report: Report, ext: string): string {
-  return `${slug(report.meta.title)}-${report.kind}${ext}`;
+  const base = report.meta.fileNameBase || slug(report.meta.title);
+  return `${slug(base)}-${report.kind}${ext}`;
 }
 
 const CSS = `
@@ -55,7 +56,7 @@ const CSS = `
   .ctx, .hint, .generated { font-size: 9pt; color: #5b6472; margin: 4px 0 0; }
   .hint { font-style: italic; }
   section { margin-bottom: 18px; }
-  section.break { break-before: page; }
+  section.break { break-before: page; page-break-before: always; }
   section.wide { page: wide; }
   .spider { margin: 4px 0 0; }
   .spider svg { display: block; width: 100%; height: auto; }
@@ -71,6 +72,8 @@ const CSS = `
   tbody tr:nth-child(even) td { background: #fafbfc; }
   th.r, td.r { text-align: right; font-variant-numeric: tabular-nums; }
   th.c, td.c { text-align: center; }
+  th.day-row, tr.day-row th { background: var(--accent-soft); color: var(--accent);
+       font-size: 9.5pt; letter-spacing: 0.4px; text-transform: uppercase; }
   td.name { font-weight: 600; }
   .round { margin-top: 10px; break-inside: avoid; }
   .round h3 { font-size: 10.5pt; margin: 0 0 4px; color: var(--accent); }
@@ -86,12 +89,16 @@ function tableHtml(s: Section): string {
   const head = s.columns
     .map(c => `<th class="${c.align === 'right' ? 'r' : c.align === 'center' ? 'c' : ''}">${escapeHtml(c.label)}</th>`)
     .join('');
+  // A repeating day banner: `thead` is re-printed by the browser on every page.
+  const dayRow = s.headerRow
+    ? `<tr class="day-row"><th colspan="${s.columns.length}">${escapeHtml(s.headerRow)}</th></tr>`
+    : '';
   const body = s.rows.map(r => '<tr>' + r.map((v, i) => {
     const c = s.columns?.[i];
     const cls = c?.align === 'right' ? 'r' : c?.align === 'center' ? 'c' : (c?.key === 'name' || c?.key === 'home' || c?.key === 'away' ? 'name' : '');
     return `<td class="${cls}">${escapeHtml(String(v))}</td>`;
   }).join('') + '</tr>').join('');
-  return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+  return `<table><thead>${dayRow}<tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
 function roundsHtml(s: Section): string {
@@ -119,6 +126,7 @@ export function renderReportHtml(report: Report): string {
       <h2>${escapeHtml(s.title)}</h2>
       ${s.sub ? `<p class="sub">${escapeHtml(s.sub)}</p>` : ''}
       ${s.columns && s.rows ? tableHtml(s) : ''}
+      ${s.prose ? `<p class="notes">${escapeHtml(s.prose)}</p>` : ''}
       ${s.bracket ? `<div class="spider">${s.bracket}</div>` : ''}
       ${s.rounds && !s.bracket ? roundsHtml(s) : ''}
       ${s.note ? `<p class="note">${escapeHtml(s.note)}</p>` : ''}
@@ -133,7 +141,7 @@ export function renderReportHtml(report: Report): string {
   const lang = INTL_LOCALES[getLocale()];
   return `<!doctype html>
 <html lang="${lang}"><head><meta charset="utf-8" />
-<title>${escapeHtml(m.title)} — ${escapeHtml(kindLabel ? t(kindLabel) : m.subtitle)}</title>
+<title>${escapeHtml(m.docTitle || m.title)} — ${escapeHtml(kindLabel ? t(kindLabel) : m.subtitle)}</title>
 <style>${style}${CSS}</style></head>
 <body>
   <div class="head">

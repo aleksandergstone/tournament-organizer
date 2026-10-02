@@ -3,6 +3,39 @@
 All notable changes to Tournament Organizer.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semver.
 
+## [1.5.0] — 2026-10-02
+
+A release about what happens *during* an event, and about the app saying what
+each sport actually calls things.
+
+### Added
+
+- **Live scorer.** A dedicated screen for entering a match as it is played: one
+  tap for a point, the set ends by itself at the threshold, and the result is
+  written straight to the match. No more typing a final score after the fact.
+- **Sets and points, per match.** New rule group covering points per set, sets to
+  win the match, and the two-clear-points rule. Sports without sets (football,
+  chess) set the threshold to 0 and the score stays one running total.
+- **Discipline-aware setup.** The wizard now starts from the sport: football
+  arrives with 3/1/0 and a penalty draw rule, volleyball with 25 points, three
+  sets and no draws, chess with ½-point draws and Buchholz. Every value stays
+  editable afterwards.
+- **Seasons and series.** A season screen that groups several events into one
+  running table, so a league can be read across its rounds.
+- **Regulations.** The tournament rules as a document of their own, printable
+  next to the results or on their own sheet.
+- **Document titles and file names.** Standings, match list, schedule, bracket
+  and groups can each be renamed, with a document title, a base file name, a
+  date format and a time format that apply to everything printed.
+
+### Changed
+
+- **Neutral venue wording.** A place is a "court", "table", "pitch" or "board"
+  depending on the discipline, instead of one word for every sport. The
+  underlying value stays neutral, so saved files and QR deep links are unchanged.
+- The version shown in the app still comes from `package.json` alone; this
+  release follows the same single-source rule as 1.4.2.
+
 ## [1.4.2] — 2026-10-01
 
 Version housekeeping. No user-visible change to the app: everything that

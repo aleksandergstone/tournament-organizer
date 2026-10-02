@@ -670,7 +670,7 @@ describe('the exact mechanics of each mode', () => {
     // anywhere, because the points really do build the table in Custom.
     expect(s.groups).toEqual([...ALL_GROUPS].filter(g => g !== 'reporting'));
     expect(visibleGroups('custom')).toEqual(
-      ['scoring', 'draws', 'tiebreak', 'seeding', 'meeting', 'byes', 'structure']);
+      ['scoring', 'sets', 'draws', 'tiebreak', 'seeding', 'meeting', 'byes', 'structure']);
     expect(hiddenGroups('custom')).toEqual(['groups', 'rounds', 'reporting']);
     const inert = inertFields('custom').map(f => f.field);
     expect(inert).toContain('groupCount');

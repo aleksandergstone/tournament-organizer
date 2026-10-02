@@ -25,6 +25,8 @@ const ACTIONS: Record<string, keyof Dict> = {
   'tournament.finished': 'audit.finished',
   'lan.sync': 'audit.sync',
   'branding.updated': 'audit.branding',
+  'season.assign': 'audit.seasonAssign',
+  'discipline.change': 'audit.disciplineChange',
 };
 
 export interface AuditLine {

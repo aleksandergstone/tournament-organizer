@@ -86,6 +86,16 @@ export interface RuleSet {
   homeAway?: boolean;         // league double round-robin
   swissRounds?: number;
   byePoints?: number;         // points for bye (odd numbers)
+  /**
+   * Points that win one period (a set, game or leg). 0/absent = the sport has no
+   * periods and the match score is a running total (football, chess). Set by the
+   * discipline layer and edited on the Rules screen.
+   */
+  periodPoints?: number;
+  /** Periods needed to win the match (best-of is 2*periodsToWin-1). */
+  periodsToWin?: number;
+  /** A period must be won by two clear points (volleyball, table tennis). */
+  winByTwo?: boolean;
 }
 
 export type TiebreakKey = 'points' | 'wins' | 'diff' | 'scored' | 'buchholz' | 'seed' | 'name';
@@ -114,8 +124,10 @@ export const DEFAULT_RULES: RuleSet = {
   homeAway: false,
   swissRounds: 5,
   byePoints: 3,
+  periodPoints: 0,
+  periodsToWin: 1,
+  winByTwo: true,
 };
-
 export type MatchStatus =
   | 'scheduled'
   | 'played'
@@ -126,6 +138,12 @@ export type MatchStatus =
   | 'unfinished'
   | 'bye';
 
+/** One period of a match: a set, a game, a leg, a quarter. */
+export interface SetScore {
+  home: number;
+  away: number;
+}
+
 export interface MatchResult {
   homeScore: number | null;
   awayScore: number | null;
@@ -134,6 +152,12 @@ export interface MatchResult {
   walkoverWinnerId?: Id | null;
   note?: string;
   overtime?: boolean;
+  /**
+   * The periods of the match, in order; the last one may still be running.
+   * Absent on files written before v1.5 and on sports without periods — the
+   * aggregate `homeScore`/`awayScore` is then the whole truth, exactly as before.
+   */
+  sets?: SetScore[];
 }
 
 export interface Match {
@@ -177,6 +201,16 @@ export interface Group {
   participantIds: Id[];
 }
 
+/**
+ * A season or series a tournament belongs to (added in v1.5). Two tournaments
+ * share a season when their `id` matches, so tagging travels with the project
+ * file and over LAN sync without a second database.
+ */
+export interface SeasonRef {
+  id: string;
+  name: string;
+}
+
 export interface Tournament {
   id: Id;
   name: string;
@@ -194,6 +228,13 @@ export interface Tournament {
   notes?: string;
   /** Document branding for exported sheets/PDFs. Optional: added after v1.0. */
   branding?: Branding;
+  /**
+   * The sport layer chosen in the wizard (added in v1.5). Absent on older files,
+   * which simply keep the neutral vocabulary.
+   */
+  discipline?: string | null;
+  /** Season or series this tournament belongs to (added in v1.5). */
+  season?: SeasonRef | null;
 }
 
 export interface StandingRow {

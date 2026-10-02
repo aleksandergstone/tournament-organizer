@@ -8,6 +8,9 @@ import Participants from './ui/Participants';
 import Rules from './ui/Rules';
 import Bracket from './ui/Bracket';
 import Matches from './ui/Matches';
+import Live from './ui/Live';
+import Season from './ui/Season';
+import RegulationTab from './ui/Regulation';
 import Standings from './ui/Standings';
 import Output from './ui/Output';
 import Settings from './ui/Settings';
@@ -27,8 +30,8 @@ import { useT, type Dict } from './i18n';
 // Navigation is grouped by what the organizer is doing, not by feature name.
 const NAV: { items: readonly (readonly [Screen, keyof Dict])[] }[] = [
   { items: [['home', 'nav.home'], ['overview', 'nav.overview'], ['participants', 'nav.participants'], ['rules', 'nav.rules']] },
-  { items: [['bracket', 'nav.bracket'], ['matches', 'nav.results'], ['standings', 'nav.standings']] },
-  { items: [['schedule', 'nav.schedule'], ['display', 'nav.display'], ['codes', 'nav.codes'], ['export', 'nav.output']] },
+  { items: [['bracket', 'nav.bracket'], ['matches', 'nav.results'], ['live', 'nav.live'], ['standings', 'nav.standings']] },
+  { items: [['schedule', 'nav.schedule'], ['display', 'nav.display'], ['codes', 'nav.codes'], ['regulation', 'nav.regulation'], ['season', 'nav.season'], ['export', 'nav.output']] },
 ];
 
 // A window opened with #display is a projector: organizer controls are hidden.
@@ -155,7 +158,10 @@ export default function App() {
       {screen === 'rules' && (hasProject ? <Rules /> : <Home />)}
       {screen === 'bracket' && (hasProject ? <Bracket /> : <Home />)}
       {screen === 'matches' && (hasProject ? <Matches /> : <Home />)}
+      {screen === 'live' && (hasProject ? <Live /> : <Home />)}
       {screen === 'standings' && (hasProject ? <Standings /> : <Home />)}
+      {screen === 'regulation' && (hasProject ? <RegulationTab /> : <Home />)}
+      {screen === 'season' && (hasProject ? <Season /> : <Home />)}
       {screen === 'schedule' && (hasProject ? <Schedule /> : <Home />)}
       {screen === 'display' && (hasProject ? <Display /> : <Home />)}
       {screen === 'codes' && <ComingSoon title="codes" />}

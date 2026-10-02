@@ -8,7 +8,7 @@ import { StandingRow } from '../engine/types';
 import { parseProject } from '../engine/storage';
 import { ProjectFile } from '../engine/types';
 import { t, resolveLocale, setLocale } from '../i18n';
-export type Screen = 'home'|'wizard'|'overview'|'participants'|'rules'|'bracket'|'matches'|'standings'|'export'|'settings'|'import'|'display'|'schedule'|'codes';
+export type Screen = 'home'|'wizard'|'overview'|'participants'|'rules'|'bracket'|'matches'|'live'|'standings'|'export'|'settings'|'import'|'display'|'schedule'|'codes'|'season'|'regulation';
 interface Ctx { domain: Domain; settings: AppSettings; screen: Screen; go(s: Screen): void;
   /** Steps back through the screens the organizer opened (Android's back button). */
   back(): boolean;

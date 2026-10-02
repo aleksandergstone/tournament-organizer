@@ -22,6 +22,7 @@ type Patch = (p: Partial<RuleSet>) => void;
 
 const GROUP_TITLE: Record<SettingGroup, Key> = {
   scoring: 'rules.scoring',
+  sets: 'mode.set.sets',
   draws: 'mode.set.draws',
   tiebreak: 'rules.tiebreak',
   seeding: 'rules.seeding',
@@ -505,6 +506,60 @@ function DrawSettings({ format, rules, set, err }: {
   );
 }
 
+/**
+ * The periods of a match — the thresholds the live scorer counts to.
+ *
+ * 0 points means the sport has no periods at all (football, chess): the score is
+ * one running total and the other two fields would be meaningless, so they are
+ * not even shown. Once a threshold is set, they appear and the scorer ends a set
+ * by itself.
+ */
+function SetSettings({ format, rules, set, err }: {
+  format: string; rules: RuleSet; set: Patch; err: (f: string) => string | undefined;
+}) {
+  const t = useT();
+  const perRule = fieldRule(format, 'periodPoints');
+  const needRule = fieldRule(format, 'periodsToWin');
+  const twoRule = fieldRule(format, 'winByTwo');
+  const per = Math.max(0, Math.floor(rules.periodPoints ?? 0));
+  return (
+    <>
+      <p className="rule-note">{t('mode.set.setsNote')}</p>
+      <Field
+        field="periodPoints"
+        label={<>{t('rules.periodPoints')}{perRule ? <RuleTag status={perRule.status} affects={perRule.affects} /> : null}</>}
+        hint={perRule ? t(perRule.why) : undefined}
+        error={err('periodPoints')}>
+        <input type="number" min={0} value={per} onChange={e => set({ periodPoints: Number(e.target.value) })} />
+      </Field>
+      {/*
+        The two follow-up fields stay on screen even when the sport has no sets.
+        A control that appears and disappears with another number is worse than a
+        disabled one, and the mode contract is that every field a mode declares
+        has exactly one place on the page.
+      */}
+      <Field
+        field="periodsToWin"
+        label={<>{t('rules.periodsToWin')}{needRule ? <RuleTag status={needRule.status} affects={needRule.affects} /> : null}</>}
+        hint={needRule ? t(needRule.why) : undefined}
+        error={err('periodsToWin')}>
+        <input type="number" min={1} value={rules.periodsToWin ?? 1} disabled={per === 0}
+          onChange={e => set({ periodsToWin: Number(e.target.value) })} />
+      </Field>
+      <Switch
+        field="winByTwo"
+        checked={rules.winByTwo !== false}
+        onChange={v => set({ winByTwo: v })}
+        disabled={per === 0}
+        label={<>{t('rules.winByTwo')}{twoRule ? <RuleTag status={twoRule.status} affects={twoRule.affects} /> : null}</>}
+        hint={twoRule ? t(twoRule.why) : undefined} />
+      {per > 0 ? (
+        <p className="rule-note">{t('mode.set.bestOf', { n: 2 * Math.max(1, Math.floor(rules.periodsToWin ?? 1)) - 1 })}</p>
+      ) : null}
+    </>
+  );
+}
+
 /** One line under a group heading: how much the group's main setting matters. */
 function FieldTagLine({ format, field }: { format: string; field: keyof RuleSet }) {
   const t = useT();
@@ -601,6 +656,8 @@ export function SettingsForMode({ format, rules, set, count, issues = [], groups
           {g === 'scoring' || g === 'reporting'
             ? <PointsFields format={format} rules={rules} set={set} reporting={g === 'reporting'} />
             : null}
+
+          {g === 'sets' ? <SetSettings format={format} rules={rules} set={set} err={err} /> : null}
 
           {g === 'draws' && live('allowDraws') ? <DrawSettings format={format} rules={rules} set={set} err={err} /> : null}
 

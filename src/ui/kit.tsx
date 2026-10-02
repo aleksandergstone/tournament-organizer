@@ -109,14 +109,16 @@ export function Field({ label, hint, error, required, children, className = '', 
   );
 }
 
-export function Switch({ checked, onChange, label, hint, field }: {
+export function Switch({ checked, onChange, label, hint, field, disabled }: {
   checked: boolean; onChange(v: boolean): void; label: ReactNode; hint?: ReactNode;
   /** The rule field this switch edits, so a test can see exactly what is shown. */
   field?: string;
+  /** Present but not applicable: it stays visible, and explains itself. */
+  disabled?: boolean;
 }) {
   return (
     <label className="switch" data-field={field}>
-      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} />
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={e => onChange(e.target.checked)} />
       <span className="switch-box" aria-hidden />
       <span className="switch-text">
         <b>{label}</b>

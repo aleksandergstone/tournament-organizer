@@ -9,7 +9,7 @@
 // A report is a header (`meta`) plus an ordered list of `sections`. Each
 // section is either a table (columns + rows) or a set of rounds (bracket view).
 // The PDF/print renderer and the CSV writer both consume only this structure.
-import { Branding, brandingOf } from './branding';
+import { Branding, brandingOf, documentTitle, fileBaseName, hasRegulation, type DateStyle, type TimeStyle } from './branding';
 import { describeFormat, hasPointTable, pickQualifiers } from './generate';
 import { bracketSvg, buildBracketTree, knockoutPlaces } from './bracket-view';
 import { decidedWinner } from './pairings';
@@ -17,7 +17,7 @@ import { computeStandings } from './standings';
 import { Group, Match, Participant, StandingRow, Tournament, VenueResource } from './types';
 import { t, getLocale, INTL_LOCALES, type Dict } from '../i18n';
 
-export type ReportKind = 'standings' | 'matches' | 'schedule' | 'bracket' | 'groups' | 'pack';
+export type ReportKind = 'standings' | 'matches' | 'schedule' | 'bracket' | 'groups' | 'pack' | 'regulation';
 
 /** Labels and hints are dictionary keys: the Output screen translates them. */
 export const REPORT_KINDS: { kind: ReportKind; label: keyof Dict; hint: keyof Dict }[] = [
@@ -27,6 +27,7 @@ export const REPORT_KINDS: { kind: ReportKind; label: keyof Dict; hint: keyof Di
   { kind: 'bracket', label: 'out.kind.bracket', hint: 'out.kind.bracketHint' },
   { kind: 'groups', label: 'out.kind.groups', hint: 'out.kind.groupsHint' },
   { kind: 'pack', label: 'out.kind.pack', hint: 'out.kind.packHint' },
+  { kind: 'regulation', label: 'out.kind.regulation', hint: 'out.kind.regulationHint' },
 ];
 
 export interface ReportInput {
@@ -56,12 +57,24 @@ export interface Section {
   /** A drawn bracket ("spider") as one self-contained SVG string. */
   bracket?: string;
   note?: string;
+  /**
+   * A full-width caption row printed at the top of *every* page of the table.
+   * A multi-day timetable puts the day here, so the date survives a day that
+   * spills onto a second sheet instead of living only in the section title.
+   */
+  headerRow?: string;
+  /** Free-running prose (a regulation): rendered line-for-line, never as a table. */
+  prose?: string;
   /** Start on a fresh page — keeps a title from being split from its table. */
   pageBreakBefore?: boolean;
 }
 
 export interface ReportMeta {
   title: string;
+  /** Title used for the printed document / file metadata (branding override). */
+  docTitle: string;
+  /** Organiser-supplied file base name; '' = derive from the title. */
+  fileNameBase: string;
   subtitle: string;
   edition: string;
   headerNote: string;
@@ -73,6 +86,8 @@ export interface ReportMeta {
   accent: string;
   logoDataUrl: string;
   sponsorDataUrl: string;
+  dateFormat: DateStyle;
+  timeFormat: TimeStyle;
 }
 
 export interface Report { kind: ReportKind; meta: ReportMeta; sections: Section[]; }
@@ -96,25 +111,43 @@ function asDate(iso?: string | null): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Dates follow the active language — Intl knows the order and the names. */
-export function fmtDate(iso?: string | null): string {
+/** Dates follow the active language unless the event pins a style. */
+export function fmtDate(iso?: string | null, style: DateStyle = 'locale'): string {
   const d = asDate(iso);
   if (!d) return '';
-  return new Intl.DateTimeFormat(INTL_LOCALES[getLocale()], { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+  const loc = INTL_LOCALES[getLocale()];
+  switch (style) {
+    case 'dayMonth':
+      return new Intl.DateTimeFormat(loc, { day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+    case 'monthDay':
+      return new Intl.DateTimeFormat('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }).format(d);
+    case 'iso':
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    default:
+      return new Intl.DateTimeFormat(loc, { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+  }
 }
 
-export function fmtDateFull(iso?: string | null): string {
+export function fmtDateFull(iso?: string | null, style: DateStyle = 'locale'): string {
   const d = asDate(iso);
   if (!d) return '';
-  return new Intl.DateTimeFormat(INTL_LOCALES[getLocale()], {
-    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-  }).format(d);
+  if (style === 'locale') {
+    return new Intl.DateTimeFormat(INTL_LOCALES[getLocale()], {
+      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+    }).format(d);
+  }
+  const wd = new Intl.DateTimeFormat(INTL_LOCALES[getLocale()], { weekday: 'short' }).format(d);
+  return `${wd} ${fmtDate(iso, style)}`;
 }
 
-/** 24-hour "14:30" — the notation referees and venue sheets expect. */
-export function fmtTime(iso?: string | null): string {
+/** 24-hour "14:30" by default — the notation referees and venue sheets expect. */
+export function fmtTime(iso?: string | null, style: TimeStyle = 'h24'): string {
   const d = asDate(iso);
   if (!d) return '';
+  if (style === 'h12') {
+    const h = d.getHours() % 12 || 12;
+    return `${h}:${String(d.getMinutes()).padStart(2, '0')} ${d.getHours() < 12 ? 'AM' : 'PM'}`;
+  }
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
@@ -244,7 +277,7 @@ function standingsSection(c: Ctx, id: string, title: string, sub: string, rows: 
 }
 
 function overallStandings(c: Ctx): Section {
-  return standingsSection(c, 'standings', t('doc.standingsTitle'), t('doc.standingsSub'),
+  return standingsSection(c, 'standings', c.b.titleStandings || t('doc.standingsTitle'), t('doc.standingsSub'),
     computeStandings([...c.participants.values()], c.ordered, c.t.rules));
 }
 
@@ -309,7 +342,7 @@ function matchListRows(c: Ctx, matches: Match[]): Cell[][] {
     const row: Cell[] = [c.noOf.get(m.id) ?? ''];
     if (c.groups.length > 0) row.push(m.groupId ? groupName.get(m.groupId) ?? '—' : '—');
     row.push(m.roundName || t('round.n', { n: m.round }), nameOf(c, m.homeId), scoreOf(m), nameOf(c, m.awayId),
-      statusOf(c, m), m.scheduledAt ? fmtTime(m.scheduledAt) : '', courtOf(c, m));
+      statusOf(c, m), m.scheduledAt ? fmtTime(m.scheduledAt, c.b.timeFormat) : '', courtOf(c, m));
     return row;
   });
 }
@@ -318,7 +351,7 @@ function matchListSection(c: Ctx, opts?: { id: string; title: string; matches: M
   // Byes are dropped: a sheet a referee works from must only list real pairings.
   const matches = (opts?.matches ?? c.ordered).filter(isPlayable);
   return {
-    id: opts?.id ?? 'matches', title: opts?.title ?? t('doc.matchList'),
+    id: opts?.id ?? 'matches', title: opts?.title ?? (c.b.titleMatches || t('doc.matchList')),
     sub: opts ? '' : t(matches.length === 1 ? 'doc.matchListSubOne' : 'doc.matchListSub', { n: matches.length }),
     columns: matchListColumns(c), rows: matchListRows(c, matches),
   };
@@ -351,11 +384,16 @@ function scheduleSections(c: Ctx): Section[] {
     (c.noOf.get(a.id) ?? '').localeCompare(c.noOf.get(b.id) ?? '', 'en', { numeric: true });
   return days.map((day, i) => ({
     id: `schedule-${i + 1}`,
-    title: days.length > 1 ? t('doc.timetableDay', { day: fmtDateFull(day) }) : t('doc.timetable'),
+    title: days.length > 1
+      ? t('doc.timetableDay', { day: fmtDateFull(day, c.b.dateFormat) })
+      : (c.b.titleSchedule || t('doc.timetable')),
     sub: t('doc.timetableSub', { n: rows.filter(m => sameDay(m.scheduledAt!, day)).length }),
+    // The day also rides in the repeating table header, so page 2 of a long day
+    // still says which day it belongs to.
+    headerRow: days.length > 1 ? t('doc.timetableDay', { day: fmtDateFull(day, c.b.dateFormat) }) : undefined,
     columns,
     rows: rows.filter(m => sameDay(m.scheduledAt!, day)).sort(byTime).map(m => [
-      fmtTime(m.scheduledAt), courtOf(c, m), c.noOf.get(m.id) ?? '',
+      fmtTime(m.scheduledAt, c.b.timeFormat), courtOf(c, m), c.noOf.get(m.id) ?? '',
       m.roundName || `Round ${m.round}`, nameOf(c, m.homeId), scoreOf(m), nameOf(c, m.awayId), statusOf(c, m),
     ]),
     pageBreakBefore: i > 0,
@@ -396,7 +434,7 @@ function bracketSections(c: Ctx): Section[] {
   // The round rows are kept either way: the CSV writer has no drawing to read.
   const drawable = c.t.format !== 'double-elimination' && matches.length > 1;
   const out: Section[] = [{
-    id: 'bracket', title: t('doc.knockout'),
+    id: 'bracket', title: c.b.titleBracket || t('doc.knockout'),
     sub: t('doc.knockoutSub'),
     pageBreakBefore: true,
     rounds: bracketRounds(c, matches),
@@ -466,12 +504,14 @@ function overviewSection(c: Ctx): Section {
 function packSections(c: Ctx): Section[] {
   const withGroups = c.groups.length > 0;
   const final = finalResultSection(c);
+  const reg = regulationSection(c);
   return [
     overviewSection(c),
     ...(withGroups ? groupSections(c) : final ? [final] : [overallStandings(c)]),
     matchListSection(c),
     ...scheduleSections(c),
     ...bracketSections(c),
+    ...(reg && c.b.regulation.includeInDocs ? [reg] : []),
   ];
 }
 
@@ -481,21 +521,39 @@ function buildMeta(c: Ctx, generatedAt?: string): ReportMeta {
   const tour = c.t, b = c.b;
   const bits: string[] = [];
   if (b.showVenueDate) {
-    const start = fmtDate(tour.dates?.start), end = fmtDate(tour.dates?.end);
+    const start = fmtDate(tour.dates?.start, b.dateFormat), end = fmtDate(tour.dates?.end, b.dateFormat);
     if (start && end && start !== end) bits.push(`${start} – ${end}`);
     else if (start || end) bits.push(start || end);
     if (tour.location) bits.push(tour.location);
   }
+  const title = b.eventTitle || tour.name || t('doc.tournament');
   return {
-    title: b.eventTitle || tour.name || t('doc.tournament'),
+    title,
+    docTitle: documentTitle(b, title),
+    fileNameBase: fileBaseName(b),
     subtitle: b.subtitle, edition: b.edition, headerNote: b.headerNote,
     contextLine: bits.join('  ·  '),
     generatedLine: generatedAt
-      ? t('doc.generated', { date: fmtDateFull(generatedAt), time: fmtTime(generatedAt) })
+      ? t('doc.generated', { date: fmtDateFull(generatedAt, b.dateFormat), time: fmtTime(generatedAt, b.timeFormat) })
       : '',
 
     footer: b.footerNote, notes: b.notes, accent: b.accent,
     logoDataUrl: b.logoDataUrl, sponsorDataUrl: b.sponsorDataUrl,
+    dateFormat: b.dateFormat, timeFormat: b.timeFormat,
+  };
+}
+
+/**
+ * The event's regulations as their own printable block. Rendered as prose so a
+ * numbered list keeps its line breaks; `null` when nothing has been written.
+ */
+function regulationSection(c: Ctx): Section | null {
+  if (!hasRegulation(c.b)) return null;
+  return {
+    id: 'regulation',
+    title: c.b.regulation.title || t('doc.regulation'),
+    prose: c.b.regulation.body,
+    pageBreakBefore: true,
   };
 }
 
@@ -519,16 +577,20 @@ function finalResultSection(c: Ctx): Section | null {
 
 function buildSections(c: Ctx, kind: ReportKind): Section[] {
   const final = finalResultSection(c);
+  const reg = regulationSection(c);
+  const inlineReg = reg && c.b.regulation.includeInDocs ? [reg] : [];
   switch (kind) {
     // A group event has no meaningful overall table — the groups *are* the table.
     case 'standings':
-    case 'groups':
-      if (c.groups.length > 0) return groupSections(c);
-      return final ? [final] : [overallStandings(c)];
+    case 'groups': {
+      const base = c.groups.length > 0 ? groupSections(c) : final ? [final] : [overallStandings(c)];
+      return [...base, ...inlineReg];
+    }
     case 'matches': return [matchListSection(c)];
     case 'schedule': return scheduleSections(c);
     case 'bracket': return bracketSections(c);
     case 'pack': return packSections(c);
+    case 'regulation': return reg ? [reg] : [];
   }
 }
 

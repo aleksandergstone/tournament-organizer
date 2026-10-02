@@ -1,4 +1,4 @@
-import { Match, MatchResult, MatchStatus, RuleSet } from './types';
+import { Match, MatchResult, MatchStatus, RuleSet, SetScore } from './types';
 import { t } from '../i18n';
 import { validateMatch } from './validate';
 import { recomputeBracket, stampVs } from './recompute';
@@ -15,6 +15,13 @@ export interface EditSpec {
   walkoverWinnerId?: string | null;
   note?: string;
   clearScores?: boolean;
+  /** Periods of the match (the live scorer). Absent = leave what is stored. */
+  sets?: SetScore[];
+  /**
+   * An explicit winner. Needed when the match is decided by periods rather than
+   * by the aggregate score — the live scorer knows which side took the last set.
+   */
+  winnerId?: string | null;
 }
 
 export function recordResult(
@@ -32,9 +39,12 @@ export function recordResult(
   if (spec.status !== undefined) r.status = spec.status;
   if (spec.walkoverWinnerId !== undefined) r.walkoverWinnerId = spec.walkoverWinnerId;
   if (spec.note !== undefined) r.note = spec.note;
+  if (spec.sets !== undefined) r.sets = spec.sets;
   if (spec.clearScores || r.status === 'scheduled' || r.status === 'unfinished' || r.status === 'interrupted') {
     if (spec.homeScore === undefined) r.homeScore = null;
     if (spec.awayScore === undefined) r.awayScore = null;
+    // The running periods go with the scores when a match is wiped or reopened.
+    if (spec.sets === undefined) r.sets = undefined;
     if (r.status === 'scheduled' || r.status === 'unfinished' || r.status === 'interrupted') r.winnerId = null;
     if (r.status === 'scheduled') { r.walkoverWinnerId = null; r.overtime = false; }
   }
@@ -69,7 +79,7 @@ export function recordResult(
       r.winnerId = null;
       r.status = 'draw';
     }
-    else r.winnerId = hs > as ? m.homeId : m.awayId;
+    else r.winnerId = spec.winnerId ?? (hs > as ? m.homeId : m.awayId);
     if (r.status === 'overtime') r.overtime = true;
   }
   if ((r.homeScore ?? 0) < 0 || (r.awayScore ?? 0) < 0)

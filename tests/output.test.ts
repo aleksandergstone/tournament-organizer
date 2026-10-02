@@ -98,7 +98,7 @@ describe('standings document', () => {
     const { participants, matches } = rr(['Lions', 'Tigers']);
     const s = section(buildReport(input({ participants, matches }), 'standings'), 'standings');
     expect(s.note).toContain('Tie-breaks in order');
-    expect(s.note).toContain('goal difference');
+    expect(s.note).toContain('points difference');
   });
 
   it('adds Buchholz only when advanced statistics are switched on', () => {
@@ -132,7 +132,7 @@ describe('match list document', () => {
   it('numbers matches 1..n in playing order', () => {
     const { participants, matches } = rr(['Lions', 'Tigers', 'Bears']);
     const s = section(buildReport(input({ participants, matches }), 'matches'), 'matches');
-    expect(labels(s)).toEqual(['No.', 'Round', 'Home', 'Score', 'Away', 'Status', 'Time', 'Court / table']);
+    expect(labels(s)).toEqual(['No.', 'Round', 'Home', 'Score', 'Away', 'Status', 'Time', 'Place']);
     expect(s.rows!.map(r => r[0])).toEqual(['1', '2', '3']);
     // Playing order = round, then the scheduled slot inside the round.
     const rounds = s.rows!.map(r => Number(String(r[1]).replace(/\D/g, '')));
@@ -198,7 +198,7 @@ describe('schedule document', () => {
     const times = [slot(16, 0), slot(10, 0), slot(10, 0), slot(18, 0), slot(10, 0), slot(18, 0)];
     const timed = matches.map((m, i) => ({ ...m, scheduledAt: times[i], resourceId: i % 2 ? 'c2' : 'c1' }));
     const s = section(buildReport(input({ participants, matches: timed, resources }), 'schedule'), 'schedule-1');
-    expect(labels(s)).toEqual(['Time', 'Court / table', 'Match', 'Round', 'Home', 'Score', 'Away', 'Status']);
+    expect(labels(s)).toEqual(['Time', 'Place', 'Match', 'Round', 'Home', 'Score', 'Away', 'Status']);
     expect(s.rows!.map(r => r[0])).toEqual(['10:00', '10:00', '10:00', '16:00', '18:00', '18:00']);
     expect(s.rows![0][1]).toBe('Court 1'); // same slot → courts alphabetically
   });
