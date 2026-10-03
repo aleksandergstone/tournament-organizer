@@ -155,7 +155,7 @@ export default function Matches() {
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitPlayed(m); } e.stopPropagation(); }} />
                   </div>
                   <button className={'btn' + (i === sel && !done ? ' primary' : '')} onClick={() => commitPlayed(m)}>
-                    {done ? t('res.correct') : 'Save'}
+                    {done ? t('res.correct') : t('res.save')}
                   </button>
                 </div>
                 <div className="mcard-extra" onClick={e => e.stopPropagation()}>
@@ -168,8 +168,8 @@ export default function Matches() {
                       <button className="btn sm" onClick={() => setStatus(m, 'interrupted')}>{t('res.interrupted')}</button>
                       <select value={m.result.walkoverWinnerId ?? m.homeId ?? ''} aria-label={t('res.walkoverWinner')}
                         onChange={e => setStatus(m, 'walkover', e.target.value)}>
-                        <option value={m.homeId ?? ''}>Walkover: {pn(m.homeId)}</option>
-                        <option value={m.awayId ?? ''}>Walkover: {pn(m.awayId)}</option>
+                        <option value={m.homeId ?? ''}>{t('res.walkoverFor', { name: pn(m.homeId) })}</option>
+                        <option value={m.awayId ?? ''}>{t('res.walkoverFor', { name: pn(m.awayId) })}</option>
                       </select>
                       {done && <button className="btn sm quiet" onClick={() => setStatus(m, 'scheduled')}>{t('res.reset')}</button>}
                     </div>
@@ -179,8 +179,7 @@ export default function Matches() {
             );
           })}
           <KeyHint>
-            <span className="kbd">j</span>/<span className="kbd">k</span> move between matches ·{' '}
-            <span className="kbd">Enter</span> in a score box saves the result · <span className="kbd">/</span> searches
+            {t('res.keyhint', { down: 'j', up: 'k', enter: 'Enter', slash: '/' })}
           </KeyHint>
         </>
       )}

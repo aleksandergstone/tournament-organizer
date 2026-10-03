@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { validateTournament, ValidationIssue } from '../engine/validate';
 import { adaptRulesToFormat, validateModeSetup, visibleGroups } from '../engine/mode-info';
 import { applyPreset, type Preset } from '../engine/presets';
-import { applyDiscipline, DISCIPLINES, type DisciplineId } from '../engine/discipline';
+import { applyDiscipline, DISCIPLINES, disciplineOf, templateDefaultsLine, type DisciplineId } from '../engine/discipline';
 import { uid, nowIso } from '../engine/types';
 import { describeFormat } from '../engine/generate';
 import { Alert, Field, Page, Panel, StepBar } from './kit';
@@ -32,6 +32,10 @@ export default function Wizard() {
   const setRules = (patch: Partial<RuleSet>) => setF(s => ({ ...s, rules: { ...s.rules, ...patch } }));
   const errOf = (field: string) => issues.find(i => i.field === field)?.message;
   const others = issues.filter(i => !['name', 'sport', 'dates'].includes(i.field));
+  // Never null: the neutral profile, so an unchosen sport still gets a sentence.
+  const disc = disciplineOf(f);
+  // The neutral profile has nothing to declare, so it declares nothing.
+  const defaultsLine = disc.id === 'generic' ? null : templateDefaultsLine(disc, t);
   const count = typeof f.participantCountExpected === 'number' ? f.participantCountExpected : null;
   // Live, while typing: the same checks the engine runs on save.
   const liveIssues = validateModeSetup(f.format, f.rules, count);
@@ -47,7 +51,21 @@ export default function Wizard() {
       individualOrTeam: format === 'individual-match' ? 'individual' : s.individualOrTeam,
     }));
   };
-  const usePreset = (preset: Preset) => setRules(applyPreset(f.rules, preset));
+  /**
+   * A template implies both a set of rules and, often, a format. Switching the
+   * format is announced on the card, and the format's own shape is re-adapted
+   * afterwards so the mode still decides anything the template was silent about.
+   */
+  const usePreset = (preset: Preset) => setF(s => {
+    if (preset.format === s.format) return { ...s, rules: applyPreset(s.rules, preset) };
+    const rules = applyPreset({ ...s.rules, ...adaptRulesToFormat(preset.format, s.rules) }, preset);
+    return {
+      ...s,
+      format: preset.format,
+      rules: { ...rules, ...adaptRulesToFormat(preset.format, rules) },
+      individualOrTeam: preset.format === 'individual-match' ? 'individual' : s.individualOrTeam,
+    };
+  });
 
   /**
    * The discipline is a starting point, not a lock: it brings its own rules and
@@ -117,7 +135,18 @@ export default function Wizard() {
       </Panel>
 
       <Panel title={t('mode.presetsTitle')} sub={t('mode.presetsSub')}>
-        <PresetPicker format={f.format} rules={f.rules} onApply={usePreset} />
+        {/* Frames the list in this sport's own terms, and says plainly that a template
+          locks nothing in: every setting it touched stays editable below. */}
+      <p className="rule-note">{t(disc.hint)}</p>
+      {/* "What this sport sets by default", read from the discipline's own numbers
+          so it can never claim a rule the catalogue does not actually apply. */}
+      {defaultsLine ? (
+        <p className="rule-note">
+          <b>{t('mode.presetSets')}:</b> {defaultsLine}
+        </p>
+      ) : null}
+      <PresetPicker format={f.format} rules={f.rules} onApply={usePreset} discipline={f.discipline} />
+      <p className="table-note">{t('disc.templatesHint')}</p>
       </Panel>
 
       <div className="section-head">

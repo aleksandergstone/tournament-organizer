@@ -5,7 +5,7 @@ import { describeEdition as editionOf } from '../engine/features';
 import { APP_NAME, APP_VERSION } from '../version';
 import { LOCALES, LOCALE_NAMES, resolveLocale, useT } from '../i18n';
 import type { LocalePreference } from '../i18n';
-import { Page, Panel, Segmented, Switch } from './kit';
+import { Collapse, Page, Panel, Segmented, Switch } from './kit';
 import SyncPanel from './SyncPanel';
 import SupportBanner, { ResetSupportButton } from './SupportBanner';
 
@@ -63,29 +63,35 @@ export default function Settings() {
         </p>
       </Panel>
 
-      <Panel title={t('sync.title')} sub={t('sync.sub')}>
-        <SyncPanel />
-      </Panel>
+      {/* Sync and the version table are things an organizer opens when they need
+          them, not while working. Collapsed, they stop competing with the two
+          settings that actually get changed: theme and language. */}
+      <Collapse title={t('sync.title')} sub={t('sync.sub')}>
+        <Panel>
+          <SyncPanel />
+        </Panel>
+      </Collapse>
 
-      <Panel title={t('settings.about')}>
-        <div className="table-wrap">
-          <table>
-            <tbody>
-              <tr><td className="muted">{t('settings.aboutApp')}</td><td className="name">{APP_NAME}</td></tr>
-              <tr><td className="muted">{t('settings.aboutVersion')}</td><td>{APP_VERSION}</td></tr>
-              <tr><td className="muted">{t('settings.aboutEdition')}</td><td className="name">{editionOf()}</td></tr>
-              <tr><td className="muted">{t('language.title')}</td><td>{LOCALE_NAMES[effective]}</td></tr>
-              <tr><td className="muted">{t('settings.aboutDataLabel')}</td><td>{t('settings.aboutData')}</td></tr>
-              <tr><td className="muted">{t('settings.aboutLicense')}</td><td>MIT</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p className="table-note">{t('settings.aboutNote', { action: t('settings.aboutAction') })}</p>
-        <SupportBanner compact />
-        <div className="row" style={{ marginTop: 6 }}>
-          <ResetSupportButton />
-        </div>
-      </Panel>
+      <Collapse title={t('settings.about')} sub={t('settings.aboutNote', { action: t('settings.aboutAction') })}>
+        <Panel>
+          <div className="table-wrap">
+            <table>
+              <tbody>
+                <tr><td className="muted">{t('settings.aboutApp')}</td><td className="name">{APP_NAME}</td></tr>
+                <tr><td className="muted">{t('settings.aboutVersion')}</td><td>{APP_VERSION}</td></tr>
+                <tr><td className="muted">{t('settings.aboutEdition')}</td><td className="name">{editionOf()}</td></tr>
+                <tr><td className="muted">{t('language.title')}</td><td>{LOCALE_NAMES[effective]}</td></tr>
+                <tr><td className="muted">{t('settings.aboutDataLabel')}</td><td>{t('settings.aboutData')}</td></tr>
+                <tr><td className="muted">{t('settings.aboutLicense')}</td><td>MIT</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <SupportBanner compact />
+          <div className="row" style={{ marginTop: 6 }}>
+            <ResetSupportButton />
+          </div>
+        </Panel>
+      </Collapse>
     </Page>
   );
 }

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../state/store';
 import { resourcesOf } from '../engine/model';
+import { disciplineOf, venueLabel } from '../engine/discipline';
 import { detectConflicts, suggestSlots, toEntries, DEFAULT_DURATION_MIN } from '../engine/schedule';
 import { ResourceKind, uid } from '../engine/types';
 import { Alert, Empty, Field, Page, Panel, Segmented } from './kit';
@@ -29,7 +30,13 @@ export default function Schedule() {
   const pn = (id: string | null) => (id ? names.get(id) ?? t('common.unknown') : t('common.tbd'));
 
   const [name, setName] = useState('');
-  const [kind, setKind] = useState<ResourceKind>('court');
+  /**
+   * The kind of place follows the discipline until the organizer picks one:
+   * a regatta adds starts, a tennis event adds courts, table tennis adds
+   * tables. A manual choice always wins — `null` means "not chosen", not "none".
+   */
+  const [chosenKind, setChosenKind] = useState<ResourceKind | null>(null);
+  const kind = chosenKind ?? disciplineOf(domain.tournament).venueKind;
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [dayStart, setDayStart] = useState(() => toLocalInput(null));
@@ -110,11 +117,14 @@ export default function Schedule() {
         </Alert>
       )}
 
-      <Panel title={t('sch.places')} sub={t('sch.placesSub')}>
+      {/* The discipline's own word for a place: courts, tables, boards or starts.
+          The sub-line stays neutral, because it explains what the list is for
+          rather than naming it. */}
+      <Panel title={venueLabel(domain.tournament)} sub={t('sch.placesSub')}>
         <div className="row">
           <input className="search" style={{ maxWidth: 240 }} value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addResource()} placeholder={t('sch.placePlaceholder')} aria-label={t('sch.placeName')} />
-          <select style={{ maxWidth: 150 }} value={kind} onChange={e => setKind(e.target.value as ResourceKind)} aria-label={t('sch.placeType')}>
+          <select style={{ maxWidth: 150 }} value={kind} onChange={e => setChosenKind(e.target.value as ResourceKind)} aria-label={t('sch.placeType')}>
             {KINDS.map(k => <option key={k} value={k}>{t(KIND_KEYS[k])}</option>)}
           </select>
           <button className="btn primary" onClick={addResource}>{t('sch.addPlace')}</button>

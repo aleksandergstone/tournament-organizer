@@ -78,8 +78,8 @@ export default function Display() {
         <div>
           <h1>{model.tournamentName}</h1>
           <div className="muted">
-            {domain.tournament.location || t('disp.noVenue')} · {domain.participants.length} participants
-            {model.top.length ? ` · leader ${names.get(model.top[0].participantId) ?? '?'}` : ''}
+            {domain.tournament.location || t('disp.noVenue')} · {t('disp.participants', { n: domain.participants.length })}
+            {model.top.length ? ` · ${t('disp.leader', { name: names.get(model.top[0].participantId) ?? '?' })}` : ''}
           </div>
         </div>
         <div className="display-right">
@@ -130,7 +130,7 @@ export default function Display() {
             )}
         </div>
         <div className="display-meta">
-          <div>{model.playedCount}/{model.totalCount} matches played · {model.openCount} open</div>
+          <div>{t('disp.progress', { played: model.playedCount, total: model.totalCount, open: model.openCount })}</div>
           {!kiosk && <div className="muted">{t('disp.updates')}</div>}
           {!kiosk && (
             <div className="row" style={{ marginTop: 12 }}>

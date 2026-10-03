@@ -16,6 +16,7 @@ import { decidedWinner } from './pairings';
 import { computeStandings } from './standings';
 import { Group, Match, Participant, StandingRow, Tournament, VenueResource } from './types';
 import { t, getLocale, INTL_LOCALES, type Dict } from '../i18n';
+import { disciplineOf, matchLabel, participantLabel, venueLabel } from './discipline';
 
 export type ReportKind = 'standings' | 'matches' | 'schedule' | 'bracket' | 'groups' | 'pack' | 'regulation';
 
@@ -245,7 +246,8 @@ function standingTable(c: Ctx, rows: StandingRow[]): { columns: Column[]; rows: 
   const b = c.b;
   const columns: Column[] = [
     { key: 'rank', label: '#', align: 'center' },
-    { key: 'name', label: c.t.individualOrTeam === 'team' ? t('doc.team') : t('doc.player') },
+    // Discipline-aware: Crew, Team, Player — not just the team/player pair.
+    { key: 'name', label: participantLabel(c.t) },
     { key: 'played', label: t('doc.colP'), align: 'right' },
     { key: 'wins', label: t('doc.colW'), align: 'right' },
   ];
@@ -297,7 +299,7 @@ function qualifiersSection(c: Ctx, tables: Map<string, StandingRow[]>): Section 
     sub: perGroup > 0 ? t('doc.qualifiersSub', { n: perGroup }) : '',
     columns: [
       { key: 'group', label: t('common.group') }, { key: 'pos', label: t('doc.pos'), align: 'center' },
-      { key: 'name', label: c.t.individualOrTeam === 'team' ? t('doc.team') : t('doc.player') },
+      { key: 'name', label: participantLabel(c.t) },
       { key: 'points', label: t('doc.colPts'), align: 'right' }, { key: 'diff', label: t('doc.colDiff'), align: 'right' },
     ],
     rows: picks.map(p => [
@@ -332,7 +334,9 @@ function matchListColumns(c: Ctx): Column[] {
   cols.push({ key: 'round', label: t('common.round') }, { key: 'home', label: t('common.home') },
     { key: 'score', label: t('common.score'), align: 'center' }, { key: 'away', label: t('common.away') },
     { key: 'status', label: t('common.status') }, { key: 'time', label: t('common.time'), align: 'right' },
-    { key: 'court', label: t('doc.courtTable') });
+    // The discipline's own word for where a match is played: Court, Table,
+    // Pitch, Board or Start. Falls back to the neutral "Place".
+    { key: 'court', label: venueLabel(c.t) });
   return cols;
 }
 
@@ -364,8 +368,8 @@ function scheduleSections(c: Ctx): Section[] {
   if (!rows.length) return [];
   const columns: Column[] = [
     { key: 'time', label: t('common.time'), align: 'right' },
-    { key: 'court', label: t('doc.courtTable') },
-    { key: 'no', label: t('doc.matchCol'), align: 'right' },
+    { key: 'court', label: venueLabel(c.t) },
+    { key: 'no', label: matchLabel(c.t), align: 'right' },
     { key: 'round', label: t('common.round') },
     { key: 'home', label: t('common.home') },
     { key: 'score', label: t('common.score'), align: 'center' },
@@ -490,7 +494,7 @@ function overviewSection(c: Ctx): Section {
     columns: [{ key: 'field', label: t('doc.field') }, { key: 'value', label: t('doc.value') }],
     rows: [
       [t('doc.format'), describeFormat(tour.format)],
-      [t(tour.individualOrTeam === 'team' ? 'doc.teams' : 'doc.participants'), String(c.participants.size)],
+      [participantLabel(tour), String(c.participants.size)],
       [t('common.rounds'), String(c.ordered.length ? Math.max(...c.ordered.map(m => m.round)) : 0)],
       [t('doc.matchesPlayed'), `${played} of ${c.ordered.filter(m => m.result.status !== 'bye').length}`],
       [t('doc.dates'), dates.length > 1 && dates[0] !== dates[1] ? dates.join(' – ') : (dates[0] || '—')],
@@ -520,6 +524,10 @@ function packSections(c: Ctx): Section[] {
 function buildMeta(c: Ctx, generatedAt?: string): ReportMeta {
   const tour = c.t, b = c.b;
   const bits: string[] = [];
+  // The sport comes first: a sheet handed to a scorer has to say whose rules it
+  // is under. Only when one was chosen — the neutral document stays as it was.
+  const disc = disciplineOf(tour);
+  if (disc.id !== 'generic') bits.push(t(disc.label));
   if (b.showVenueDate) {
     const start = fmtDate(tour.dates?.start, b.dateFormat), end = fmtDate(tour.dates?.end, b.dateFormat);
     if (start && end && start !== end) bits.push(`${start} – ${end}`);

@@ -12,9 +12,10 @@ import {
   type FieldRule, type ScoreEffect, type SettingStatus, type ModeSpec,
 } from '../engine/mode-info';
 import { presetsFor, activePresetId, type Preset } from '../engine/presets';
+import { templatesFor } from '../engine/discipline';
 import { CUSTOM_STAGES, GENERATED_CUSTOM_STAGES, type CustomStage, type DrawResolution, type RuleSet, type TiebreakKey, type ValidationIssueLike } from '../engine/types';
 import { describeFormat } from '../engine/generate';
-import { Field, Panel, Switch, Alert } from './kit';
+import { Field, Panel, Switch, Alert, Collapse } from './kit';
 import { useT, type Dict } from '../i18n';
 
 type Key = keyof Dict & string;
@@ -283,14 +284,24 @@ const LEVEL_KEY: Record<Preset['level'], Key> = {
  * pick it over its neighbours, how many participants it fits and what it will
  * generate — the four questions that decide a preset. Applying one fills in the
  * settings that matter for this mode and leaves everything else alone.
+ *
+ * When a discipline is chosen it narrows the list to the ways *this sport* is
+ * normally played. Those templates may imply a different format, so a card that
+ * switches format says so rather than changing the event behind the organizer's
+ * back. With no discipline — or a neutral one — this is exactly the old list.
  */
-export function PresetPicker({ format, rules, onApply }: {
+export function PresetPicker({ format, rules, onApply, discipline }: {
   format: string;
   rules: RuleSet;
   onApply(preset: Preset): void;
+  /** The chosen discipline id, when one is. */
+  discipline?: string | null;
 }) {
   const t = useT();
-  const list = presetsFor(format);
+  const templates = templatesFor(discipline);
+  // A discipline with no templates of its own keeps the format's full list, so
+  // choosing one can never leave the organizer with nothing to pick from.
+  const list = templates.length > 0 ? templates.map(x => x.preset) : presetsFor(format);
   if (list.length === 0) return null;
   const active = activePresetId(format, rules);
   return (
@@ -302,6 +313,11 @@ export function PresetPicker({ format, rules, onApply }: {
             <span className="chip">{t(LEVEL_KEY[p.level])}</span>
             {active === p.id ? <span className="chip ok">{t('preset.inUse')}</span> : null}
           </header>
+          {p.format !== format ? (
+            <p className="rule-note">
+              {t('preset.switchesFormat', { format: describeFormat(p.format) })}
+            </p>
+          ) : null}
           <dl className="preset-list">
             <div><dt>{t('mode.presetWhat')}</dt><dd>{t(p.what)}</dd></div>
             <div><dt>{t('mode.presetWhy')}</dt><dd>{t(p.why)}</dd></div>
@@ -649,10 +665,25 @@ export function SettingsForMode({ format, rules, set, count, issues = [], groups
   /** A field is rendered only when the mode's generator really reads it. */
   const live = (field: keyof RuleSet) => fieldEffect(format, field) !== 'none';
 
-  return (
-    <>
-      {groups.map(g => (
-        <Panel key={g} title={t(GROUP_TITLE[g])}>
+  /**
+   * A group whose every field the engine already calls `advanced` is not what
+   * this mode is primarily about: a bracket's draw rule, a league's overtime.
+   * It is folded away so the screen answers "what does this mode need?" first.
+   *
+   * The classification is read from the catalogue, never listed here, so a field
+   * the engine marks advanced cannot stay visible in some other mode by accident.
+   */
+  const advancedOf = (g: SettingGroup) => {
+    const fs = specFor(format).fields.filter(f => f.group === g);
+    return fs.length > 0 && fs.every(f => f.status === 'advanced');
+  };
+  const primary = groups.filter(g => !advancedOf(g));
+  const secondary = groups.filter(advancedOf);
+
+  // Returns the panel itself, not a fragment: a key inside a fragment belongs to
+  // nothing, and React then warns about every rendered group.
+  const renderGroup = (g: SettingGroup) => (
+    <Panel key={g} title={t(GROUP_TITLE[g])}>
           {g === 'scoring' || g === 'reporting'
             ? <PointsFields format={format} rules={rules} set={set} reporting={g === 'reporting'} />
             : null}
@@ -733,10 +764,20 @@ export function SettingsForMode({ format, rules, set, count, issues = [], groups
               </Field>
             </>
           ) : null}
+    </Panel>
+  );
 
-          {inertNote ? <p className="rule-note warn">{inertNote}</p> : null}
-        </Panel>
-      ))}
+  return (
+    <>
+      {primary.map(renderGroup)}
+      {secondary.length > 0 ? (
+        <Collapse title={t('mode.advancedTitle')} sub={t('mode.advancedSub')}>
+          {secondary.map(renderGroup)}
+        </Collapse>
+      ) : null}
+      {/* Said once, at the end. Inside every group it repeated the same sentence
+          as many times as there were panels, which is the noise this screen had. */}
+      {inertNote ? <p className="rule-note warn">{inertNote}</p> : null}
     </>
   );
 }

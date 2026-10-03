@@ -6,8 +6,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import React from 'react';
 import { SettingsForMode, SetupSummary, StructurePreviewBox } from '../src/ui/modes';
 import {
-  ALL_GROUPS, ALL_RULE_FIELDS, fieldStatus, MODES, previewStructure, renderableFields,
-  specFor, summaryRows, visibleGroups,
+  ALL_GROUPS, ALL_RULE_FIELDS, fieldStatus, fieldsByStatus, MODES, previewStructure,
+  renderableFields, specFor, summaryRows, visibleGroups, type SettingGroup,
 } from '../src/engine/mode-info';
 import { DEFAULT_RULES, type RuleSet } from '../src/engine/types';
 import { en } from '../src/i18n/en';
@@ -240,6 +240,61 @@ describe('10. not-applicable fields are never normal controls', () => {
           expect(rendered.has(f), `${m.format} renders ${f}, which does not apply`).toBe(false);
         }
       }
+    }
+  });
+});
+
+describe('11. advanced settings are folded away, not removed', () => {
+  const modeHtml = (format: string) => renderToStaticMarkup(React.createElement(SettingsForMode, {
+    format, rules: rules(), set: () => {}, count: 8, groups: visibleGroups(format), issues: [],
+  }));
+
+  /** A group the engine considers advanced in every one of its fields. */
+  const fullyAdvanced = (format: string, g: SettingGroup): boolean => {
+    const fs = specFor(format).fields.filter(f => f.group === g);
+    return fs.length > 0 && fs.every(f => f.status === 'advanced');
+  };
+
+  it('keeps every live advanced field reachable inside the closed disclosure', () => {
+    // A closed <details> still renders its children, so the field stays in the
+    // DOM and the organizer keeps the way in. This is the line between folding
+    // something away and removing it.
+    //
+    // Only *live* fields: one with affects 'none' is never offered as a control
+    // in the first place — the mode note names it instead — and folding has
+    // nothing to do with that.
+    for (const m of MODES) {
+      const html = modeHtml(m.format);
+      for (const f of fieldsByStatus(m.format, 'advanced')) {
+        if (f.affects === 'none') continue;
+        expect(html, `${m.format} lost ${f.field} entirely`).toContain(`data-field="${f.field}"`);
+      }
+    }
+  });
+
+  it('never opens the advanced block by default', () => {
+    for (const m of MODES) {
+      if (!visibleGroups(m.format).some(g => fullyAdvanced(m.format, g))) continue;
+      const html = modeHtml(m.format);
+      expect(html, `${m.format} has advanced groups but no disclosure`).toContain('class="collapse"');
+      expect(html, `${m.format} opened the advanced block by default`).not.toContain('class="collapse" open');
+    }
+  });
+
+  it('adds no disclosure where there is nothing advanced to fold', () => {
+    // Otherwise a mode with two plain settings gets a permanently useless
+    // "Advanced settings" row, which is clutter rather than disclosure.
+    for (const m of MODES) {
+      const any = visibleGroups(m.format).some(g => fullyAdvanced(m.format, g));
+      expect(modeHtml(m.format).includes(en['mode.advancedTitle']), m.format).toBe(any);
+    }
+  });
+
+  it('says the inert-settings warning once, not once per panel', () => {
+    // It used to sit inside every group, repeating one sentence per panel.
+    for (const m of MODES) {
+      const times = modeHtml(m.format).split(en['mode.err.inertSettings']).length - 1;
+      expect(times, `${m.format} repeats the inert-settings warning`).toBeLessThanOrEqual(1);
     }
   });
 });

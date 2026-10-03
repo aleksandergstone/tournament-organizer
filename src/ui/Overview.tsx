@@ -3,7 +3,7 @@ import { useApp } from '../state/store';
 import { describeFormat, hasPointTable } from '../engine/generate';
 import { knockoutPlaces } from '../engine/bracket-view';
 import { describeAudit } from '../engine/audit';
-import { Empty, Meta, Page, Panel } from './kit';
+import { Collapse, Empty, Meta, Page, Panel } from './kit';
 import { useT } from '../i18n';
 
 const FINISHED = new Set(['played', 'draw', 'walkover', 'overtime']);
@@ -93,7 +93,10 @@ export default function Overview() {
           )}
         </Panel>
 
-        <Panel title={tr('overview.goTo')} sub={tr('overview.goToSub')}>
+        {/* Six shortcuts that already exist in the navigation bar. Kept, because a jump
+            from here saves a trip, but folded: while working, the standings and
+            the next step are what this screen is for. */}
+        <Collapse title={tr('overview.goTo')} sub={tr('overview.goToSub')}>
           <div className="stack">
             <div className="row"><button className="btn" onClick={() => go('participants')}>{tr('nav.participants')}</button>
               <span className="muted">{tr('overview.shortParticipants')}</span></div>
@@ -108,10 +111,13 @@ export default function Overview() {
             <div className="row"><button className="btn" onClick={() => go('export')}>{tr('out.title')}</button>
               <span className="muted">{tr('overview.shortOutput')}</span></div>
           </div>
-        </Panel>
+        </Collapse>
       </div>
 
-      <Panel title={tr('overview.history')} sub={tr('overview.historySub', { shown: Math.min(20, domain.audit.length), total: domain.audit.length })}>
+      {/* The log is a record to check afterwards, not the thing to act on. It was the
+          longest block on the screen and sat below the one thing that mattered,
+          so it folds away and the next step stays the last thing read. */}
+      <Collapse title={tr('overview.history')} sub={tr('overview.historySub', { shown: Math.min(20, domain.audit.length), total: domain.audit.length })}>
         {domain.audit.length === 0 ? (
           <p className="f-hint">{tr('overview.historyEmpty')}</p>
         ) : (
@@ -130,7 +136,7 @@ export default function Overview() {
             </table>
           </div>
         )}
-      </Panel>
+      </Collapse>
     </Page>
   );
 }

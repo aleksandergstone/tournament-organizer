@@ -89,7 +89,11 @@ export default function Participants() {
         )}
       </Panel>
 
-      <Panel title={t('part.bulkTitle')} sub={t('part.bulkSub')}>
+      {/* Titled for what it shows. It used to carry the paste-a-list heading and its
+          "one name per line" sub-line, which described a feature that lives in
+          the panel above — a heading that lies about its own contents is worse
+          than no heading. */}
+      <Panel title={t('part.listTitle')}>
         {domain.participants.length === 0 ? (
           <Empty
             title={t('part.emptyTitle')}

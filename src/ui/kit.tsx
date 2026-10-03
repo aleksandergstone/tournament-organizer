@@ -109,6 +109,38 @@ export function Field({ label, hint, error, required, children, className = '', 
   );
 }
 
+/**
+ * A quiet collapsible section: one row saying what is inside, opened only when
+ * the organizer asks for it.
+ *
+ * Every "not the main task" block on every screen uses this, so "collapsed by
+ * default" looks and behaves the same everywhere instead of being re-invented
+ * per screen. The summary states what will be revealed, because a closed row
+ * that says nothing is indistinguishable from missing content.
+ *
+ * The content stays in the DOM when closed. That is what lets the mode contract
+ * hold: a field a mode declares still has exactly one place on the page.
+ */
+export function Collapse({ title, sub, children, className = '', defaultOpen = false }: {
+  title: ReactNode; sub?: ReactNode; children: ReactNode;
+  className?: string;
+  /** Only for the rare case where the collapsed content is the point. */
+  defaultOpen?: boolean;
+}) {
+  return (
+    <details className={'collapse' + (className ? ' ' + className : '')} open={defaultOpen}>
+      <summary>
+        <span className="collapse-caret" aria-hidden />
+        <span className="collapse-text">
+          <b>{title}</b>
+          {sub ? <span className="collapse-sub">{sub}</span> : null}
+        </span>
+      </summary>
+      <div className="collapse-body">{children}</div>
+    </details>
+  );
+}
+
 export function Switch({ checked, onChange, label, hint, field, disabled }: {
   checked: boolean; onChange(v: boolean): void; label: ReactNode; hint?: ReactNode;
   /** The rule field this switch edits, so a test can see exactly what is shown. */

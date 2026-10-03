@@ -13,6 +13,7 @@ import Season from './ui/Season';
 import RegulationTab from './ui/Regulation';
 import Standings from './ui/Standings';
 import Output from './ui/Output';
+import Publish from './ui/Publish';
 import Settings from './ui/Settings';
 import Import from './ui/Import';
 import Display from './ui/Display';
@@ -31,7 +32,7 @@ import { useT, type Dict } from './i18n';
 const NAV: { items: readonly (readonly [Screen, keyof Dict])[] }[] = [
   { items: [['home', 'nav.home'], ['overview', 'nav.overview'], ['participants', 'nav.participants'], ['rules', 'nav.rules']] },
   { items: [['bracket', 'nav.bracket'], ['matches', 'nav.results'], ['live', 'nav.live'], ['standings', 'nav.standings']] },
-  { items: [['schedule', 'nav.schedule'], ['display', 'nav.display'], ['codes', 'nav.codes'], ['regulation', 'nav.regulation'], ['season', 'nav.season'], ['export', 'nav.output']] },
+  { items: [['schedule', 'nav.schedule'], ['display', 'nav.display'], ['codes', 'nav.codes'], ['regulation', 'nav.regulation'], ['season', 'nav.season'], ['publish', 'nav.publish'], ['export', 'nav.output']] },
 ];
 
 // A window opened with #display is a projector: organizer controls are hidden.
@@ -122,7 +123,16 @@ export default function App() {
             <span className="nav-group" key={gi}>
               {gi > 0 ? <span className="divider" /> : null}
               {items.map(([k, label]) => (
-                <button key={k} className={screen === k ? 'on' : ''} onClick={() => go(k)} disabled={(k !== 'home' && !hasProject)}>{t(label)}</button>
+                <button
+                  key={k}
+                  className={screen === k ? 'on' : ''}
+                  // "Where am I?" has to be answerable by a screen reader and not
+                  // only by a colour, and the colour alone also fails anyone who
+                  // cannot separate the accent from the dark bar.
+                  aria-current={screen === k ? 'page' : undefined}
+                  onClick={() => go(k)}
+                  disabled={(k !== 'home' && !hasProject)}
+                >{t(label)}</button>
               ))}
             </span>
           );
@@ -166,6 +176,7 @@ export default function App() {
       {screen === 'display' && (hasProject ? <Display /> : <Home />)}
       {screen === 'codes' && <ComingSoon title="codes" />}
       {screen === 'export' && (hasProject ? <Output /> : <Home />)}
+      {screen === 'publish' && (hasProject ? <Publish /> : <Home />)}
       {screen === 'settings' && <Settings />}
       {screen === 'import' && <Import />}
     </div>

@@ -277,6 +277,19 @@ export interface AppSettings {
   /** Absent or "system" = follow the computer's language. Added after v1.2. */
   locale?: LocalePreference;
   lastOpenedAt?: string | null;
+  /**
+   * Where this tournament is published, and under what name. Optional and absent
+   * until an organizer chooses to publish: a local-only tournament never needs
+   * them, and publishing stays optional by design.
+   */
+  publishEndpoint?: string;
+  publishToken?: string;
+  publishSlug?: string;
+  publishVisibility?: 'private' | 'unlisted' | 'public';
+  publishDescription?: string;
+  /** Bumped on every send so a stale snapshot cannot overwrite a newer one. */
+  publishRevision?: number;
+  publishSentAt?: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {

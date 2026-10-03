@@ -69,7 +69,10 @@ b, strong { font-weight: 620; }
 
 ::selection { background: #cfe0ff; }
 
-:where(button, a, input, select, textarea, tr, [tabindex]):focus-visible {
+/* `summary` is focusable and is the only control of a disclosure, but it is not
+   a button: without it in this list a keyboard user tabbed straight past the
+   whole collapsed section and never saw where they were. */
+:where(button, a, input, select, textarea, tr, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--acc);
   outline-offset: 1px;
   border-radius: var(--r-sm);
@@ -532,6 +535,8 @@ tr:hover .cell-input { border-color: var(--line) !important; background: #fff !i
 :root[data-theme="dark"] .kbd, :root[data-theme="dark"] .keyhint kbd { background: #1b212b; border-color: #333d4d; color: var(--ink-2); }
 :root[data-theme="dark"] .steps .step-n { background: #262f3d; }
 :root[data-theme="dark"] .disclosure > summary:hover { background: #1f2733; }
+:root[data-theme="dark"] .collapse > summary:hover { background: #1f2733; }
+:root[data-theme="dark"] .collapse > summary { color: var(--ink); }
 :root[data-theme="dark"] .hero-steps li::before { background: #17233d; }
 :root[data-theme="dark"] .empty { background: #131820; }
 :root[data-theme="dark"] .card > .empty { background: transparent; }
@@ -854,6 +859,38 @@ tr.champion td.rank { color: var(--acc); }
 .advanced > summary { cursor: pointer; font-weight: 600; }
 .advanced > .card { margin-top: 12px; }
 
+/* Collapsed secondary content. One quiet row, no card chrome: a closed block is
+   a promise that something is there, not a panel pretending to be one. The row
+   keeps a full-width target and a visible open state, so it never reads as a
+   label or as missing content. */
+.collapse {
+  margin-top: 12px; border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--panel-2);
+}
+.collapse > summary {
+  display: flex; align-items: center; gap: 9px; cursor: pointer;
+  padding: 10px 14px; list-style: none; user-select: none;
+  color: var(--ink-2); border-radius: var(--r);
+}
+.collapse > summary::-webkit-details-marker { display: none; }
+.collapse > summary:hover { background: #f1f4f9; }
+.collapse-caret {
+  flex: none; width: 0; height: 0; margin-left: 2px;
+  border-left: 5px solid var(--chev); border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent; transition: transform var(--t-fast);
+}
+.collapse[open] > .collapse-caret { transform: rotate(90deg); }
+.collapse-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.collapse-text b { font-weight: 600; font-size: var(--fs-body); }
+.collapse-sub { font-size: var(--fs-xs); color: var(--muted); }
+.collapse-body { padding: 0 14px 14px; }
+.collapse-body > .card:first-child { margin-top: 12px; }
+/* A block that opens into nothing but text needs no top rule. */
+.collapse-body > *:first-child { margin-top: 0; }
+/* The one control of a collapsed section has to be a comfortable target on a
+   touch screen, and the summary must not clip its own focus ring. */
+.collapse > summary { min-height: 40px; margin: -1px -1px 0; }
+
 /* Tie-break order: a sequence, because order is the whole meaning. */
 .tiebreak { display: flex; flex-direction: column; gap: 8px; }
 .tiebreak-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -976,4 +1013,8 @@ tr.champion td.rank { color: var(--acc); }
   .mode-grid, .preset-grid { grid-template-columns: minmax(0, 1fr); }
   /* 620px of preview fills a 640px screen; tie it to the viewport instead. */
   .output-preview { height: 60vh; min-height: 320px; }
+  /* A collapsed section is the only control on its row, so it gets the same
+     thumb-sized padding the other full-width controls get here. */
+  .collapse > summary { padding: 12px 14px; }
+  .collapse-body { padding: 0 12px 12px; }
 }

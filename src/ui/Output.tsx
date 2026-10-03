@@ -12,7 +12,7 @@ import { Branding, normalizeBranding } from '../engine/branding';
 import { desktop } from '../engine/desktop';
 import { fileNameFor, serializeProject } from '../engine/storage';
 import { nowIso } from '../engine/types';
-import { Alert, Empty, Page, Panel, Toolbar } from './kit';
+import { Collapse, Alert, Empty, Page, Panel, Toolbar } from './kit';
 import { BrandingForm } from './Branding';
 import { useT } from '../i18n';
 
@@ -106,18 +106,25 @@ export default function Output() {
         </Panel>
       )}
 
-      <Panel title={tr('brand.title')} sub={tr('brand.sub')}>
-        <div onBlur={() => { if (draft) commitBranding(draft); }}>
-          <BrandingForm branding={branding} onChange={setDraft} />
-        </div>
-      </Panel>
+      {/* Branding and the project backup change once, then rarely. Folding them keeps
+          the document picker and its preview as the only thing on screen, which is
+          what someone printing a sheet actually came here to do. */}
+      <Collapse title={tr('brand.title')} sub={tr('brand.sub')}>
+        <Panel>
+          <div onBlur={() => { if (draft) commitBranding(draft); }}>
+            <BrandingForm branding={branding} onChange={setDraft} />
+          </div>
+        </Panel>
+      </Collapse>
 
-      <Panel title={tr('out.backupPanel')} sub={tr('out.backupPanelSub')}>
-        <div className="row">
-          <button className="btn" onClick={saveProject} disabled={busy}>{desktop.available ? tr('out.saveProject') : tr('out.saveProjectBrowser')}</button>
-          <span className="muted">{tr('out.writtenAs', { file: fileNameFor(t) })}</span>
-        </div>
-      </Panel>
+      <Collapse title={tr('out.backupPanel')} sub={tr('out.backupPanelSub')}>
+        <Panel>
+          <div className="row">
+            <button className="btn" onClick={saveProject} disabled={busy}>{desktop.available ? tr('out.saveProject') : tr('out.saveProjectBrowser')}</button>
+            <span className="muted">{tr('out.writtenAs', { file: fileNameFor(t) })}</span>
+          </div>
+        </Panel>
+      </Collapse>
     </Page>
   );
 }
