@@ -1451,6 +1451,7 @@ export const pl: Dict = {
   'pub.err.token': 'Token publikowania został odrzucony.',
   'pub.err.rejected': 'Serwis odrzucił ten turniej. Nic nie zostało zmienione.',
   'pub.err.http': 'Serwis odmówił przesłania danych.',
+  'pub.err.unconfigured': 'Ten serwis ma publikowanie wyłączone. Poproś osobę, która go prowadzi, o ustawienie tokenu.',
   'disc.applied': 'Dyscyplina zastosowana',
   'disc.templatesHint': 'Szablon to tylko punkt wyjścia — wszystko, co ustawia, można dalej zmienić poniżej.',
   'disc.def.setPoints': '{n} punktów w secie',

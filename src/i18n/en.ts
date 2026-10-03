@@ -1450,6 +1450,7 @@ export const en = {
   'pub.err.token': 'The publish token was refused.',
   'pub.err.rejected': 'The site rejected this tournament. Nothing was changed.',
   'pub.err.http': 'The site refused the upload.',
+  'pub.err.unconfigured': 'This site has publishing turned off. Ask whoever runs it to set a publish token.',
   'disc.applied': 'Discipline applied',
   'disc.templatesHint': 'A template is only a starting point — everything it sets stays editable below.',
   'disc.def.setPoints': '{n} points per set',

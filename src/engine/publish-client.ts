@@ -34,10 +34,14 @@ async function send(url: string, token: string, body: unknown, method: 'POST'): 
   }
   if (res.status === 401 || res.status === 403) throw new PublishError('token', url);
   if (res.status === 422) throw new PublishError('rejected', url);
+  // 503 is the site's own "I have no publish secret". That is a setup problem,
+  // not a bad upload, and saying so saves an organizer from retrying a button
+  // that can never work.
+  if (res.status === 503) throw new PublishError('unconfigured', url);
   if (!res.ok) throw new PublishError('http', url);
 }
 
-export type PublishProblem = 'network' | 'token' | 'rejected' | 'http';
+export type PublishProblem = 'network' | 'token' | 'rejected' | 'http' | 'unconfigured';
 
 export class PublishError extends Error {
   constructor(readonly problem: PublishProblem, readonly url: string) {

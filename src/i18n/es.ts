@@ -1451,6 +1451,7 @@ export const es: Dict = {
   'pub.err.token': 'El sitio rechazó el token de publicación.',
   'pub.err.rejected': 'El sitio rechazó este torneo. No se cambió nada.',
   'pub.err.http': 'El sitio rechazó el envío.',
+  'pub.err.unconfigured': 'Este sitio tiene la publicación desactivada. Pide a quien lo gestiona que configure un token.',
   'disc.applied': 'Disciplina aplicada',
   'disc.templatesHint': 'Una plantilla es solo un punto de partida: todo lo que fija se puede cambiar más abajo.',
   'disc.def.setPoints': '{n} puntos por set',

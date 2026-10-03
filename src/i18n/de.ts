@@ -1451,6 +1451,7 @@ export const de: Dict = {
   'pub.err.token': 'Das Veröffentlichungs-Token wurde abgelehnt.',
   'pub.err.rejected': 'Die Seite hat dieses Turnier abgelehnt. Es wurde nichts geändert.',
   'pub.err.http': 'Die Seite hat den Upload abgelehnt.',
+  'pub.err.unconfigured': 'Auf dieser Seite ist das Veröffentlichen abgeschaltet. Bitten Sie den Betreiber, ein Token zu setzen.',
   'disc.applied': 'Disziplin übernommen',
   'disc.templatesHint': 'Eine Vorlage ist nur ein Ausgangspunkt — alles, was sie setzt, bleibt unten änderbar.',
   'disc.def.setPoints': '{n} Punkte je Satz',
