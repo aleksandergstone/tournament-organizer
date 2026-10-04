@@ -7,8 +7,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildSnapshot, publicUrl, type BuildInput } from '../src/engine/publish';
 import { publishSnapshot, revokePublished, type PublishConfig } from '../src/engine/publish-client';
+import { resolveTarget } from '../src/engine/publisher';
 import { publishSlug, slugify, PUBLISH_ENDPOINT, BUILT_IN_PUBLISH_TOKEN } from '../src/engine/publish-slug';
-import { DEFAULT_RULES, type Group, type Match, type Participant, type Tournament } from '../src/engine/types';
+import { DEFAULT_RULES, DEFAULT_SETTINGS, type Group, type Match, type Participant, type Tournament } from '../src/engine/types';
 import { setLocale, translate } from '../src/i18n';
 
 describe('the link comes from the event name', () => {
@@ -182,6 +183,67 @@ describe('every language publishes the same contract', () => {
         expect(s.terms[key], `${loc}.${key}`).toBeTruthy();
       }
     }
+  });
+});
+
+/**
+ * What a public page is told beyond the results: the organizer's language, their
+ * own words, and their mark. All three are optional, and none of them is invented —
+ * a page with no branding shows no branding.
+ */
+describe('the event describes itself', () => {
+  it('publishes the language the organizer works in', () => {
+    setLocale('pl');
+    expect(buildSnapshot(input()).event.locale).toBe('pl');
+    setLocale('de');
+    expect(buildSnapshot(input()).event.locale).toBe('de');
+    setLocale('en');
+    expect(buildSnapshot(input()).event.locale).toBe('en');
+  });
+
+  it('carries the branding the organizer typed, and nothing else', () => {
+    const branded = buildSnapshot(input({
+      tournament: tour({
+        branding: {
+          eventTitle: 'Puchar Mistrzów', subtitle: 'Finał sezonu',
+          edition: 'Edycja 12', headerNote: 'Sekretariat: biuro@klub.pl',
+          footerNote: 'Do widzenia w przyszłym roku', accent: '#a23b12',
+          logoDataUrl: 'data:image/png;base64,AAAA', sponsorDataUrl: 'data:image/png;base64,BBBB',
+        },
+      }),
+    }));
+    expect(branded.event.branding).toMatchObject({
+      title: 'Puchar Mistrzów', subtitle: 'Finał sezonu', edition: 'Edycja 12',
+      note: 'Sekretariat: biuro@klub.pl', accent: '#a23b12',
+    });
+    // The logo is an image, not a line of text: it travels on its own field, so a
+    // snapshot that has none says nothing rather than carrying an empty string.
+    expect(JSON.stringify(branded.event.branding)).not.toContain('data:image');
+  });
+
+  it('says nothing about branding that was never filled in', () => {
+    const plain = buildSnapshot(input());
+    expect(plain.event.branding ?? null).toBe(null);
+    expect(plain.event.logoUrl ?? null).toBe(null);
+  });
+
+  it('publishes a logo only when one was given', () => {
+    const withLogo = buildSnapshot({ ...input(), logoUrl: 'data:image/png;base64,AAAA' } as never);
+    expect(withLogo.event.logoUrl).toBe('data:image/png;base64,AAAA');
+  });
+
+  it('decides the endpoint, token and slug the same way whoever publishes', () => {
+    // The screen and the automatic publisher both call this, so an address handed
+    // out can never differ from the one results are sent to.
+    const settings = { ...DEFAULT_SETTINGS, publishSlug: 'club-final-2026' };
+    const target = resolveTarget(settings, 'Club Final 2026');
+    expect(target).toMatchObject({ slug: 'club-final-2026', token: BUILT_IN_PUBLISH_TOKEN });
+    // Before a link exists the address still comes from the event's name…
+    const fresh = resolveTarget(DEFAULT_SETTINGS, 'Mistrzostwa Klubu');
+    expect(fresh.slug).toBe('mistrzostwa-klubu');
+    // …and a token the organizer supplied wins over the built-in one.
+    const own = resolveTarget({ ...DEFAULT_SETTINGS, publishToken: 'their-own' }, 'X');
+    expect(own.token).toBe('their-own');
   });
 });
 
