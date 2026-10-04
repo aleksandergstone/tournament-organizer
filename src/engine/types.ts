@@ -278,15 +278,21 @@ export interface AppSettings {
   locale?: LocalePreference;
   lastOpenedAt?: string | null;
   /**
-   * Where this tournament is published, and under what name. Optional and absent
-   * until an organizer chooses to publish: a local-only tournament never needs
-   * them, and publishing stays optional by design.
+   * Whether the organizer has chosen to put this tournament on the public site.
+   *
+   * Absent means off. Nothing is ever published because it was not switched off:
+   * an accidental publish is visible to the whole internet, an accidental private
+   * event is a mistake only the organizer can see.
    */
-  publishEndpoint?: string;
+  publishEnabled?: boolean;
+  /**
+   * The shared token for the public site. Kept here rather than asked for on the
+   * sharing screen, because it is not something an organizer chooses per event.
+   */
   publishToken?: string;
-  publishSlug?: string;
-  publishVisibility?: 'private' | 'unlisted' | 'public';
-  publishDescription?: string;
+  publishVisibility?: 'unlisted' | 'public';
+  /** Slugs already in use locally, so a new event does not collide with them. */
+  publishSlugTaken?: string[];
   /** Bumped on every send so a stale snapshot cannot overwrite a newer one. */
   publishRevision?: number;
   publishSentAt?: string;

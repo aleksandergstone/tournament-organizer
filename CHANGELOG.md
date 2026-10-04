@@ -3,6 +3,31 @@
 All notable changes to Tournament Organizer.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semver.
 
+## [1.6.0] — 2026-10-03
+
+A release about *sharing*, and about the app staying the only place that decides
+anything. A tournament can be published to a website for spectators to follow
+live, and taken down again — without ever leaving the organizer's computer first.
+
+### Added
+
+- **Online preview, off by default.** One switch turns it on, and nothing is sent
+  until you ask for it. An accidental publish is visible to the whole internet;
+  a tournament run on one laptop has no business being online at all.
+- **The link is the event's name.** You never type an address. If a name is
+  already taken, a few more characters are added automatically.
+- **Two levels of visibility.** *Anyone with the link* — shareable but never
+  advertised. *Anyone, including search engines* — for an event you want found.
+- **Stop sharing in one click.** The link stops working immediately rather than
+  quietly serving results that are no longer true.
+- **The website draws, the app decides.** The public site renders a precomputed
+  snapshot and never calculates a table of its own, so a rule you change cannot
+  make two screens disagree.
+- **Only what belongs on a match sheet.** Participants, results and standings go
+  out. Your tags, audit history and tournament rules stay on your machine.
+- **A site with no publish token says so.** Instead of a generic failure, the app
+  reports that sharing is switched off there, which no retry could fix.
+
 ## [1.5.0] — 2026-10-02
 
 A release about what happens *during* an event, and about the app saying what

@@ -6,8 +6,43 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildSnapshot, publicUrl, type BuildInput } from '../src/engine/publish';
+import { publishSlug, slugify, PUBLISH_ENDPOINT } from '../src/engine/publish-slug';
 import { DEFAULT_RULES, type Group, type Match, type Participant, type Tournament } from '../src/engine/types';
 import { setLocale } from '../src/i18n';
+
+describe('the link comes from the event name', () => {
+  it('reads like the tournament, not like a database key', () => {
+    expect(publishSlug('Club Final 2026')).toBe('club-final-2026');
+    expect(publishSlug('Mistrzostwa  Klubu — finał')).toBe('mistrzostwa-klubu-final');
+    // Polish ł survives as a letter rather than leaving a hole in the word.
+    expect(slugify('Zażółć gęślą jaźń')).toBe('zazolc-gesla-jazn');
+  });
+
+  it('adds characters when the name is taken, without asking the organizer', () => {
+    const first = publishSlug('Finał', []);
+    expect(first).toBe('final');
+    // Two events with the same name must not overwrite each other.
+    const second = publishSlug('Finał', [first]);
+    expect(second).not.toBe(first);
+    expect(second.startsWith('final-')).toBe(true);
+    expect(slugify(second)).toBe(second);
+  });
+
+  it('always produces something the site will accept as a URL path', () => {
+    // Whatever the organizer typed, the site either accepts this or the link is
+    // broken — and a broken link with no error is the worst outcome here.
+    for (const name of ['', '   ', '///', 'A', 'Turniej 2026!!!', 'x'.repeat(200), '😀😀', '---']) {
+      const slug = publishSlug(name, []);
+      expect(slug, name).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+      expect(slug.length, name).toBeLessThanOrEqual(80);
+    }
+  });
+
+  it('points at the site this build publishes to', () => {
+    expect(publicUrl(PUBLISH_ENDPOINT, 'club-final')).toBe('https://tooboxplatform.online/club-final');
+    expect(publicUrl(PUBLISH_ENDPOINT + '/', 'club-final')).toBe('https://tooboxplatform.online/club-final');
+  });
+});
 
 const participants: Participant[] = [
   { id: 'p1', name: 'Lions', active: true, seed: 1 },
