@@ -1452,6 +1452,7 @@ export const de: Dict = {
   'pub.public': 'Alle und Suchmaschinen',
   'pub.sent': 'Geteilt. Ihr Link ist aktiv.',
   'pub.deleted': 'Link gelöscht. Er funktioniert nicht mehr.',
+  'pub.autoHint': 'Solange der Link aktiv ist, kommen die Ergebnisse von selbst auf die Seite — die Schaltfläche sendet sie nur noch einmal.',
   'pub.err.network': 'Die Seite ist nicht erreichbar. Prüfen Sie Ihre Verbindung.',
   'pub.err.token': 'Das Veröffentlichungs-Token wurde abgelehnt.',
   'pub.err.rejected': 'Die Seite hat dieses Turnier abgelehnt. Es wurde nichts geändert.',

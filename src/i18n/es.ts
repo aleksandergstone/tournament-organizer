@@ -1452,6 +1452,7 @@ export const es: Dict = {
   'pub.public': 'Todos y los buscadores',
   'pub.sent': 'Compartido. Tu enlace está activo.',
   'pub.deleted': 'Enlace eliminado. Ya no funciona.',
+  'pub.autoHint': 'Mientras el enlace está activo, los resultados llegan solos a la página; el botón solo los vuelve a enviar.',
   'pub.err.network': 'No se pudo contactar con el sitio. Revisa la conexión.',
   'pub.err.token': 'El sitio rechazó el token de publicación.',
   'pub.err.rejected': 'El sitio rechazó este torneo. No se cambió nada.',

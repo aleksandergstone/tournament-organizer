@@ -1452,6 +1452,7 @@ export const pl: Dict = {
   'pub.public': 'Wszyscy i wyszukiwarki',
   'pub.sent': 'Udostępniono. Twój link działa.',
   'pub.deleted': 'Link usunięty. Już nie działa.',
+  'pub.autoHint': 'Gdy link jest włączony, wyniki trafiają na stronę same — przycisk wysyła je tylko ponownie.',
   'pub.err.network': 'Nie udało się połączyć z serwisem. Sprawdź połączenie.',
   'pub.err.token': 'Token publikowania został odrzucony.',
   'pub.err.rejected': 'Serwis odrzucił ten turniej. Nic nie zostało zmienione.',

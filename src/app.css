@@ -917,6 +917,7 @@ tr.champion td.rank { color: var(--acc); }
   background: var(--panel, #fff);
 }
 .pub-qr { display: block; margin-top: 14px; width: 200px; height: 200px; background: #fff; border-radius: 8px; }
+.pub-hint, .hint { color: var(--muted); font-size: 13px; margin: 12px 0 0; }
 
 /* The rule tags: how much a setting matters here, and what it changes. */
 .rule-tag {

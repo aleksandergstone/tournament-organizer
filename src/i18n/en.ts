@@ -1451,6 +1451,7 @@ export const en = {
   'pub.public': 'Anyone, and search engines',
   'pub.sent': 'Shared. Your link is live.',
   'pub.deleted': 'Link deleted. It no longer works.',
+  'pub.autoHint': 'While the link is on, results reach the page by themselves — the button only sends them again now.',
   'pub.err.network': 'Could not reach the site. Check your connection.',
   'pub.err.token': 'The publish token was refused.',
   'pub.err.rejected': 'The site rejected this tournament. Nothing was changed.',

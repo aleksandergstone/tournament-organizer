@@ -19,6 +19,7 @@ import { useApp } from '../state/store';
 import { buildSnapshot, publicUrl, type PublishVisibility } from '../engine/publish';
 import { PUBLISH_ENDPOINT, BUILT_IN_PUBLISH_TOKEN, publishSlug } from '../engine/publish-slug';
 import { PublishError, publishSnapshot, revokePublished } from '../engine/publish-client';
+import { publishLogo } from '../engine/publisher';
 import { Alert, Field, Page, Panel } from './kit';
 import { useT } from '../i18n';
 
@@ -82,6 +83,9 @@ export default function Publish() {
         slug,
         visibility: opts?.vis ?? visibility,
         revision: (settings.publishRevision ?? 0) + 1,
+        // The organizer's own logo, shrunk to something worth sending. A failure
+        // here costs the picture, never the publish.
+        logoUrl: await publishLogo(tournament),
       });
       await publishSnapshot({ endpoint: PUBLISH_ENDPOINT, token, slug }, snapshot);
       persist({
@@ -199,6 +203,7 @@ export default function Publish() {
             <button className="btn quiet" disabled={busy} onClick={() => void deleteLink()}>{t('pub.delete')}</button>
           </div>
           {qr ? <img className="pub-qr" src={qr} alt={url} /> : null}
+          <p className="hint">{t('pub.autoHint')}</p>
         </Panel>
       )}
 

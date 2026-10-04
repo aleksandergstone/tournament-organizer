@@ -12,8 +12,9 @@
 import { computeStandings } from './standings';
 import { describeFormat } from './generate';
 import { disciplineOf, matchLabel, participantLabel, venueLabel } from './discipline';
+import { brandingOf, DEFAULT_BRANDING, isHexColor } from './branding';
 import type { Group, Match, Participant, Tournament, VenueResource } from './types';
-import { t } from '../i18n';
+import { getLocale, t } from '../i18n';
 
 export type PublishVisibility = 'private' | 'unlisted' | 'public';
 
@@ -40,7 +41,18 @@ export interface Snapshot {
     venue: string | null;
     description: string;
     organizer: string | null;
-    logoUrl: string | null;
+    /** A small, publishable logo. Omitted rather than invented — see buildSnapshot. */
+    logoUrl?: string | null;
+    /** The organizer's own language, so the public page can speak it. */
+    locale?: string;
+    /** What the organizer put in Branding, published so the page looks like theirs. */
+    branding?: {
+      title?: string;
+      subtitle?: string;
+      edition?: string;
+      note?: string;
+      accent?: string;
+    } | null;
   };
   terms: { match: string; participant: string; place: string; score: string };
   counts: { participants: number; matches: number; played: number; open: number };
@@ -61,6 +73,33 @@ const FINISHED = new Set(['played', 'draw', 'walkover', 'overtime']);
 /** Formats whose ranking comes from a table rather than from a bracket. */
 const TABLE_FORMATS = new Set(['round-robin', 'league', 'swiss', 'groups-knockout']);
 
+/**
+ * The organizer's own wording, ready to travel.
+ *
+ * Only the fields a public page can show, and only when they are filled in: an
+ * absent title is better than a page repeating the event's own name twice. The logo
+ * is deliberately left out — it is a data URL, and it is handled (and shrunk) by
+ * the caller instead.
+ */
+function publishableBranding(raw: Tournament['branding']): {
+  title?: string; subtitle?: string; edition?: string; note?: string; accent?: string;
+} | null {
+  const b = brandingOf({ name: '', branding: raw });
+  const out: { title?: string; subtitle?: string; edition?: string; note?: string; accent?: string } = {};
+  const put = (key: 'title' | 'subtitle' | 'edition' | 'note', value: string) => {
+    if (value.trim()) out[key] = value.trim();
+  };
+  put('title', b.eventTitle);
+  put('subtitle', b.subtitle);
+  put('edition', b.edition);
+  put('note', b.headerNote || b.footerNote);
+  // Only an accent the organizer actually chose. The default colour is the app's
+  // own, and publishing it to everybody would put a mark on the page of an event
+  // that never asked for one.
+  if (isHexColor(b.accent) && b.accent !== DEFAULT_BRANDING.accent) out.accent = b.accent;
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 export interface BuildInput {
   tournament: Tournament;
   participants: Participant[];
@@ -73,6 +112,14 @@ export interface BuildInput {
   /** One line shown to the public. Empty is fine; nothing is invented. */
   description?: string;
   organizer?: string | null;
+  /**
+   * A logo small enough to travel with every publish.
+   *
+   * The Branding screen holds a full-size image; sending that on every update
+   * would multiply the payload for a picture that is displayed at 64 pixels.
+   * The caller shrinks it (see logoForPublish) and this only carries the result.
+   */
+  logoUrl?: string | null;
 }
 
 // Cuts the description to what a meta tag can hold, at a word boundary.
@@ -126,10 +173,14 @@ export function buildSnapshot(input: BuildInput): Snapshot {
       venue: tournament.location ?? null,
       description: publicDescription(input.description ?? ''),
       organizer: (input.organizer ?? '').trim() || null,
-      // A data URL cannot be sent to the site: an Open Graph image has to be
-// fetchable by a crawler from a public URL. The organizer can put a hosted image
-// in the description later; until then the share card simply has no picture.
-logoUrl: null,
+      // A logo the organizer already chose, shrunk by the caller. Publishing it
+      // gives the public page something to show and the share card an image;
+      // without one the page simply has neither, and invents neither.
+      logoUrl: input.logoUrl ?? null,
+      // The language the organizer works in. The site writes its own sentences in
+      // it, which is why a Polish organizer's page is not half-translated.
+      locale: getLocale(),
+      branding: publishableBranding(tournament.branding),
     },
     // The vocabulary is resolved here, in the organizer's language, and the site
     // renders it verbatim. That is what keeps a regatta page saying "Race".

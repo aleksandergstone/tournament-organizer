@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppSettings, AuditEntry, DEFAULT_SETTINGS, nowIso, uid, VenueResource } from '../engine/types';
+import { resolveTarget, sendSnapshot, snapshotFor, publishLogo } from '../engine/publisher';
 import { Domain } from '../engine/model';
 import { disk, log } from '../engine/storage';
 import { initHistory, commit, undo, redo, canUndo, canRedo, Snapshot } from '../engine/history';
@@ -96,6 +97,47 @@ export function Provider({ children }: { children: React.ReactNode }) {
     const t = window.setTimeout(() => persist(hr.current.present, sr.current), 800);
     return () => window.clearTimeout(t);
   }, [dirty, hasProject, hist.present, settings.autosave, persist]);
+  /**
+   * Automatic publishing.
+   *
+   * Sharing used to mean pressing a button after every result, which is exactly the
+   * moment an organizer is busiest. While sharing is on, a change to the project is
+   * sent to the public page by itself — four seconds after the last edit, so a burst
+   * of typing or a set of results costs one publish rather than twenty.
+   *
+   * Three things keep it quiet:
+   *   * the timer is cancelled and restarted on every change, so only the settled
+   *     state is ever sent;
+   *   * the state that was last sent is remembered, so nothing is sent twice;
+   *   * the latest project and settings are read from refs at send time, so a
+   *     publish can never carry a stale revision — which the site would refuse as
+   *     an older snapshot and leave the page quietly out of date.
+   *
+   * A failure is not reported here: the page keeps showing the last good results,
+   * and the next change tries again. An organizer who is offline sees nothing
+   * happen, which is the honest outcome.
+   */
+  const autoSent = useRef('');
+  useEffect(() => {
+    if (!settings.publishEnabled || !hasProject) return;
+    const key = `${hist.present.tournament.updatedAt}|${settings.publishVisibility ?? ''}|${settings.publishRevision ?? 0}`;
+    if (autoSent.current === key) return;
+    const timer = window.setTimeout(async () => {
+      const now = sr.current;
+      const domain = hr.current.present;
+      if (!now.publishEnabled) return;
+      const target = resolveTarget(now, domain.tournament.name);
+      const logo = await publishLogo(domain.tournament);
+      const snapshot = snapshotFor(domain, now, target, logo);
+      const outcome = await sendSnapshot(target, snapshot);
+      if (outcome.ok) {
+        autoSent.current = key;
+        setS(s => ({ ...s, publishRevision: outcome.revision, publishSentAt: nowIso() }));
+        setDirty(true);
+      }
+    }, 4000);
+    return () => window.clearTimeout(timer);
+  }, [hist.present, settings.publishEnabled, settings.publishVisibility, settings.publishRevision, hasProject]);
   const update = useCallback((fn: (d: Domain) => Domain, msg?: string) => {
     setHist(h => { const n = structuredClone(fn(structuredClone(h.present))); n.tournament.updatedAt = nowIso(); if (msg) n.audit = log(n.audit, msg); return commit(h, n); });
     setDirty(true); setHas(true);
