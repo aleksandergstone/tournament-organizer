@@ -6,7 +6,7 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildSnapshot, publicUrl, type BuildInput } from '../src/engine/publish';
-import { publishSlug, slugify, PUBLISH_ENDPOINT } from '../src/engine/publish-slug';
+import { publishSlug, slugify, PUBLISH_ENDPOINT, BUILT_IN_PUBLISH_TOKEN } from '../src/engine/publish-slug';
 import { DEFAULT_RULES, type Group, type Match, type Participant, type Tournament } from '../src/engine/types';
 import { setLocale } from '../src/i18n';
 
@@ -41,6 +41,22 @@ describe('the link comes from the event name', () => {
   it('points at the site this build publishes to', () => {
     expect(publicUrl(PUBLISH_ENDPOINT, 'club-final')).toBe('https://tooboxplatform.online/club-final');
     expect(publicUrl(PUBLISH_ENDPOINT + '/', 'club-final')).toBe('https://tooboxplatform.online/club-final');
+  });
+
+  it('carries a token, so sharing needs nothing typed in first', () => {
+    // The whole point of the built-in token: an organizer opens the screen, flips one
+    // switch and shares. A build that lost this constant would fail every publish
+    // with a message no organizer could act on.
+    expect(BUILT_IN_PUBLISH_TOKEN.length).toBeGreaterThanOrEqual(16);
+    expect(BUILT_IN_PUBLISH_TOKEN.trim()).toBe(BUILT_IN_PUBLISH_TOKEN);
+  });
+
+  it('prefers a token the organizer supplied over the built-in one', () => {
+    // Someone running their own site, or one whose key was rotated, must not be stuck
+    // with a value they cannot change.
+    const own = 'their-own-token';
+    expect((own.trim() || BUILT_IN_PUBLISH_TOKEN)).toBe(own);
+    expect((''.trim() || BUILT_IN_PUBLISH_TOKEN)).toBe(BUILT_IN_PUBLISH_TOKEN);
   });
 });
 

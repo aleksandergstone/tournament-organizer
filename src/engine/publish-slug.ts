@@ -17,6 +17,28 @@
  */
 export const PUBLISH_ENDPOINT = 'https://tooboxplatform.online';
 
+/**
+ * The token this build publishes with, when the organizer has not set one.
+ *
+ * It is in the binary on purpose. The alternative is every organizer pasting a key
+ * before their first publish, for a service they never chose and cannot configure —
+ * and a step that is easy to skip, or to get wrong, is a step where sharing quietly
+ * does not happen.
+ *
+ * What this costs: anyone holding a copy of the app can overwrite results on this
+ * site. That is acceptable only because the site and the app are the same project and
+ * the thing being overwritten is a tournament table that the organizer can re-send.
+ * A token guarding anything worth stealing does not belong in a file like this.
+ *
+ * The current value is 32 digits, which is long but not random — a digits-only secret
+ * is far easier to guess than it looks. Treat this as adequate for the results being
+ * published, not as a secret worth keeping to itself.
+ *
+ * `publishToken` in settings still wins, so an organizer running their own site, or
+ * one whose key has been rotated, is not stuck with this value.
+ */
+export const BUILT_IN_PUBLISH_TOKEN = '14123781481256324123423211253431';
+
 /** The largest slug the site accepts. Longer names are cut, not rejected. */
 const MAX_LEN = 80;
 

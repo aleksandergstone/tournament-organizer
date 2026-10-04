@@ -17,7 +17,7 @@ import { useMemo, useState } from 'react';
 import QRCode from 'qrcode';
 import { useApp } from '../state/store';
 import { buildSnapshot, publicUrl, type PublishVisibility } from '../engine/publish';
-import { PUBLISH_ENDPOINT, publishSlug } from '../engine/publish-slug';
+import { PUBLISH_ENDPOINT, BUILT_IN_PUBLISH_TOKEN, publishSlug } from '../engine/publish-slug';
 import { PublishError, publishSnapshot, revokePublished } from '../engine/publish-client';
 import { Alert, Field, Page, Panel, Switch } from './kit';
 import { useT } from '../i18n';
@@ -31,7 +31,13 @@ export default function Publish() {
 
   const enabled = settings.publishEnabled === true;
   const visibility = (settings.publishVisibility ?? 'unlisted') as PublishVisibility;
-  const token = settings.publishToken ?? '';
+  // A token in settings wins, so an organizer on their own site is not stuck with
+  // the one baked into this build. Otherwise the app shares with no setup at all,
+  // which is the point: there is nothing to type before the first publish.
+  const token = (settings.publishToken ?? '').trim() || BUILT_IN_PUBLISH_TOKEN;
+  // Whether the organizer has supplied their own, rather than using the one this
+  // build carries. It decides whether the token panel exists at all.
+  const customToken = (settings.publishToken ?? '').trim().length > 0;
 
   // Derived from the event name rather than stored: rename the tournament and the
   // link follows, instead of the two drifting apart and confusing whoever holds it.
@@ -107,48 +113,49 @@ export default function Publish() {
       <Panel>
         <Switch
           checked={enabled}
-          disabled={!token}
           onChange={v => {
             setMsg(null);
             if (v) persist({ publishEnabled: true });
             else turnOff();
           }}
           label={t('pub.enable')}
-          hint={token ? t('pub.enableHint') : t('pub.noToken')}
+          hint={t('pub.enableHint')}
         />
       </Panel>
 
-      <Panel title={t('pub.token')}>
-        {/* The token is asked for once and kept on this computer. It is deliberately
-            not part of the app's build: a secret written into source is readable by
-            anyone who can clone the repository, and this one authorises overwriting
-            published results. */}
-        <Field label={t('pub.token')} hint={t('pub.tokenHint')}>
-          <input
-            type="password"
-            value={tokenDraft}
-            autoComplete="off"
-            spellCheck={false}
-            placeholder={token ? '••••••••' : ''}
-            onChange={e => setTokenDraft(e.target.value)}
-          />
-        </Field>
-        {token ? <p className="f-hint">{t('pub.tokenSaved')}</p> : null}
-        <div className="row" style={{ marginTop: 10 }}>
-          <button
-            className="btn"
-            disabled={tokenDraft.trim().length === 0}
-            onClick={() => { persist({ publishToken: tokenDraft.trim() }); setTokenDraft(''); }}
-          >
-            {t('pub.tokenSave')}
-          </button>
-          {token ? (
-            <button className="btn quiet" onClick={() => persist({ publishToken: '' })}>
+      {/* Only shown once a token has been set, which means only for someone running
+          their own site. Out of the box the app needs no token from the organizer,
+          so showing them an empty password field would be asking for something they
+          do not have and cannot need. */}
+      {customToken ? (
+        <Panel title={t('pub.token')}>
+          <Field label={t('pub.token')} hint={t('pub.tokenHint')}>
+            <input
+              type="password"
+              value={tokenDraft}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="••••••••"
+              onChange={e => setTokenDraft(e.target.value)}
+            />
+          </Field>
+          <div className="row" style={{ marginTop: 10 }}>
+            <button
+              className="btn"
+              disabled={tokenDraft.trim().length === 0}
+              onClick={() => { persist({ publishToken: tokenDraft.trim() }); setTokenDraft(''); }}
+            >
+              {t('pub.tokenSave')}
+            </button>
+            <button
+              className="btn quiet"
+              onClick={() => { persist({ publishToken: '' }); setTokenDraft(''); }}
+            >
               {t('pub.tokenForget')}
             </button>
-          ) : null}
-        </div>
-      </Panel>
+          </div>
+        </Panel>
+      ) : null}
 
       {!enabled ? null : (
         <>
