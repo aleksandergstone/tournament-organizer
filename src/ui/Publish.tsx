@@ -1,17 +1,17 @@
 // The public-results link.
 //
-// One switch, one choice, one link. Everything an organizer has to understand is
-// on this screen; everything else — the address of the site, the publish token — is
-// either fixed or already stored.
+// One decision, then a link: pick who can see it, press Activate, copy. There is
+// no address to type and no key to paste — the site, the token and the slug are
+// all decided before this screen opens.
 //
 // Two decisions shape this screen:
 //
 // 1. Sharing is opt-in and stays off until asked for. A tournament that is only
 //    ever run on one laptop must never appear to be online, and the cost of an
 //    accidental publish is other people's results.
-// 2. The organizer never types an address. The link comes from the event name,
-//    which is what they already called it, and a collision adds characters rather
-//    than making them invent a name.
+// 2. The link, once created, is pinned. Renaming the tournament does not move it,
+//    nothing short of "Delete link" takes it down, and the results stay until the
+//    organizer decides otherwise.
 
 import { useMemo, useState } from 'react';
 import QRCode from 'qrcode';
@@ -19,7 +19,7 @@ import { useApp } from '../state/store';
 import { buildSnapshot, publicUrl, type PublishVisibility } from '../engine/publish';
 import { PUBLISH_ENDPOINT, BUILT_IN_PUBLISH_TOKEN, publishSlug } from '../engine/publish-slug';
 import { PublishError, publishSnapshot, revokePublished } from '../engine/publish-client';
-import { Alert, Field, Page, Panel, Switch } from './kit';
+import { Alert, Field, Page, Panel } from './kit';
 import { useT } from '../i18n';
 
 const VISIBILITIES: readonly PublishVisibility[] = ['unlisted', 'public'];
@@ -39,11 +39,13 @@ export default function Publish() {
   // build carries. It decides whether the token panel exists at all.
   const customToken = (settings.publishToken ?? '').trim().length > 0;
 
-  // Derived from the event name rather than stored: rename the tournament and the
-  // link follows, instead of the two drifting apart and confusing whoever holds it.
+  // Pinned at activation (publishSlug), so the link people were given survives a
+  // rename and "Delete link" revokes exactly that address. Before the first
+  // activation it is derived from the event name — which is what the organizer is
+  // about to receive, so they can see it before committing.
   const slug = useMemo(
-    () => publishSlug(tournament.name, settings.publishSlugTaken ?? []),
-    [tournament.name, settings.publishSlugTaken],
+    () => settings.publishSlug ?? publishSlug(tournament.name, settings.publishSlugTaken ?? []),
+    [settings.publishSlug, tournament.name, settings.publishSlugTaken],
   );
   const url = publicUrl(PUBLISH_ENDPOINT, slug);
 
@@ -57,7 +59,17 @@ export default function Publish() {
 
   const persist = (patch: Record<string, unknown>) => setSettings({ ...settings, ...patch });
 
-  const send = async () => {
+  const showFailure = (e: unknown) => {
+    const key = e instanceof PublishError ? `pub.err.${e.problem}` : 'pub.err.http';
+    setMsg({ kind: 'err', text: t(key as never) });
+  };
+
+  /**
+   * Sends the current results. `extra` is folded into settings only once the
+   * site has accepted the snapshot, so a failed activation changes nothing:
+   * the screen stays exactly as it was, ready for another attempt.
+   */
+  const send = async (opts?: { extra?: Record<string, unknown>; vis?: PublishVisibility }): Promise<boolean> => {
     setBusy(true);
     setMsg(null);
     try {
@@ -68,60 +80,123 @@ export default function Publish() {
         groups: domain.groups,
         resources: domain.resources,
         slug,
-        visibility,
+        visibility: opts?.vis ?? visibility,
         revision: (settings.publishRevision ?? 0) + 1,
       });
       await publishSnapshot({ endpoint: PUBLISH_ENDPOINT, token, slug }, snapshot);
-      persist({ publishRevision: snapshot.revision, publishSentAt: new Date().toISOString() });
+      persist({
+        publishRevision: snapshot.revision,
+        publishSentAt: new Date().toISOString(),
+        ...opts?.extra,
+      });
       setMsg({ kind: 'ok', text: t('pub.sent') });
+      return true;
     } catch (e) {
-      const key = e instanceof PublishError ? `pub.err.${e.problem}` : 'pub.err.http';
-      setMsg({ kind: 'err', text: t(key as never) });
+      showFailure(e);
+      return false;
     } finally {
       setBusy(false);
     }
   };
 
-  const stop = async () => {
+  /** One click: the first snapshot goes out and the link goes live. */
+  const activate = () => void send({ extra: { publishEnabled: true, publishSlug: slug } });
+
+  /**
+   * The one way sharing ends. The slug is pinned, so this revokes exactly the
+   * link that was handed out — a rename in the meantime changes nothing here.
+   * The confirm respects the app-wide "confirm destructive actions" setting.
+   */
+  const deleteLink = async () => {
+    if (settings.confirmDestructive && !window.confirm(t('pub.deleteConfirm', { url }))) return;
     setBusy(true);
     setMsg(null);
     try {
       await revokePublished({ endpoint: PUBLISH_ENDPOINT, token, slug });
-      setMsg({ kind: 'ok', text: t('pub.stopped') });
-    } catch {
-      setMsg({ kind: 'err', text: t('pub.err.network') });
+      persist({ publishEnabled: false, publishSlug: '' });
+      setQr('');
+      setMsg({ kind: 'ok', text: t('pub.deleted') });
+    } catch (e) {
+      showFailure(e);
     } finally {
       setBusy(false);
     }
   };
 
+  /** The link is the product; getting it onto the clipboard is one press. */
+  const copy = async () => {
+    setMsg(null);
+    try {
+      await navigator.clipboard.writeText(url);
+      setMsg({ kind: 'ok', text: t('pub.copied') });
+    } catch {
+      // Some WebViews expose no async clipboard (file:// origins, older engines);
+      // the document.execCommand path still works there.
+      const area = document.createElement('textarea');
+      area.value = url;
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      try {
+        document.execCommand('copy');
+        setMsg({ kind: 'ok', text: t('pub.copied') });
+      } catch {
+        setMsg({ kind: 'err', text: t('pub.copyFailed') });
+      } finally {
+        area.remove();
+      }
+    }
+  };
+
+  // A QR code is a way of getting the link onto a phone or a sheet of paper, so
+  // it is built only when asked for and then kept until the link changes.
   const share = async () => {
-    // A QR code is a way of getting the link onto a phone or a sheet of paper, so
-    // it is built only when asked for and then kept until the link changes.
     if (qr) { setQr(''); return; }
     setQr(await QRCode.toDataURL(url, { margin: 1, width: 280 }));
   };
 
-  const turnOff = () => {
-    persist({ publishEnabled: false });
-    setQr('');
-    setMsg(null);
+  // The choice lives inside the snapshot, so while the link is live a change is
+  // pushed at once — otherwise the site would keep answering with the old access
+  // rules until someone happened to press Update. Before activation it is only
+  // stored, to go out with the first snapshot.
+  const changeVisibility = (v: PublishVisibility) => {
+    if (enabled) void send({ extra: { publishVisibility: v }, vis: v });
+    else persist({ publishVisibility: v });
   };
 
   return (
     <Page title={t('pub.title')} sub={t('pub.sub')}>
-      <Panel>
-        <Switch
-          checked={enabled}
-          onChange={v => {
-            setMsg(null);
-            if (v) persist({ publishEnabled: true });
-            else turnOff();
-          }}
-          label={t('pub.enable')}
-          hint={t('pub.enableHint')}
-        />
+      {msg ? <Alert tone={msg.kind === 'ok' ? 'ok' : 'err'}>{msg.text}</Alert> : null}
+
+      <Panel title={t('pub.vis')}>
+        <Field label={t('pub.vis')} hint={t('pub.visHint')}>
+          <select value={visibility} disabled={busy} onChange={e => changeVisibility(e.target.value as PublishVisibility)}>
+            {VISIBILITIES.map(v => <option key={v} value={v}>{t(`pub.${v}` as never)}</option>)}
+          </select>
+        </Field>
       </Panel>
+
+      {!enabled ? (
+        <Panel title={t('pub.enable')} sub={t('pub.enableHint')}>
+          <div className="row">
+            <button className="btn primary" disabled={busy} onClick={activate}>{t('pub.activate')}</button>
+          </div>
+        </Panel>
+      ) : (
+        <Panel title={t('pub.url')}>
+          {/* The link is the product here, so it is shown as text rather than
+              hidden behind a copy button the organizer has to trust. */}
+          <div className="pub-link">{url}</div>
+          <div className="row" style={{ marginTop: 12 }}>
+            <button className="btn" disabled={busy} onClick={() => void copy()}>{t('pub.copy')}</button>
+            <button className="btn quiet" disabled={busy} onClick={() => void share()}>{qr ? t('pub.hideQr') : t('pub.showQr')}</button>
+            <button className="btn quiet" disabled={busy} onClick={() => void send()}>{t('pub.send')}</button>
+            <button className="btn quiet" disabled={busy} onClick={() => void deleteLink()}>{t('pub.delete')}</button>
+          </div>
+          {qr ? <img className="pub-qr" src={qr} alt={url} /> : null}
+        </Panel>
+      )}
 
       {/* Only shown once a token has been set, which means only for someone running
           their own site. Out of the box the app needs no token from the organizer,
@@ -156,35 +231,6 @@ export default function Publish() {
           </div>
         </Panel>
       ) : null}
-
-      {!enabled ? null : (
-        <>
-          {msg ? <Alert tone={msg.kind === 'ok' ? 'ok' : 'err'}>{msg.text}</Alert> : null}
-
-          <Panel title={t('pub.url')}>
-            {/* The link is the product here, so it is shown as text rather than
-                hidden behind a copy button the organizer has to trust. */}
-            <div className="pub-link">{url}</div>
-            <div className="row" style={{ marginTop: 12 }}>
-              <button className="btn primary" disabled={busy || !token} onClick={send}>{t('pub.send')}</button>
-              <button className="btn quiet" onClick={share}>{qr ? t('pub.hideQr') : t('pub.showQr')}</button>
-              <button className="btn quiet" disabled={busy || !token} onClick={stop}>{t('pub.stop')}</button>
-            </div>
-            {qr ? <img className="pub-qr" src={qr} alt={url} /> : null}
-          </Panel>
-
-          <Panel title={t('pub.vis')}>
-            <Field label={t('pub.vis')} hint={t('pub.visHint')}>
-              <select
-                value={visibility}
-                onChange={e => persist({ publishVisibility: e.target.value as PublishVisibility })}
-              >
-                {VISIBILITIES.map(v => <option key={v} value={v}>{t(`pub.${v}` as never)}</option>)}
-              </select>
-            </Field>
-          </Panel>
-        </>
-      )}
     </Page>
   );
 }

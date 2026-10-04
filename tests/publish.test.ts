@@ -4,11 +4,12 @@
 // that crosses, so what it contains — and what it deliberately does not — is the
 // question worth pinning down.
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildSnapshot, publicUrl, type BuildInput } from '../src/engine/publish';
+import { publishSnapshot, revokePublished, type PublishConfig } from '../src/engine/publish-client';
 import { publishSlug, slugify, PUBLISH_ENDPOINT, BUILT_IN_PUBLISH_TOKEN } from '../src/engine/publish-slug';
 import { DEFAULT_RULES, type Group, type Match, type Participant, type Tournament } from '../src/engine/types';
-import { setLocale } from '../src/i18n';
+import { setLocale, translate } from '../src/i18n';
 
 describe('the link comes from the event name', () => {
   it('reads like the tournament, not like a database key', () => {
@@ -179,6 +180,63 @@ describe('every language publishes the same contract', () => {
       const s = buildSnapshot(input());
       for (const key of ['match', 'participant', 'place', 'score'] as const) {
         expect(s.terms[key], `${loc}.${key}`).toBeTruthy();
+      }
+    }
+  });
+});
+
+describe('the conversation with the site', () => {
+  // The client speaks plain fetch, so a mock that answers with the statuses the
+  // site can give is the whole contract: where the request goes, what carries
+  // the token, and what each refusal is called when it reaches the screen.
+  const CFG: PublishConfig = { endpoint: 'https://results.example/', token: 'tok-123', slug: 'club-final' };
+  const answer = (status: number) =>
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status, ok: status >= 200 && status < 300 }));
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('addresses the publish route and carries the token in the header', async () => {
+    const call = vi.fn().mockResolvedValue({ status: 200, ok: true });
+    vi.stubGlobal('fetch', call);
+    await publishSnapshot(CFG, { v: 1 } as never);
+    expect(call).toHaveBeenCalledTimes(1);
+    const [url, init] = call.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://results.example/api/club-final/publish');
+    expect((init.headers as Record<string, string>)['x-publish-token']).toBe('tok-123');
+  });
+
+  it('treats an already-deleted link as done, not as an error', async () => {
+    // "Delete link" pressed twice, or after the site already lost the event,
+    // must not leave the organizer retrying a button with nothing left to do.
+    answer(404);
+    await expect(revokePublished(CFG)).resolves.toBeUndefined();
+  });
+
+  it('names each refusal the way the screen will show it', async () => {
+    const cases = [[401, 'token'], [422, 'rejected'], [503, 'unconfigured'], [500, 'http']] as const;
+    for (const [status, problem] of cases) {
+      answer(status);
+      await expect(publishSnapshot(CFG, {} as never), String(status)).rejects.toMatchObject({ problem });
+    }
+  });
+
+  it('separates a dead connection from a refusal', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')));
+    await expect(publishSnapshot(CFG, {} as never)).rejects.toMatchObject({ problem: 'network' });
+  });
+});
+
+describe('the activation screen speaks every language', () => {
+  // The one-click flow lives or dies on these labels: a raw key on a button
+  // would be a screen the organizer cannot act on, in any language.
+  const keys = ['pub.sub', 'pub.activate', 'pub.copy', 'pub.copied', 'pub.copyFailed',
+    'pub.send', 'pub.delete', 'pub.deleteConfirm', 'pub.deleted'] as const;
+  it('has every sentence, translated and never the key itself', () => {
+    for (const loc of ['en', 'pl', 'de', 'es'] as const) {
+      for (const key of keys) {
+        const label = translate(loc, key);
+        expect(label, `${key} in ${loc}`).toBeTruthy();
+        expect(label, `${key} in ${loc}`).not.toBe(key);
       }
     }
   });

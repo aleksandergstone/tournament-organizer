@@ -19,7 +19,7 @@ function baseUrl(endpoint: string): string {
   return endpoint.trim().replace(/\/+$/, '');
 }
 
-async function send(url: string, token: string, body: unknown, method: 'POST'): Promise<void> {
+async function send(url: string, token: string, body: unknown, method: 'POST', tolerate: number[] = []): Promise<void> {
   let res: Response;
   try {
     res = await fetch(url, {
@@ -32,6 +32,9 @@ async function send(url: string, token: string, body: unknown, method: 'POST'): 
     // from a refusal, because nothing was decided yet and a retry may work.
     throw new PublishError('network', url);
   }
+  // Statuses the caller has decided are fine — e.g. a 404 while revoking, where
+  // "the link is already gone" is the state being asked for, not a failure.
+  if (tolerate.includes(res.status)) return;
   if (res.status === 401 || res.status === 403) throw new PublishError('token', url);
   if (res.status === 422) throw new PublishError('rejected', url);
   // 503 is the site's own "I have no publish secret". That is a setup problem,
@@ -55,9 +58,16 @@ export function publishSnapshot(cfg: PublishConfig, snapshot: Snapshot): Promise
   return send(`${baseUrl(cfg.endpoint)}/api/${encodeURIComponent(cfg.slug)}/publish`, cfg.token, snapshot, 'POST');
 }
 
-/** Takes the event off the public internet. */
+/**
+ * Takes the event off the public internet.
+ *
+ * A 404 answers "there is nothing to delete", which is the state this call
+ * wanted: the link may already have been revoked from another machine, or the
+ * site may have lost it. Reporting that as an error would leave the organizer
+ * retrying a button that has nothing left to do.
+ */
 export function revokePublished(cfg: PublishConfig): Promise<void> {
-  return send(`${baseUrl(cfg.endpoint)}/api/${encodeURIComponent(cfg.slug)}/revoke`, cfg.token, { slug: cfg.slug }, 'POST');
+  return send(`${baseUrl(cfg.endpoint)}/api/${encodeURIComponent(cfg.slug)}/revoke`, cfg.token, { slug: cfg.slug }, 'POST', [404]);
 }
 
 /** Whether the site already holds this event, and at what revision. */

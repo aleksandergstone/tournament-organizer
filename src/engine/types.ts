@@ -291,6 +291,15 @@ export interface AppSettings {
    */
   publishToken?: string;
   publishVisibility?: 'unlisted' | 'public';
+  /**
+   * The slug the live link was created with, pinned at activation.
+   *
+   * Before the first activation the link is derived from the event name, so the
+   * organizer can see it before committing. Afterwards this value alone decides:
+   * renaming the tournament must not move a link people already hold, and
+   * "Delete link" has to revoke exactly the address that was shared.
+   */
+  publishSlug?: string;
   /** Slugs already in use locally, so a new event does not collide with them. */
   publishSlugTaken?: string[];
   /** Bumped on every send so a stale snapshot cannot overwrite a newer one. */
