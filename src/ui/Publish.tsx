@@ -44,6 +44,10 @@ export default function Publish() {
   const [busy, setBusy] = useState(false);
   const [qr, setQr] = useState('');
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  // Held in state rather than written straight into settings, so a half-typed token
+  // is never persisted: settings are saved on change, and a mistyped token that got
+  // stored would look configured while refusing every publish.
+  const [tokenDraft, setTokenDraft] = useState('');
 
   const persist = (patch: Record<string, unknown>) => setSettings({ ...settings, ...patch });
 
@@ -112,6 +116,38 @@ export default function Publish() {
           label={t('pub.enable')}
           hint={token ? t('pub.enableHint') : t('pub.noToken')}
         />
+      </Panel>
+
+      <Panel title={t('pub.token')}>
+        {/* The token is asked for once and kept on this computer. It is deliberately
+            not part of the app's build: a secret written into source is readable by
+            anyone who can clone the repository, and this one authorises overwriting
+            published results. */}
+        <Field label={t('pub.token')} hint={t('pub.tokenHint')}>
+          <input
+            type="password"
+            value={tokenDraft}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={token ? '••••••••' : ''}
+            onChange={e => setTokenDraft(e.target.value)}
+          />
+        </Field>
+        {token ? <p className="f-hint">{t('pub.tokenSaved')}</p> : null}
+        <div className="row" style={{ marginTop: 10 }}>
+          <button
+            className="btn"
+            disabled={tokenDraft.trim().length === 0}
+            onClick={() => { persist({ publishToken: tokenDraft.trim() }); setTokenDraft(''); }}
+          >
+            {t('pub.tokenSave')}
+          </button>
+          {token ? (
+            <button className="btn quiet" onClick={() => persist({ publishToken: '' })}>
+              {t('pub.tokenForget')}
+            </button>
+          ) : null}
+        </div>
       </Panel>
 
       {!enabled ? null : (
