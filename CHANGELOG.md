@@ -3,6 +3,49 @@
 All notable changes to Tournament Organizer.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semver.
 
+## [1.7.0] — 2026-10-04
+
+A release about the **public page**: the link you share now reads like the same
+product as the app that produced it, tells a spectator whether the event is live,
+and hands over paperwork they can actually use.
+
+### Added
+
+- **An event, not just a page.** The first thing on every public page is the event:
+  its name, its sport, its format, its dates and venue, whether it is a tournament
+  or a league, and whether it is live, about to start, in progress or finished.
+- **Live states a spectator can trust.** A match being scored reads as *Live*, one
+  whose kick-off has passed reads as *Delayed*, and one stopped mid-way reads as
+  *Interrupted* — and the page says how long ago the results were updated.
+- **A league is not a tournament.** A league gets a table, its fixtures grouped by
+  round or matchday, and no bracket; a knockout gets its bracket and no table. The
+  page works out which it is from the event's own format.
+- **Documents to take away.** Every published event has a documents page: the
+  standings, the fixture list, the participants and an event summary as CSV files
+  that open in any spreadsheet, plus a clean print sheet for the browser's own
+  "save as PDF". Only documents the event can fill are offered.
+- **A print sheet that prints.** Printing a public page gives the standings, the
+  bracket or the fixtures on white paper, without the navigation or the buttons.
+
+### Changed
+
+- **Wording.** Counted words are pluralised properly — "Matches", never "Matchses" —
+  a league's table is called a table, and its fixtures are called fixtures. Every page
+  carries its own description, so no two pages of one event read identically to a
+  search engine.
+- **Mobile and dark mode.** Wider tables scroll inside their own frame instead of
+  stretching the page, the current match is readable at arm's length, and the page
+  follows a phone that prefers a dark screen.
+- **Live updates degrade honestly.** If the event stream drops, the page says the
+  update is on a slower footing and keeps refreshing by polling, rather than leaving
+  a "Live" dot that quietly stopped meaning anything.
+
+### Fixed
+
+- **A league was handed a bracket.** Any event with matches outside a group — which
+  every round robin is — offered a "bracket" page built from its own matchdays. The
+  page now follows the event's format instead of the shape of its data.
+
 ## [1.6.0] — 2026-10-04
 
 A release about *sharing*, and about the app staying the only place that decides

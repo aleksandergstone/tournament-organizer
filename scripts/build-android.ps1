@@ -26,6 +26,14 @@ $env:Path = "$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:Path"
 # into a stopped build rather than a wrong artifact.
 Write-Host 'stopping the Gradle daemon…'
 & (Join-Path $root 'android\gradlew.bat') -p (Join-Path $root 'android') --stop | Out-Host
+# `--stop` asks politely, and a daemon that was killed mid-task can decline. A
+# surviving JVM keeps its handles on the very files `cap sync` is about to copy, so
+# the copy fails with a sharing violation and the build goes on to package the
+# previous bundle. Only JVMs from this project's own JDK are touched.
+Get-Process java -ErrorAction SilentlyContinue |
+  Where-Object { $_.Path -and $_.Path.StartsWith((Join-Path $tools 'jdk21')) } |
+  ForEach-Object { Write-Host "  stopping a lingering Gradle JVM (pid $($_.Id))"; Stop-Process -Id $_.Id -Force }
+Start-Sleep -Milliseconds 800
 
 # 1. The web bundle both platforms share.
 Push-Location $root
