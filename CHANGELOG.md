@@ -3,7 +3,7 @@
 All notable changes to Tournament Organizer.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semver.
 
-## [1.6.0] — 2026-10-03
+## [1.6.0] — 2026-10-04
 
 A release about *sharing*, and about the app staying the only place that decides
 anything. A tournament can be published to a website for spectators to follow
@@ -11,15 +11,26 @@ live, and taken down again — without ever leaving the organizer's computer fir
 
 ### Added
 
-- **Online preview, off by default.** One switch turns it on, and nothing is sent
-  until you ask for it. An accidental publish is visible to the whole internet;
+- **Online preview, off by default.** One button turns it on, and nothing is sent
+  until you press it. An accidental publish is visible to the whole internet;
   a tournament run on one laptop has no business being online at all.
-- **The link is the event's name.** You never type an address. If a name is
-  already taken, a few more characters are added automatically.
+- **Nothing to type before the first publish.** No address, no account and no
+  token to paste: the site and the publish key already ship with the app. Anyone
+  running their own website can still set their own token, and it wins.
+- **The link is the event's name, shown before you commit.** You never type an
+  address, and the address that will be created is on screen before anything is
+  sent. If a name is already taken, a few more characters are added automatically.
 - **Two levels of visibility.** *Anyone with the link* — shareable but never
   advertised. *Anyone, including search engines* — for an event you want found.
-- **Stop sharing in one click.** The link stops working immediately rather than
-  quietly serving results that are no longer true.
+  Changing it while the link is live is pushed at once, rather than waiting for
+  the next update.
+- **The link stays yours until you delete it.** Results stay published — through
+  app restarts and site restarts — until you press *Delete link*, which takes the
+  page down immediately instead of quietly serving results that are no longer true.
+- **A link that does not move.** Renaming the tournament leaves the published
+  address exactly as it was handed out, and *Delete link* revokes precisely that one.
+- **Copy, and a QR code.** The link goes to the clipboard in one press, and can
+  be shown as a QR code for a phone or a sheet of paper.
 - **The website draws, the app decides.** The public site renders a precomputed
   snapshot and never calculates a table of its own, so a rule you change cannot
   make two screens disagree.
@@ -27,6 +38,13 @@ live, and taken down again — without ever leaving the organizer's computer fir
   out. Your tags, audit history and tournament rules stay on your machine.
 - **A site with no publish token says so.** Instead of a generic failure, the app
   reports that sharing is switched off there, which no retry could fix.
+
+### Fixed
+
+- **Published results no longer vanish.** The site kept the live event only in
+  the memory of one server instance, so a restart made every organizer's link
+  404 for no reason they could act on. It is stored durably now, which is what
+  "shared until I delete it" has to mean.
 
 ## [1.5.0] — 2026-10-02
 

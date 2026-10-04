@@ -188,7 +188,34 @@ bracket again if you want a different language on an existing project.
 
 ## Offline use
 
-The app never needs the internet: no login, no server, no telemetry. Projects
-are stored on this device (app local storage) and optionally in `.top.json`
-files you control. Install once, use forever. Sharing a project with your own
-devices (LAN sync) is optional, off by default, and stays inside your Wi-Fi.
+The app never needs the internet for tournament work: no login, no server, no
+telemetry. Projects are stored on this device (app local storage) and optionally
+in `.top.json` files you control. Install once, use forever. Sharing a project
+with your own devices (LAN sync) is optional, off by default, and stays inside
+your Wi-Fi. The only feature that uses the network is the online preview below,
+and it does nothing until you press its button.
+
+## Online preview (optional)
+
+**Online preview** in the sidebar puts the current tournament on a website so
+spectators can follow it. It is off until you press **Activate link**, and nothing
+is sent before that.
+
+1. Choose who can see the link: *anyone with the link*, or *anyone, including
+   search engines*.
+2. Check the address on screen — it is the tournament's name written as a URL.
+   If you dislike it, rename the tournament; the address is created when you
+   activate, not before.
+3. Press **Activate link**. The link is live, can be copied to the clipboard, and
+   can be shown as a QR code.
+
+After that:
+
+- **Update results** sends the current results to the page again.
+- The link stays exactly as it was handed out, even if you rename the tournament.
+- Changing the visibility while the link is live is pushed immediately.
+- **Delete link** takes the page down at once and removes it from the server,
+  rather than leaving it there hidden.
+
+Only participants, matches and standings are sent. Your tags, notes, audit
+history and tournament rules stay on this computer.

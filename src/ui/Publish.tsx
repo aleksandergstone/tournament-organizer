@@ -179,7 +179,11 @@ export default function Publish() {
 
       {!enabled ? (
         <Panel title={t('pub.enable')} sub={t('pub.enableHint')}>
-          <div className="row">
+          {/* The address is shown before anything is sent. An organizer who
+              dislikes what their event name turned into can rename the event
+              instead of publishing an address nobody will want to hand out. */}
+          <div className="pub-link">{url}</div>
+          <div className="row" style={{ marginTop: 12 }}>
             <button className="btn primary" disabled={busy} onClick={activate}>{t('pub.activate')}</button>
           </div>
         </Panel>
