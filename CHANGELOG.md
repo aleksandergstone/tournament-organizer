@@ -3,6 +3,37 @@
 All notable changes to Tournament Organizer.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semver.
 
+## [1.7.2] — 2026-10-04
+
+The public page stops speaking only English. Everything the site says — headings,
+statuses, the documents, the metadata a search engine reads, even the "3 hours ago"
+on a page left open all evening — now reads in the language you publish in.
+
+### Added
+
+- **The public page speaks your language.** Publish in **English, Polish, German or
+  Spanish** and the page is written in it: navigation, statuses (*Played*, *Rozegrany*,
+  *Gespielt*, *Jugado*), standings columns, empty states, the documents page, the print
+  sheets, the PDF and CSV headings, and the title and description a search engine reads.
+  `<html lang>` and `og:locale` follow the event.
+- **Dates in your calendar, not the server's.** Kick-off times and dates are written the
+  way your language writes them — `2 paź 2026`, `2. Okt. 2026`, `2 oct 2026`,
+  `2 Oct 2026` — always in UTC, exactly as you entered them.
+- **A page with no event still answers in your language.** The 404 and the site root
+  follow the reader's own browser language, and English when nothing else is asked for.
+
+### Fixed
+
+- **Words are translated, not pluralised.** A team is no longer "Teams" in a language
+  that inflects the word: Polish says *Drużyny*, German *Mannschaften*. The same applies
+  to "Courts" in the schedule description, which used to produce "Plätzs" in German.
+
+### Compatibility
+
+- Events published before this release keep their English page: a snapshot without a
+  language, or in one nobody has written yet, reads in English rather than showing a
+  raw label. No re-sending is required.
+
 ## [1.7.1] — 2026-10-04
 
 Everything 1.7.0 set up, finished: results now reach the page without being pushed,
