@@ -204,6 +204,173 @@ export function StatusPill({ status }: { status: string }) {
   return <span className={'pill pill-' + statusTone(status)}>{statusLabel(status)}</span>;
 }
 
+/* ------------------------------------------------------------------ button */
+
+export interface ButtonProps {
+  children: ReactNode;
+  onClick?: () => void;
+  className?: string;
+  disabled?: boolean;
+  type?: 'button' | 'submit' | 'reset';
+  primary?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+}
+
+export function Button({ children, onClick, className = '', disabled, type = 'button', primary, size = 'md' }: ButtonProps) {
+  return (
+    <button
+      type={type}
+      className={`btn ${primary ? 'btn-primary' : ''} btn-${size} ${className}`}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ input */
+
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: ReactNode;
+  hint?: ReactNode;
+  error?: ReactNode;
+  field?: string;
+}
+
+export function Input({ label, hint, error, className = '', field, children, ...props }: InputProps & { children?: never }) {
+  return (
+    <div className={`field ${className}`} data-field={field}>
+      {label && <label>{label}</label>}
+      <input {...props} className="input" />
+      {hint && <span className="hint">{hint}</span>}
+      {error && <span className="error">{error}</span>}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ select */
+
+export interface SelectOption {
+  id: string;
+  label: string;
+}
+
+export interface SelectProps<T extends string> {
+  value: T;
+  onChange: (value: T) => void;
+  options: SelectOption[];
+  label?: ReactNode;
+  hint?: ReactNode;
+  error?: ReactNode;
+  disabled?: boolean;
+  className?: string;
+  field?: string;
+}
+
+export function Select<T extends string>({ value, onChange, options, label, hint, error, disabled, className = '', field }: SelectProps<T>) {
+  return (
+    <div className={`field ${className}`} data-field={field}>
+      {label && <label>{label}</label>}
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value as T)}
+        disabled={disabled}
+        className="select"
+      >
+        {options.map(o => (
+          <option key={o.id} value={o.id}>{o.label}</option>
+        ))}
+      </select>
+      {hint && <span className="hint">{hint}</span>}
+      {error && <span className="error">{error}</span>}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ badge */
+
+export type BadgeTone = 'neutral' | 'ok' | 'warn' | 'err' | 'info' | 'success';
+
+export interface BadgeProps {
+  children: ReactNode;
+  tone?: BadgeTone;
+  className?: string;
+}
+
+export function Badge({ children, tone = 'neutral', className = '' }: BadgeProps) {
+  return <span className={`badge badge-${tone} ${className}`}>{children}</span>;
+}
+
+/* ------------------------------------------------------------------ tabs */
+
+export interface TabOption {
+  id: string;
+  label: string;
+}
+
+export interface TabsProps {
+  active: string;
+  onChange: (id: string) => void;
+  tabs: TabOption[];
+  className?: string;
+}
+
+export function Tabs({ active, onChange, tabs, className = '' }: TabsProps) {
+  return (
+    <div className={`tabs ${className}`} role="tablist">
+      {tabs.map(tab => (
+        <button
+          key={tab.id}
+          role="tab"
+          type="button"
+          aria-selected={tab.id === active}
+          className={`tab ${tab.id === active ? 'on' : ''}`}
+          onClick={() => onChange(tab.id)}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ modal */
+
+export interface ModalProps {
+  open: boolean;
+  onClose: () => void;
+  title?: string;
+  children: ReactNode;
+  className?: string;
+}
+
+export function Modal({ open, onClose, title, children, className = '' }: ModalProps) {
+  if (!open) return null;
+  return (
+    <div className={`modal-overlay ${className}`} onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        {title && <header className="modal-header"><h2>{title}</h2></header>}
+        <div className="modal-body">{children}</div>
+        <footer className="modal-footer">
+          <button className="btn" onClick={onClose}>{t('common.cancel')}</button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ table */
+
+export interface TableProps {
+  children: ReactNode;
+  className?: string;
+}
+
+export function Table({ children, className = '' }: TableProps) {
+  return <table className={`table ${className}`}>{children}</table>;
+}
+
 /* ------------------------------------------------------------------ misc */
 
 export function Toolbar({ children }: { children: ReactNode }) {

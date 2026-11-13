@@ -1,4 +1,4 @@
-import { AppSettings, AuditEntry, DEFAULT_SETTINGS, Group, Match, Participant, ProjectFile, Tournament, VenueResource, nowIso, uid } from './types';
+import { AppSettings, AuditEntry, DEFAULT_SETTINGS, Group, Match, Participant, ProjectFile, Tournament, VenueResource, nowIso, uid, BoatClass, Boat, Flight, Race, SailingInstruction, NoticeOfRace, PublicDocument, SeriesStanding } from './types';
 import { migrateProject, sanitizeImport } from './validate';
 import { t } from '../i18n';
 import { recomputeBracket } from './recompute';
@@ -15,12 +15,30 @@ export function fileNameFor(t: Pick<Tournament, 'name'>): string {
 export function serializeProject(p: {
   tournament: Tournament; participants: Participant[]; groups: Group[]; matches: Match[];
   audit: AuditEntry[]; settings: AppSettings; resources?: VenueResource[];
+  // Sailing-specific data
+  boatClasses?: BoatClass[];
+  boats?: Boat[];
+  flights?: Flight[];
+  races?: Race[];
+  sailingInstructions?: SailingInstruction[];
+  noticeOfRace?: NoticeOfRace[];
+  publicDocuments?: PublicDocument[];
+  seriesStandings?: SeriesStanding[];
 }): string {
   const file: ProjectFile = {
     version: 1, app: 'tournament-organizer',
     tournament: p.tournament, participants: p.participants, groups: p.groups,
     matches: p.matches, audit: p.audit, settings: { ...DEFAULT_SETTINGS, ...p.settings },
     resources: p.resources ?? [],
+    // Sailing-specific data
+    boatClasses: p.boatClasses,
+    boats: p.boats,
+    flights: p.flights,
+    races: p.races,
+    sailingInstructions: p.sailingInstructions,
+    noticeOfRace: p.noticeOfRace,
+    publicDocuments: p.publicDocuments,
+    seriesStandings: p.seriesStandings,
   };
   return JSON.stringify(file, null, 2);
 }

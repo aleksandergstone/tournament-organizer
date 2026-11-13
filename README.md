@@ -35,8 +35,8 @@ Windows · macOS · Linux · MIT licensed
 
 ## Screens
 
-Real screens from the app, generated from a demo tournament — see all nine in the
-[launch page](https://aleksandergstone.github.io/tournament-organizer/).
+Real screens from the app, generated from a demo tournament — see them all on the
+main site: [tooboxplatform.online](https://tooboxplatform.online/#screens).
 
 | | |
 |---|---|
@@ -223,8 +223,11 @@ tools\jdk21\bin\keytool.exe -genkeypair -v -keystore android\to-release.keystore
 
 ### Launch assets
 
-- `site/` — the static launch page (GitHub Pages via `.github/workflows/pages.yml`, or any
-  static host). Its links point at `github.com/aleksandergstone/tournament-organizer`.
+- `site/` — an instant redirect to the main site, https://tooboxplatform.online
+  (GitHub Pages via `.github/workflows/pages.yml`). It keeps the path and query,
+  so an old `*.github.io/tournament-organizer/...` link lands on the same page on
+  the main site. The real landing page lives in the `tournament-organizer-site`
+  repo and is served from `/`; this folder holds no copy of it.
 - `site/assets/screens/*.png` — screenshots captured from the real app by
   `npm run screenshots`: it builds the app, generates a demo tournament with the actual engine
   (`scripts/demo-fixture.ts`) and photographs real screens (`scripts/screenshots.cjs`).
@@ -267,7 +270,7 @@ src/engine/   pure domain logic (no UI, no I/O) — fully tested
 src/state/    React store (history, autosave, settings)
 src/ui/       screens
 scripts/      version check, demo fixture, screenshot capture
-site/         static launch page + screenshots (GitHub Pages)
+site/         instant redirect to tooboxplatform.online (GitHub Pages)
 tests/        vitest suites
 docs/         user guide, release process, public release notes
 build/        icon assets + icon generator

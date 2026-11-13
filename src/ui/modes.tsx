@@ -1,4 +1,4 @@
-// Shared UI for the guided mode flow.
+﻿// Shared UI for the guided mode flow.
 //
 // Nothing here decides anything. Every card, tag, explanation, preset, preview
 // line and validation message comes from the engine catalogue in mode-info.ts /
@@ -13,6 +13,7 @@ import {
 } from '../engine/mode-info';
 import { presetsFor, activePresetId, type Preset } from '../engine/presets';
 import { templatesFor } from '../engine/discipline';
+import { isSailingFormat } from '../engine/sailing-modes';
 import { CUSTOM_STAGES, GENERATED_CUSTOM_STAGES, type CustomStage, type DrawResolution, type RuleSet, type TiebreakKey, type ValidationIssueLike } from '../engine/types';
 import { describeFormat } from '../engine/generate';
 import { Field, Panel, Switch, Alert, Collapse } from './kit';
@@ -33,6 +34,15 @@ const GROUP_TITLE: Record<SettingGroup, Key> = {
   byes: 'mode.set.byes',
   structure: 'mode.set.structure',
   reporting: 'mode.set.reporting',
+  // Sailing-specific setting groups
+  races: 'mode.why.scheduledRaces',
+  discards: 'mode.why.discardProfile',
+  flights: 'mode.why.useFlights',
+  fleetAssignment: 'mode.why.fleetAssignment',
+  timing: 'mode.why.timeLimitFirst',
+  'medal-race': 'mode.why.medalRace',
+  'custom-rules': 'mode.why.customStage',
+  bracket: 'mode.adv.bracket',
 };
 
 const RESOLUTIONS: readonly DrawResolution[] = ['overtime', 'replay', 'penalty', 'tiebreak'];
@@ -132,7 +142,7 @@ export function ModeRules({ format, rules, count }: {
             {spec.stages.map((s, i) => (
               <li key={String(s.key)}>
                 <b>{i + 1}. {t(s.key)}</b>
-                <span className="f-hint">{t(s.produces)} — {t(s.flow)}</span>
+                <span className="f-hint">{t(s.produces)} â€” {t(s.flow)}</span>
               </li>
             ))}
           </ol>
@@ -187,9 +197,10 @@ export function ModeRules({ format, rules, count }: {
  * feature name. Each card carries the mode's own sentence and its points rule,
  * so the choice is explicit before anything is committed.
  */
-export function ModePicker({ value, onChange }: {
+export function ModePicker({ value, onChange, excludeSailing = false }: {
   value: string;
   onChange(format: string): void;
+  excludeSailing?: boolean;
 }) {
   const t = useT();
   return (
@@ -198,7 +209,7 @@ export function ModePicker({ value, onChange }: {
         <div key={g} className="mode-group">
           <h3 className="mode-group-title">{t(pickerGroupTitle(g))}</h3>
           <div className="mode-grid">
-            {modesInGroup(g).map(m => (
+            {modesInGroup(g).filter(m => !excludeSailing || !isSailingFormat(m.format)).map(m => (
               <button
                 key={m.format}
                 type="button"
@@ -225,7 +236,7 @@ export function ModePicker({ value, onChange }: {
 /**
  * Everything the organizer needs before committing to a mode: the plain reading,
  * a checkable example, what it suits, what it does not do, and the six facts that
- * make the format unambiguous — points, draws, group size, who goes forward, and
+ * make the format unambiguous â€” points, draws, group size, who goes forward, and
  * what the structure contains.
  */
 export function ModeExplainer({ format, rules, count }: {
@@ -282,13 +293,13 @@ const LEVEL_KEY: Record<Preset['level'], Key> = {
 /**
  * Preset cards for the chosen mode. Each one says what it does, why you would
  * pick it over its neighbours, how many participants it fits and what it will
- * generate — the four questions that decide a preset. Applying one fills in the
+ * generate â€” the four questions that decide a preset. Applying one fills in the
  * settings that matter for this mode and leaves everything else alone.
  *
  * When a discipline is chosen it narrows the list to the ways *this sport* is
  * normally played. Those templates may imply a different format, so a card that
  * switches format says so rather than changing the event behind the organizer's
- * back. With no discipline — or a neutral one — this is exactly the old list.
+ * back. With no discipline â€” or a neutral one â€” this is exactly the old list.
  */
 export function PresetPicker({ format, rules, onApply, discipline }: {
   format: string;
@@ -416,7 +427,7 @@ export function SetupSummary({ format, rules, count }: {
           <tr><th scope="row">{t('mode.summaryOutput')}</th><td>
             {p.matches === null ? t('preview.matches')
               : t('mode.summaryOutputValue', { n: total })}
-            {p.byes > 0 ? ` · ${t('preview.byes')}: ${p.byes}` : ''}
+            {p.byes > 0 ? ` Â· ${t('preview.byes')}: ${p.byes}` : ''}
           </td></tr>
         </tbody>
       </table>
@@ -438,7 +449,7 @@ export function Glossary({ format }: { format: string }) {
       <dl className="glossary-list">
         {terms.map(term => {
           const full = t(term);
-          const cut = full.indexOf(' — ');
+          const cut = full.indexOf(' â€” ');
           return (
             <div key={term}>
               <dt>{cut > 0 ? full.slice(0, cut) : full}</dt>
@@ -490,7 +501,7 @@ function PointsFields({ format, rules, set, reporting }: {
   );
 }
 
-/** Draws, and — in a bracket — the rule that settles a level match. */
+/** Draws, and â€” in a bracket â€” the rule that settles a level match. */
 function DrawSettings({ format, rules, set, err }: {
   format: string; rules: RuleSet; set: Patch; err: (f: string) => string | undefined;
 }) {
@@ -523,7 +534,7 @@ function DrawSettings({ format, rules, set, err }: {
 }
 
 /**
- * The periods of a match — the thresholds the live scorer counts to.
+ * The periods of a match â€” the thresholds the live scorer counts to.
  *
  * 0 points means the sport has no periods at all (football, chess): the score is
  * one running total and the other two fields would be meaningless, so they are
@@ -588,7 +599,7 @@ function FieldTagLine({ format, field }: { format: string; field: keyof RuleSet 
   );
 }
 
-/** Group count, who advances, and the resulting sizes — stated, not implied. */
+/** Group count, who advances, and the resulting sizes â€” stated, not implied. */
 function GroupSettings({ format, rules, set, count, err }: {
   format: string; rules: RuleSet; set: Patch; count?: number | null; err: (f: string) => string | undefined;
 }) {
@@ -617,7 +628,7 @@ function GroupSettings({ format, rules, set, count, err }: {
   );
 }
 
-/** "one group holds about 6" — the number that makes the advance field checkable. */
+/** "one group holds about 6" â€” the number that makes the advance field checkable. */
 function groupHint(count: number | null | undefined, groups: number): string | undefined {
   const t = useT();
   if (typeof count !== 'number' || count < 2 || groups < 1) return undefined;
@@ -633,7 +644,7 @@ function roundsHint(count: number | null | undefined): string | undefined {
 
 /**
  * The rules for this mode, and only these. A setting a format cannot use is not
- * greyed out and not tucked away — it is absent, because a points field in a
+ * greyed out and not tucked away â€” it is absent, because a points field in a
  * knockout teaches the wrong model of what the app will do. Every control that
  * is present says how much it matters here and what changing it changes.
  */
@@ -757,7 +768,7 @@ export function SettingsForMode({ format, rules, set, count, issues = [], groups
                       value={s}
                       disabled={!GENERATED_CUSTOM_STAGES.includes(s)}>
                       {t(`mode.stageName.${s}` as Key)}
-                      {GENERATED_CUSTOM_STAGES.includes(s) ? '' : ` — ${t('mode.no.multiStage')}`}
+                      {GENERATED_CUSTOM_STAGES.includes(s) ? '' : ` â€” ${t('mode.no.multiStage')}`}
                     </option>
                   ))}
                 </select>

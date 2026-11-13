@@ -1,7 +1,9 @@
-name: Deploy landing page
+name: Redirect to tooboxplatform.online
 
-# Publishes site/ (the static launch page + screenshots) to GitHub Pages.
-# Enable once in the repository: Settings → Pages → Source: GitHub Actions.
+# Publishes site/ (index.html + 404.html) to GitHub Pages. Both files are an
+# instant redirect to the main site, https://tooboxplatform.online — the real
+# landing page lives in the tournament-organizer-site repo and is served from
+# its `/`. Enable once in the repository: Settings → Pages → Source: GitHub Actions.
 on:
   push:
     branches: [main]

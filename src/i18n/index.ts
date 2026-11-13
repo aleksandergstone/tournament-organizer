@@ -1,5 +1,5 @@
 // Localization — one source of truth for every user-facing string.
-//
+// //
 // Design notes:
 //  - English is canonical (`en.ts`); the other dictionaries are typed as
 //    `Dict = typeof en`, so a missing or misspelled key fails the build instead
@@ -9,11 +9,10 @@
 //  - The active locale is module state so non-React code (the engine, the PDF
 //    renderer) can translate too, and `useT()` re-renders components the moment
 //    the language changes — no reload, no internet.
+//  - Translations are lazily loaded: only the active language is in the initial
+//    bundle. Other languages load on demand (~125KB each saved).
 import { useSyncExternalStore } from 'react';
 import { en, type Dict } from './en';
-import { pl } from './pl';
-import { de } from './de';
-import { es } from './es';
 
 export type { Dict };
 export type Locale = 'en' | 'pl' | 'de' | 'es';
@@ -26,8 +25,6 @@ export const LOCALES: Locale[] = ['en', 'pl', 'de', 'es'];
 export const LOCALE_NAMES: Record<Locale, string> = {
   en: 'English', pl: 'Polski', de: 'Deutsch', es: 'Español',
 };
-
-const DICTS: Record<Locale, Dict> = { en, pl, de, es };
 
 /**
  * Region per language for date formatting. English is pinned to en-GB so dates
@@ -67,13 +64,50 @@ function interpolate(template: string, params?: Record<string, string | number>)
     key in params ? String(params[key]) : whole);
 }
 
-/** Pure lookup. Safe for tests, the PDF renderer and engine messages. */
-export function translate(locale: Locale, key: string, params?: Record<string, string | number>): string {
-  const dict = DICTS[locale] ?? DICTS.en;
-  const value = (dict as Record<string, string>)[key]
-    ?? (DICTS.en as Record<string, string>)[key];
-  // Unknown key: show the key itself rather than an empty label.
-  return value === undefined ? key : interpolate(value, params);
+// ---- Lazy-loaded dictionaries ----------------------------------------------
+
+/** Cache of loaded dictionaries. English is always available. */
+const dictCache: Record<Locale, Promise<Dict> | null> = {
+  en: Promise.resolve(en),
+  pl: null,
+  de: null,
+  es: null,
+};
+
+/** Synchronous cache of resolved dictionaries for instant lookup. */
+const resolvedDicts: Record<Locale, Dict | null> = {
+  en,
+  pl: null,
+  de: null,
+  es: null,
+};
+
+/** Map locale to its dynamic import function. */
+const localeImports: Record<Locale, () => Promise<{ default: Dict }>> = {
+  en: () => Promise.resolve({ default: en }),
+  pl: () => import('./pl').then(m => ({ default: m.pl })),
+  de: () => import('./de').then(m => ({ default: m.de })),
+  es: () => import('./es').then(m => ({ default: m.es })),
+};
+
+/** Dynamically import a locale dictionary and cache the resolved value. */
+export async function loadDict(locale: Locale): Promise<Dict> {
+  if (locale === 'en') return en;
+  if (dictCache[locale]) return dictCache[locale]!;
+  
+  const promise = localeImports[locale]().then(mod => {
+    const dict = mod.default;
+    resolvedDicts[locale] = dict; // Store for synchronous access
+    return dict;
+  }) as Promise<Dict>;
+  
+  dictCache[locale] = promise;
+  return promise;
+}
+
+/** Synchronous lookup - uses resolved cache if available, falls back to English. */
+function getDictSync(locale: Locale): Dict {
+  return resolvedDicts[locale] ?? en;
 }
 
 // ---- active locale (module state, so the engine can translate too) --------
@@ -94,9 +128,13 @@ function syncDocumentLanguage(locale: Locale): void {
 }
 
 /** Called by the store when the preference changes; notifies React. */
-export function setLocale(locale: Locale): void {
+export async function setLocale(locale: Locale): Promise<void> {
   if (!isLocale(locale)) return;
   syncDocumentLanguage(locale);
+  
+  // Preload the dictionary
+  await loadDict(locale);
+  
   if (locale === active) return;
   active = locale;
   for (const fn of listeners) fn();
@@ -117,8 +155,32 @@ export type Translate = (key: keyof Dict & string, params?: Record<string, strin
 /** Component hook: a `t` bound to the current language, re-created on change. */
 export function useT(): Translate {
   const locale = useSyncExternalStore(subscribe, getLocale, getLocale);
-  return (key, params) => translate(locale, key, params);
+  
+  // Ensure the dictionary is loaded (fire and forget)
+  if (locale !== 'en' && !dictCache[locale]) {
+    loadDict(locale);
+  }
+  
+  return (key, params) => {
+    const dict = getDictSync(locale);
+    const value = (dict as Record<string, string>)[key]
+      ?? (en as Record<string, string>)[key];
+    return value === undefined ? key : interpolate(value, params);
+  };
 }
 
 /** Non-React lookup (engine, PDF). Reads the locale at call time. */
-export const t: Translate = (key, params) => translate(active, key, params);
+export const t: Translate = (key, params) => {
+  const dict = getDictSync(active);
+  const value = (dict as Record<string, string>)[key]
+    ?? (en as Record<string, string>)[key];
+  return value === undefined ? key : interpolate(value, params);
+};
+
+/** Synchronous lookup for a specific locale (tests, SSR). Falls back to English. */
+export function translate(locale: Locale, key: string, params?: Record<string, string | number>): string {
+  const dict = getDictSync(locale);
+  const value = (dict as Record<string, string>)[key]
+    ?? (en as Record<string, string>)[key];
+  return value === undefined ? key : interpolate(value, params);
+}

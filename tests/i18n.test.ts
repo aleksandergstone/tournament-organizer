@@ -1,9 +1,9 @@
 // Localization: lookup, fallback, settings resolution, live switching, and the
 // promise that all four languages stay key-for-key identical.
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import {
   LOCALES, LOCALE_NAMES, detectLocale, getLocale, localeFromTag, resolveLocale,
-  setLocale, translate,
+  setLocale, translate, loadDict,
 } from '../src/i18n';
 import { en } from '../src/i18n/en';
 import { pl } from '../src/i18n/pl';
@@ -20,7 +20,14 @@ const players = (names: string): Participant[] => names.split('').map((name, i) 
   id: `p${i}`, name, kind: 'player', active: true, seed: i + 1,
 }));
 
-afterEach(() => setLocale('en'));
+beforeAll(async () => {
+  // Pre-load all dictionaries so translate() works synchronously in tests
+  for (const loc of LOCALES) {
+    if (loc !== 'en') await loadDict(loc);
+  }
+});
+
+afterEach(async () => { await setLocale('en'); });
 
 describe('dictionaries', () => {
   it('ships the same keys in every language', () => {
@@ -75,18 +82,18 @@ describe('language resolution', () => {
     expect(resolveLocale('nonsense' as never)).toBe(detectLocale());
   });
 
-  it('switches the active language for non-React callers', () => {
+  it('switches the active language for non-React callers', async () => {
     expect(getLocale()).toBe('en');
-    setLocale('de');
+    await setLocale('de');
     expect(getLocale()).toBe('de');
     expect(describeFormat('single-elimination')).toBe(de['format.single-elimination']);
     expect(matchStatusLabel('played')).toBe(de['doc.played']);
     expect(validateTournament({})[0].message).toBe(de['engine.nameRequired']);
   });
 
-  it('follows the language everywhere the engine speaks', () => {
+  it('follows the language everywhere the engine speaks', async () => {
     for (const loc of LOCALES) {
-      setLocale(loc);
+      await setLocale(loc);
       const d = DICTS[loc];
       expect(describeFormat('groups-knockout')).toBe(d['format.groups-knockout']);
       expect(describeFormat('league')).toBe(d['format.league']);
@@ -100,14 +107,14 @@ describe('language resolution', () => {
     }
   });
 
-  it('writes generated round names in the chosen language', () => {
+  it('writes generated round names in the chosen language', async () => {
     const eight = players('ABCDEFGH');
     const elim = () => [...new Set(genSingleElim(eight, DEFAULT_RULES).matches.map(m => m.roundName))];
     const rr = () => [...new Set(genRoundRobin(eight, DEFAULT_RULES).map(m => m.roundName))];
-    setLocale('pl');
+    await setLocale('pl');
     expect(elim()).toEqual([pl['round.quarter'], pl['round.semi'], pl['round.final']]);
     expect(rr()[0]).toBe(pl['round.n'].replace('{n}', '1'));
-    setLocale('de');
+    await setLocale('de');
     expect(elim()).toEqual([de['round.quarter'], de['round.semi'], de['round.final']]);
     expect(rr()[0]).toBe(de['round.n'].replace('{n}', '1'));
   });

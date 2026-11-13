@@ -184,12 +184,12 @@ export const DISCIPLINES: readonly Discipline[] = [
     defaults: {
       // No draw between boats: a race is decided by its result. Ranking comes
       // from wins and the margin, which is what a regatta result sheet shows.
-      allowDraws: false, winPoints: 2, drawPoints: 0, lossPoints: 1, overtimeAllowed: false,
+      allowDraws: false, winPoints: 1, drawPoints: 0, lossPoints: 0, overtimeAllowed: false,
       periodPoints: 0, periodsToWin: 1,
       tiebreakOrder: ['points', 'wins', 'diff', 'scored'],
     },
-    // A fleet racing each other once, a scheduled start list, and a series.
-    templates: ['everyone-plays', 'match-list', 'everyone-plays-twice', 'season-league'],
+    // Sailing-specific templates pointing to sailing presets.
+    templates: ['fleet-standard', 'fleet-olympic', 'match-racing-standard', 'team-racing-standard'],
   },
 ];
 

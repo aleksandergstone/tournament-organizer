@@ -2,6 +2,29 @@
 
 Everything works offline. Nothing is uploaded anywhere.
 
+## Create a sailing event
+
+Choose **New sailing event** on Home to use the sailing-specific wizard. It
+collects the event details, format, race-series settings and initial boat class.
+After creation, use the sailing navigation to manage boats, schedule and score
+races, review standings, and maintain regatta documents.
+
+- **Fleet racing** scores a shared fleet in each race.
+- **Match racing** schedules repeated head-to-head races for each pair of boats.
+- **Team racing** requires assigning active boats to teams and displays both
+  boat and team standings.
+- Race results use the selected series scoring system. Completed races
+  contribute to standings; scheduled and started races do not.
+
+Race count, minimum races, scoring, time targets and series discards can be
+configured in the wizard. Flights and handicap/time-corrected scoring are not
+implemented in this release. Sailing documents can be managed as event records;
+automatic generation of sailing notices/instructions is not included.
+
+To build and validate the Windows release, run `npm ci`, then
+`npm run release:check` and `npm run dist:win`. The NSIS installer is written to
+`release/Tournament-Organizer-<version>-win-x64.exe`.
+
 ## Create a tournament
 
 1. On the Home screen click **+ New tournament**.

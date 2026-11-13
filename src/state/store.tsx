@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppSettings, AuditEntry, DEFAULT_SETTINGS, nowIso, uid, VenueResource } from '../engine/types';
+import { AppSettings, AuditEntry, DEFAULT_SETTINGS, nowIso, uid, VenueResource, BoatClass, Boat, Flight, Race, SailingInstruction, NoticeOfRace, PublicDocument, SeriesStanding } from '../engine/types';
 import { resolveTarget, sendSnapshot, snapshotFor, publishLogo } from '../engine/publisher';
 import { Domain } from '../engine/model';
 import { disk, log } from '../engine/storage';
@@ -9,13 +9,20 @@ import { StandingRow } from '../engine/types';
 import { parseProject } from '../engine/storage';
 import { ProjectFile } from '../engine/types';
 import { t, resolveLocale, setLocale } from '../i18n';
-export type Screen = 'home'|'wizard'|'overview'|'participants'|'rules'|'bracket'|'matches'|'live'|'standings'|'export'|'settings'|'import'|'display'|'schedule'|'codes'|'season'|'regulation'|'publish';
+export type Screen = 'home'|'wizard'|'overview'|'participants'|'rules'|'bracket'|'matches'|'live'|'standings'|'export'|'settings'|'import'|'display'|'schedule'|'codes'|'season'|'regulation'|'publish'|'sailing-wizard'|'sailing-overview'|'sailing-boats'|'sailing-races'|'sailing-standings'|'sailing-documents'|'sailing-settings'|'sailing-classes'|'sailing-crews';
+const SAILING_FORMATS = new Set(['fleet-racing', 'match-racing', 'team-racing']);
+
+/** Landing screen for a persisted project, based on the data model it uses. */
+export function overviewScreenForFormat(format: string): Screen {
+  return SAILING_FORMATS.has(format) ? 'sailing-overview' : 'overview';
+}
 interface Ctx { domain: Domain; settings: AppSettings; screen: Screen; go(s: Screen): void;
   /** Steps back through the screens the organizer opened (Android's back button). */
   back(): boolean;
 update(fn: (d: Domain) => Domain, msg?: string): void; setSettings(s: AppSettings): void;
 undo_(): void; redo_(): void; canUndo: boolean; canRedo: boolean; standings: StandingRow[];
-save(): void; dirty: boolean; lastSaved: string|null; saveError: string|null; newProject(t: Domain['tournament']): void;
+save(): void; dirty: boolean; lastSaved: string|null; saveError: string|null;
+newProject(t: Domain['tournament'], initial?: Partial<Domain>, firstScreen?: Screen): void;
 openProject(id: string): boolean; closeProject(): void; deleteProject(id: string): void;
 importJson(j: string): string[]; importFile(text: string, path: string): string[]; hasProject: boolean;
 projectFile(): ProjectFile; applyMerged(f: ProjectFile, msg: string): void;
@@ -29,12 +36,46 @@ export function fileOf(d: Domain, s: AppSettings): ProjectFile {
     version: 1, app: 'tournament-organizer',
     tournament: d.tournament, participants: d.participants, groups: d.groups,
     matches: d.matches, audit: d.audit, settings: s, resources: d.resources ?? [],
+    // Sailing-specific data
+    boatClasses: d.boatClasses,
+    boats: d.boats,
+    flights: d.flights,
+    races: d.races,
+    sailingInstructions: d.sailingInstructions,
+    noticeOfRace: d.noticeOfRace,
+    publicDocuments: d.publicDocuments,
+    seriesStandings: d.seriesStandings,
+    // Extended sailing data for new formats
+    boatHandicaps: d.boatHandicaps,
+    matchRacePairings: d.matchRacePairings,
+    teamRaceMatches: d.teamRaceMatches,
+    teamRacingTeams: d.teamRacingTeams,
+    groupStageConfigs: d.groupStageConfigs,
+    knockoutConfigs: d.knockoutConfigs,
+    groupFinalsStandings: d.groupFinalsStandings,
   };
 }
 function fromFile(f: ProjectFile): Domain {
   return {
     tournament: f.tournament, participants: f.participants, groups: f.groups,
     matches: f.matches, audit: f.audit, resources: f.resources ?? [],
+    // Sailing-specific data
+    boatClasses: f.boatClasses,
+    boats: f.boats,
+    flights: f.flights,
+    races: f.races,
+    sailingInstructions: f.sailingInstructions,
+    noticeOfRace: f.noticeOfRace,
+    publicDocuments: f.publicDocuments,
+    seriesStandings: f.seriesStandings,
+    // Extended sailing data for new formats
+    boatHandicaps: f.boatHandicaps,
+    matchRacePairings: f.matchRacePairings,
+    teamRaceMatches: f.teamRaceMatches,
+    teamRacingTeams: f.teamRacingTeams,
+    groupStageConfigs: f.groupStageConfigs,
+    knockoutConfigs: f.knockoutConfigs,
+    groupFinalsStandings: f.groupFinalsStandings,
   };
 }
 export function Provider({ children }: { children: React.ReactNode }) {
@@ -81,7 +122,9 @@ export function Provider({ children }: { children: React.ReactNode }) {
   // Language does the same: the active locale is module state in src/i18n, so
   // every `useT()` re-renders at once — no reload, and "system" is re-checked
   // whenever the preference changes.
-  useEffect(() => { setLocale(resolveLocale(settings.locale)); }, [settings.locale]);
+  useEffect(() => {
+    setLocale(resolveLocale(settings.locale));
+  }, [settings.locale]);
   const persist = useCallback((d: Domain, s: AppSettings) => {
     if (!d.tournament.name) return;
     try {
@@ -156,21 +199,32 @@ export function Provider({ children }: { children: React.ReactNode }) {
       setHist(initHistory({ ...d, audit: log(d.audit, 'lan.sync', msg) }));
       setDirty(true); setHas(true); setSaveError(null);
     },
-    newProject: (t) => { setHist(initHistory({ tournament: t, participants: [], groups: [], matches: [], audit: log([], 'project.created', t.name), resources: [] })); setDirty(true); setHas(true); jump('participants'); },
+    newProject: (t, initial = {}, firstScreen = 'participants') => {
+      setHist(initHistory({
+        ...initial,
+        tournament: t,
+        participants: initial.participants ?? [],
+        groups: initial.groups ?? [],
+        matches: initial.matches ?? [],
+        audit: log(initial.audit ?? [], 'project.created', t.name),
+        resources: initial.resources ?? [],
+      }));
+      setDirty(true); setHas(true); jump(firstScreen);
+    },
     openProject: (id) => { const f = disk.load(id); if (!f) return false;
       setHist(initHistory(fromFile(f)));
-      setS({ ...DEFAULT_SETTINGS, ...f.settings }); setDirty(false); setHas(true); setLast(f.tournament.updatedAt); jump('overview'); return true; },
+      setS({ ...DEFAULT_SETTINGS, ...f.settings }); setDirty(false); setHas(true); setLast(f.tournament.updatedAt); jump(overviewScreenForFormat(f.tournament.format)); return true; },
     closeProject: () => { setHist(initHistory({ tournament: freshT(), participants: [], groups: [], matches: [], audit: [], resources: [] })); setDirty(false); setHas(false); jump('home'); },
     deleteProject: (id) => { try { disk.remove(id); } catch { /* deletion is best-effort; refresh shows reality */ } finally { setListTick(t => t + 1); } },
     importJson: (j) => { const { file, warnings } = parseProject(j);
       setHist(initHistory(fromFile(file)));
-      setS({ ...DEFAULT_SETTINGS, ...file.settings }); setDirty(true); setHas(true); setScreen('overview'); return warnings; },
+      setS({ ...DEFAULT_SETTINGS, ...file.settings }); setDirty(true); setHas(true); jump(overviewScreenForFormat(file.tournament.format)); return warnings; },
     importFile: (text, path) => { const { file, warnings } = parseProject(text);
       const all = [...warnings];
       if (file.tournament.name === '' || file.tournament.name === '(untitled)') all.push(t('store.openedNoName', { path }));
       else all.push(t('store.openedPath', { path }));
       setHist(initHistory({ ...fromFile(file), audit: [...file.audit, { id: uid('a'), at: nowIso(), action: 'project.opened-file', detail: path }] }));
-      setS({ ...DEFAULT_SETTINGS, ...file.settings }); setDirty(true); setHas(true); setScreen('overview'); return all; },
+      setS({ ...DEFAULT_SETTINGS, ...file.settings }); setDirty(true); setHas(true); jump(overviewScreenForFormat(file.tournament.format)); return all; },
     hasProject,
     focusMatch,
     setFocusMatch,

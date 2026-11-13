@@ -1,10 +1,10 @@
 // Localization guards for the last user-facing English sentences. The history
 // panel used to print raw machine keys, and seven dialogs and errors were
 // hard-coded English in every language; these tests make that impossible again.
-import { describe, expect, it, afterEach } from 'vitest';
+import { describe, expect, it, afterEach, beforeAll } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
-import { LOCALES, setLocale, translate } from '../src/i18n';
+import { LOCALES, setLocale, translate, loadDict } from '../src/i18n';
 import { en } from '../src/i18n/en';
 import { pl } from '../src/i18n/pl';
 import { de } from '../src/i18n/de';
@@ -18,7 +18,14 @@ const sources = () => readdirSync(root + 'ui').filter(f => f.endsWith('.tsx'))
   .map(f => readFileSync(root + 'ui' + sep + f, 'utf8'))
   .concat([readFileSync(root + 'state' + sep + 'store.tsx', 'utf8')]);
 
-afterEach(() => setLocale('en'));
+beforeAll(async () => {
+  // Pre-load all dictionaries so translate() works synchronously in tests
+  for (const loc of LOCALES) {
+    if (loc !== 'en') await loadDict(loc);
+  }
+});
+
+afterEach(async () => { await setLocale('en'); });
 
 describe('the history panel speaks the organizer’s language', () => {
   const samples = [
@@ -28,8 +35,8 @@ describe('the history panel speaks the organizer’s language', () => {
     'branding.updated', 'project.created', 'project.opened-file',
   ];
 
-  it('translates every action the app writes', () => {
-    setLocale('de');
+  it('translates every action the app writes', async () => {
+    await setLocale('de');
     for (const action of samples) {
       const line = describeAudit(action);
       const token = action.split(' ')[0];
@@ -40,16 +47,17 @@ describe('the history panel speaks the organizer’s language', () => {
     }
   });
 
-  it('says something different in each language', () => {
-    const labels = LOCALES.map(loc => {
-      setLocale(loc);
-      return describeAudit('participant.add Anna').label;
-    });
+  it('says something different in each language', async () => {
+    const labels = [];
+    for (const loc of LOCALES) {
+      await setLocale(loc);
+      labels.push(describeAudit('participant.add Anna').label);
+    }
     expect(new Set(labels).size).toBe(LOCALES.length);
   });
 
-  it('keeps the name or the count as the detail, not in the sentence', () => {
-    setLocale('en');
+  it('keeps the name or the count as the detail, not in the sentence', async () => {
+    await setLocale('en');
     expect(describeAudit('participant.add Anna').detail).toBe('Anna');
     // The count is already in the sentence, so the detail column stays empty.
     expect(describeAudit('structure.generate 7').detail).toBe('');
@@ -58,8 +66,8 @@ describe('the history panel speaks the organizer’s language', () => {
     expect(describeAudit('project.created', 'Cup').detail).toBe('Cup');
   });
 
-  it('still shows something for an action it has never seen', () => {
-    setLocale('pl');
+  it('still shows something for an action it has never seen', async () => {
+    await setLocale('pl');
     const line = describeAudit('something.new 3', 'x');
     expect(line.label).toBe('something.new 3');
     expect(line.detail).toBe('x');
@@ -108,11 +116,11 @@ describe('no user-facing sentence is hard-coded English', () => {
     }
   });
 
-  it('keeps the line breaks in the confirm dialog', () => {
+  it('keeps the line breaks in the confirm dialog', async () => {
     for (const loc of LOCALES) {
       expect(DICTS[loc]['st.confirmFinish'], loc).toContain('\n');
     }
-    setLocale('pl');
+    await setLocale('pl');
     expect(translate('pl', 'st.confirmFinish')).toBe(pl['st.confirmFinish']);
   });
 });

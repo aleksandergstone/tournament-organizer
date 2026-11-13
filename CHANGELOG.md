@@ -3,6 +3,21 @@
 All notable changes to Tournament Organizer.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semver.
 
+## [1.8.0] — 2026-11-10
+
+### Fixed
+
+- Restored the complete tournament creation wizard so standard tournament setup,
+  mode selection, presets, settings and validation remain available.
+- Added the missing sailing preset definitions and corrected the catalogue test
+  to match the three sailing formats present in the current code.
+- Completed the release notes and changelog metadata for version 1.8.0.
+
+### Note
+
+- The sailing creation screen remains unfinished; this release does not claim
+  that the sailing setup flow is complete.
+
 ## [1.7.2] — 2026-10-04
 
 The public page stops speaking only English. Everything the site says — headings,

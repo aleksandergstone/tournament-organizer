@@ -19,7 +19,7 @@ const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'u
 const pkg = JSON.parse(read('package.json'));
 const DICTS = { en, pl, de, es } as Record<string, Record<string, string>>;
 
-afterEach(() => setLocale('en'));
+afterEach(async () => { await setLocale('en'); });
 
 describe('app identity', () => {
   it('uses one product name everywhere it is shown', () => {
@@ -80,7 +80,30 @@ describe('app identity', () => {
     const acc = css.match(/--acc:\s*(#[0-9a-f]{6})/i)?.[1];
     expect(acc, 'src/app.css must define --acc').toBeTruthy();
     expect(read('index.html').toLowerCase()).toContain(acc!.slice(1));
+    // site/index.html is a redirect, but the comment next to its favicon keeps
+    // the accent hex so the redirect still carries the product colour.
     expect(read('site/index.html').toLowerCase()).toContain(acc!.slice(1));
+  });
+
+  it('redirects GitHub Pages to the main site instead of duplicating it', () => {
+    // The real landing page lives on tooboxplatform.online (served from `/` by
+    // the tournament-organizer-site repo). GitHub Pages must send every visitor
+    // there instead of serving a second copy of the page.
+    for (const page of ['site/index.html', 'site/404.html']) {
+      const html = read(page);
+      // Points at the main site — GitHub, never github.io.
+      expect(html, `${page} must link to the main site`).toContain('https://tooboxplatform.online/');
+      expect(html, `${page} must not link back to GitHub Pages`).not.toContain('github.io');
+      // Instant redirect with and without JavaScript.
+      expect(html, `${page} must redirect without JS`).toContain('http-equiv="refresh"');
+      expect(html, `${page} must redirect with JS`).toContain('location.replace(');
+      // Keeps the deep path, so an old event link lands on the same event page.
+      expect(html, `${page} must keep the path`).toContain('location.pathname');
+      expect(html, `${page} must keep the query`).toContain('location.search');
+      // Never indexed: the page is a signpost, not a second copy of the site.
+      expect(html, `${page} must stay out of search results`).toContain('noindex');
+      expect(html, `${page} must hand SEO to the main site`).toContain('rel="canonical"');
+    }
   });
 });
 
@@ -113,8 +136,8 @@ describe('documents in every language', () => {
   }
 
   for (const loc of ['en', 'pl', 'de', 'es'] as const) {
-    it(`prints a ${loc} document with translated headings`, () => {
-      setLocale(loc);
+    it(`prints a ${loc} document with translated headings`, async () => {
+      await setLocale(loc);
       const d = DICTS[loc];
       const report = playedReport();
 
@@ -134,12 +157,12 @@ describe('documents in every language', () => {
     });
   }
 
-  it('prints dates in the language of the document', () => {
+  it('prints dates in the language of the document', async () => {
     // English keeps the day-first wording the app has always printed.
     expect(fmtDate('2026-03-14')).toBe('14 Mar 2026');
     const seen = new Set<string>();
     for (const loc of ['en', 'pl', 'de', 'es'] as const) {
-      setLocale(loc);
+      await setLocale(loc);
       const printed = fmtDate('2026-03-14');
       expect(printed).toContain('14');
       expect(printed).toContain('2026');
@@ -148,8 +171,8 @@ describe('documents in every language', () => {
     expect(seen.size, 'the languages must not share one date format').toBeGreaterThanOrEqual(3);
   });
 
-  it('writes CSV headings in the chosen language too', () => {
-    setLocale('de');
+  it('writes CSV headings in the chosen language too', async () => {
+    await setLocale('de');
     const csv = reportToCsv(playedReport());
     expect(csv).toContain(DICTS.de['doc.team']);
     expect(csv).toContain(DICTS.de['doc.colPts']);

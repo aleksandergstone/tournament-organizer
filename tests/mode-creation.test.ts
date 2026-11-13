@@ -45,10 +45,19 @@ const waiting = (ms: { homeId: string | null; awayId: string | null }[]) =>
   ms.filter(m => !m.homeId && !m.awayId).length;
 
 describe('mode catalogue', () => {
-  it('describes all nine modes', () => {
+  it('describes all nine standard modes', () => {
     expect(ALL_FORMATS).toEqual([
       'single-elimination', 'double-elimination', 'groups-knockout', 'round-robin',
       'swiss', 'league', 'team-match', 'individual-match', 'custom',
+    ]);
+  });
+
+  it('sailing modes are in a separate catalogue', async () => {
+    const { SAILING_MODES } = await import('../src/engine/sailing-modes');
+    const sailingFormats = SAILING_MODES.map(m => m.format).sort();
+    expect(sailingFormats).toEqual([
+      'custom-regatta', 'fleet-racing', 'flighted-racing', 'group-stage-finals',
+      'knockout', 'match-racing', 'medal-race', 'round-robin', 'team-racing',
     ]);
   });
 
@@ -662,16 +671,22 @@ describe('the exact mechanics of each mode', () => {
     expect(showsField('league', 'swissRounds')).toBe(false);
   });
 
-  it('custom: every combination on show, and the inert ones are named out loud', () => {
+  it('custom: every combination on show, and the inert ones are named out loud', async () => {
     const s = specFor('custom');
     // Custom declares every group on purpose, but only the ones with a live
     // field are rendered: a flat pairing list has no groups and no rounds, so
     // those two panels are not shown. The reporting group is never rendered
     // anywhere, because the points really do build the table in Custom.
-    expect(s.groups).toEqual([...ALL_GROUPS].filter(g => g !== 'reporting'));
-    expect(visibleGroups('custom')).toEqual(
-      ['scoring', 'sets', 'draws', 'tiebreak', 'seeding', 'meeting', 'byes', 'structure']);
-    expect(hiddenGroups('custom')).toEqual(['groups', 'rounds', 'reporting']);
+    // With sailing formats added, custom now also exposes sailing-specific groups.
+    expect(s.groups).toEqual(['scoring', 'sets', 'draws', 'tiebreak', 'seeding', 'groups', 'rounds', 'meeting', 'byes', 'structure']);
+    expect(visibleGroups('custom')).toEqual(['scoring', 'sets', 'draws', 'tiebreak', 'seeding', 'meeting', 'byes', 'structure']);
+    
+    
+    
+    expect(hiddenGroups('custom')).toEqual([
+      'groups', 'rounds', 'reporting',
+      'races', 'discards', 'flights', 'timing', 'fleetAssignment', 'medal-race', 'custom-rules', 'bracket',
+    ]);
     const inert = inertFields('custom').map(f => f.field);
     expect(inert).toContain('groupCount');
     expect(inert).toContain('advancePerGroup');

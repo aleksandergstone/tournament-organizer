@@ -1,0 +1,149 @@
+import type {
+  Boat, Race, RaceResult, RuleSet, ScoringSystem, SeriesStanding,
+} from './types';
+
+export interface TeamStanding {
+  teamName: string;
+  boatCount: number;
+  totalPoints: number;
+  discardedPoints: number;
+  netPoints: number;
+  rank: number;
+}
+
+/** Calculates result points once a race is declared finished. */
+export function scoreRaceResults(
+  results: readonly RaceResult[],
+  system: ScoringSystem = 'low-point',
+): RaceResult[] {
+  const fleetSize = results.length;
+  const finishers = results
+    .filter(result => result.status === 'finished' && Number.isFinite(result.position) && (result.position ?? 0) > 0)
+    .slice()
+    .sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity));
+  const places = new Map<string, number>();
+  let previousPosition: number | null = null;
+  let previousRank = 0;
+  finishers.forEach((result, index) => {
+    const position = result.position!;
+    const rank = position === previousPosition ? previousRank : index + 1;
+    places.set(result.boatId, rank);
+    previousPosition = position;
+    previousRank = rank;
+  });
+
+  return results.map(result => {
+    let points: number;
+    const rank = places.get(result.boatId);
+    if (rank === undefined) {
+      points = system === 'high-point' ? 0 : fleetSize + 1;
+    } else if (system === 'high-point') {
+      points = Math.max(1, fleetSize - rank + 1);
+    } else if (system === 'bonus-point') {
+      points = rank === 1 ? 0 : rank;
+    } else {
+      points = rank;
+    }
+    return { ...result, points: points + (result.adjustment ?? 0) };
+  });
+}
+
+/** Recomputes standings only from completed races; an unfinished race is not a score. */
+export function computeSailingStandings(
+  boats: readonly Boat[],
+  races: readonly Race[],
+  rules: RuleSet,
+): SeriesStanding[] {
+  const scoredRaces = races.filter(race => race.status === 'finished');
+  const system = rules.scoringSystem ?? 'low-point';
+  const discardProfile = rules.discardProfile;
+
+  const standings = boats.map(boat => {
+    const raceResults = scoredRaces.map(race =>
+      race.results.find(result => result.boatId === boat.id) ?? null);
+    const scored = raceResults.filter((result): result is RaceResult => result !== null);
+    let discardCount = 0;
+    if (discardProfile && scored.length >= discardProfile.racesToQualify) {
+      for (const [raceCount, count] of discardProfile.schedule) {
+        if (scored.length >= raceCount) discardCount = count;
+      }
+    }
+    const worstFirst = system === 'high-point'
+      ? scored.slice().sort((a, b) => a.points - b.points)
+      : scored.slice().sort((a, b) => b.points - a.points);
+    const discardedIds = new Set(worstFirst.slice(0, discardCount).map(result => result.id));
+    const discardedPoints = scored
+      .filter(result => discardedIds.has(result.id))
+      .reduce((sum, result) => sum + result.points, 0);
+    const totalPoints = scored.reduce((sum, result) => sum + result.points, 0);
+    const netPoints = totalPoints - discardedPoints;
+    const firstPlaces = scored.filter(result => result.status === 'finished' && result.position === 1).length;
+    const secondPlaces = scored.filter(result => result.status === 'finished' && result.position === 2).length;
+    const thirdPlaces = scored.filter(result => result.status === 'finished' && result.position === 3).length;
+    return {
+      boatId: boat.id, raceResults, totalPoints, netPoints, discardedPoints, rank: 0,
+      firstPlaces, secondPlaces, thirdPlaces,
+    };
+  });
+
+  standings.sort((a, b) => {
+    const points = system === 'high-point' ? b.netPoints - a.netPoints : a.netPoints - b.netPoints;
+    return points || b.firstPlaces - a.firstPlaces || b.secondPlaces - a.secondPlaces || b.thirdPlaces - a.thirdPlaces;
+  });
+  standings.forEach((standing, index) => {
+    standing.rank = index > 0
+      && standing.netPoints === standings[index - 1].netPoints
+      && standing.firstPlaces === standings[index - 1].firstPlaces
+      && standing.secondPlaces === standings[index - 1].secondPlaces
+      && standing.thirdPlaces === standings[index - 1].thirdPlaces
+      ? standings[index - 1].rank
+      : index + 1;
+  });
+  return standings;
+}
+
+/** Scores a team as the sum of its boats' points in each completed race. */
+export function computeTeamStandings(
+  boats: readonly Boat[],
+  races: readonly Race[],
+  rules: RuleSet,
+): TeamStanding[] {
+  const teams = new Map<string, { name: string; boats: Boat[] }>();
+  for (const boat of boats) {
+    const name = boat.teamName?.trim();
+    if (!name) continue;
+    const key = name.toLocaleLowerCase();
+    const entry = teams.get(key) ?? { name, boats: [] };
+    entry.boats.push(boat);
+    teams.set(key, entry);
+  }
+  const scoredRaces = races.filter(race => race.status === 'finished');
+  const system = rules.scoringSystem ?? 'low-point';
+  const out = [...teams.values()].map(team => {
+    const perRace = scoredRaces.map(race => team.boats.reduce((sum, boat) => {
+      const result = race.results.find(item => item.boatId === boat.id);
+      return sum + (result?.points ?? 0);
+    }, 0));
+    let discardCount = 0;
+    if (rules.discardProfile && perRace.length >= rules.discardProfile.racesToQualify) {
+      for (const [raceCount, count] of rules.discardProfile.schedule)
+        if (perRace.length >= raceCount) discardCount = count;
+    }
+    const worstFirst = perRace.slice().sort((a, b) => system === 'high-point' ? a - b : b - a);
+    const discardedPoints = worstFirst.slice(0, discardCount).reduce((sum, points) => sum + points, 0);
+    const totalPoints = perRace.reduce((sum, points) => sum + points, 0);
+    return {
+      teamName: team.name,
+      boatCount: team.boats.length,
+      totalPoints,
+      discardedPoints,
+      netPoints: totalPoints - discardedPoints,
+      rank: 0,
+    };
+  });
+  out.sort((a, b) => (system === 'high-point' ? b.netPoints - a.netPoints : a.netPoints - b.netPoints));
+  out.forEach((team, index) => {
+    team.rank = index > 0 && team.netPoints === out[index - 1].netPoints ? out[index - 1].rank : index + 1;
+  });
+  return out;
+}

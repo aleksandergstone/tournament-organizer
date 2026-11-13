@@ -27,12 +27,33 @@ import { isNativeApp } from './engine/mobile-bridge';
 import { App as CapacitorApp } from '@capacitor/app';
 import { nowIso } from './engine/types';
 import { useT, type Dict } from './i18n';
+// Sailing imports
+import SailingWizard from './ui/sailing/SailingWizard';
+import SailingOverview from './ui/sailing/SailingOverview';
+import SailingBoats from './ui/sailing/SailingBoats';
+import SailingRaces from './ui/sailing/SailingRaces';
+import SailingStandings from './ui/sailing/SailingStandings';
+import SailingDocuments from './ui/sailing/SailingDocuments';
+import SailingSettings from './ui/sailing/SailingSettings';
+import SailingClasses from './ui/sailing/SailingClasses';
+import SailingCrews from './ui/sailing/SailingCrews';
 
 // Navigation is grouped by what the organizer is doing, not by feature name.
 const NAV: { items: readonly (readonly [Screen, keyof Dict])[] }[] = [
   { items: [['home', 'nav.home'], ['overview', 'nav.overview'], ['participants', 'nav.participants'], ['rules', 'nav.rules']] },
   { items: [['bracket', 'nav.bracket'], ['matches', 'nav.results'], ['live', 'nav.live'], ['standings', 'nav.standings']] },
   { items: [['schedule', 'nav.schedule'], ['display', 'nav.display'], ['codes', 'nav.codes'], ['regulation', 'nav.regulation'], ['season', 'nav.season'], ['publish', 'nav.publish'], ['export', 'nav.output']] },
+  // Sailing navigation (only shown for sailing events)
+  { items: [
+    ['sailing-overview', 'sailing.overview'],
+    ['sailing-classes', 'sailing.boatClasses'],
+    ['sailing-boats', 'sailing.boats'],
+    ['sailing-crews', 'sailing.crews'],
+    ['sailing-races', 'sailing.races'],
+    ['sailing-standings', 'sailing.viewStandings'],
+    ['sailing-documents', 'sailing.documents'],
+    ['sailing-settings', 'sailing.regattaSettings'],
+  ] },
 ];
 
 // A window opened with #display is a projector: organizer controls are hidden.
@@ -116,8 +137,17 @@ export default function App() {
         <nav>{NAV.map((group, gi) => {
           // The bracket only exists when the format has one; QR codes are
           // temporarily parked, so they do not clutter the navigation.
-          const items = group.items.filter(([k]) => k !== 'codes'
-            && (k !== 'bracket' || hasBracket(domain.tournament.format)));
+          // Sailing events have their own data model and workflow, so only
+          // their dedicated navigation is shown instead of tournament screens.
+          const SAILING_FORMATS = ['fleet-racing', 'match-racing', 'team-racing', 'round-robin', 'knockout', 'group-stage-finals', 'flighted-racing', 'medal-race', 'custom-regatta'];
+          const isSailing = SAILING_FORMATS.includes(domain.tournament.format);
+          const items = group.items.filter(([k]) => {
+            if (k === 'codes') return false;
+            if (k === 'bracket' && !hasBracket(domain.tournament.format)) return false;
+            if (k.startsWith('sailing-') && !isSailing) return false;
+            if (isSailing && k !== 'home' && !k.startsWith('sailing-')) return false;
+            return true;
+          });
           if (!items.length) return null;
           return (
             <span className="nav-group" key={gi}>
@@ -163,6 +193,7 @@ export default function App() {
       )}
       {screen === 'home' && <Home />}
       {screen === 'wizard' && <Wizard />}
+      {screen === 'sailing-wizard' && <SailingWizard />}
       {screen === 'overview' && (hasProject ? <Overview /> : <Home />)}
       {screen === 'participants' && (hasProject ? <Participants /> : <Home />)}
       {screen === 'rules' && (hasProject ? <Rules /> : <Home />)}
@@ -179,6 +210,15 @@ export default function App() {
       {screen === 'publish' && (hasProject ? <Publish /> : <Home />)}
       {screen === 'settings' && <Settings />}
       {screen === 'import' && <Import />}
+      {/* Sailing screens */}
+      {screen === 'sailing-overview' && (hasProject ? <SailingOverview /> : <Home />)}
+      {screen === 'sailing-boats' && (hasProject ? <SailingBoats /> : <Home />)}
+      {screen === 'sailing-races' && (hasProject ? <SailingRaces /> : <Home />)}
+      {screen === 'sailing-standings' && (hasProject ? <SailingStandings /> : <Home />)}
+      {screen === 'sailing-documents' && (hasProject ? <SailingDocuments /> : <Home />)}
+      {screen === 'sailing-settings' && (hasProject ? <SailingSettings /> : <Home />)}
+      {screen === 'sailing-classes' && (hasProject ? <SailingClasses /> : <Home />)}
+      {screen === 'sailing-crews' && (hasProject ? <SailingCrews /> : <Home />)}
     </div>
   );
 }

@@ -124,13 +124,13 @@ export default function Wizard() {
           <select
             value={f.discipline ?? 'generic'}
             onChange={e => pickDiscipline(e.target.value as DisciplineId)}>
-            {DISCIPLINES.map(d => <option key={d.id} value={d.id}>{t(d.label)}</option>)}
+            {DISCIPLINES.filter(d => d.id !== 'sailing').map(d => <option key={d.id} value={d.id}>{t(d.label)}</option>)}
           </select>
         </Field>
       </Panel>
 
       <Panel title={t('mode.pickTitle')} sub={t('mode.pickSub')}>
-        <ModePicker value={f.format} onChange={pickFormat} />
+        <ModePicker value={f.format} onChange={pickFormat} excludeSailing />
         <ModeExplainer format={f.format} rules={f.rules} count={count} />
       </Panel>
 

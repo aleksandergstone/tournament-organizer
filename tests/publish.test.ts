@@ -174,10 +174,10 @@ describe('the public link', () => {
 });
 
 describe('every language publishes the same contract', () => {
-  afterEach(() => setLocale('en'));
-  it('keeps the vocabulary translated, and never empty', () => {
+  afterEach(async () => { await setLocale('en'); });
+  it('keeps the vocabulary translated, and never empty', async () => {
     for (const loc of ['en', 'pl', 'de', 'es'] as const) {
-      setLocale(loc);
+      await setLocale(loc);
       const s = buildSnapshot(input());
       for (const key of ['match', 'participant', 'place', 'score'] as const) {
         expect(s.terms[key], `${loc}.${key}`).toBeTruthy();
@@ -192,12 +192,12 @@ describe('every language publishes the same contract', () => {
  * a page with no branding shows no branding.
  */
 describe('the event describes itself', () => {
-  it('publishes the language the organizer works in', () => {
-    setLocale('pl');
+  it('publishes the language the organizer works in', async () => {
+    await setLocale('pl');
     expect(buildSnapshot(input()).event.locale).toBe('pl');
-    setLocale('de');
+    await setLocale('de');
     expect(buildSnapshot(input()).event.locale).toBe('de');
-    setLocale('en');
+    await setLocale('en');
     expect(buildSnapshot(input()).event.locale).toBe('en');
   });
 

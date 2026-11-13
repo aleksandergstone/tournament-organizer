@@ -32,7 +32,7 @@ function render(settings: Partial<AppSettings> = {}): string {
   return renderToStaticMarkup(React.createElement(Publish));
 }
 
-afterEach(() => setLocale('en'));
+afterEach(async () => { await setLocale('en'); });
 
 describe('before the link exists', () => {
   it('offers one button, and asks for nothing to be typed', () => {
@@ -56,8 +56,8 @@ describe('before the link exists', () => {
     expect(html).toContain(en['pub.public']);
   });
 
-  it('speaks the organizer\'s language', () => {
-    setLocale('pl');
+  it('speaks the organizer\'s language', async () => {
+    await setLocale('pl');
     const html = render();
     expect(html).toContain(pl['pub.activate']);
     expect(html).not.toContain(en['pub.activate']);

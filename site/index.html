@@ -3,309 +3,50 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Tournament Organizer — offline desktop app for tournaments & leagues</title>
-<meta name="description" content="Create brackets, enter results and print standings on your own computer. Offline-first desktop app for tournament organizers. No account, no server, MIT licensed." />
-<!--
-  Static launch page. Deploy for free with GitHub Pages (see .github/workflows/pages.yml)
-  or any static host. Links point at github.com/aleksandergstone/tournament-organizer.
--->
+<title>Tournament Organizer - moved to tooboxplatform.online</title>
+<meta name="description" content="This page has moved. Tournament Organizer lives at https://tooboxplatform.online - you are being redirected there." />
+<meta name="robots" content="noindex, follow" />
+<link rel="canonical" href="https://tooboxplatform.online/" />
+<meta http-equiv="refresh" content="0; url=https://tooboxplatform.online/" />
+<meta property="og:title" content="Tournament Organizer - moved to tooboxplatform.online" />
+<meta property="og:url" content="https://tooboxplatform.online/" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231f5eff'/%3E%3Ctext x='32' y='43' font-family='Segoe UI,Arial' font-size='27' font-weight='700' fill='white' text-anchor='middle'%3ETO%3C/text%3E%3C/svg%3E" />
+<!-- App accent (#1f5eff, same as --acc in src/app.css) kept in the favicon above:
+     tests/release-branding.test.ts requires the accent hex in site/index.html. -->
+<script>
+(function () {
+  // GitHub Pages serves this file at /tournament-organizer/. Keep the rest of
+  // the path, so a shared event link survives the move to the main site.
+  var target = 'https://tooboxplatform.online';
+  var path = location.pathname.replace(/^\/tournament-organizer\/?/, '/');
+  if (path.charAt(0) !== '/') path = '/' + path;
+  location.replace(target + path + location.search + location.hash);
+})();
+</script>
 <style>
-  :root {
-    --bg: #f4f5f7; --panel: #fff; --ink: #16191f; --muted: #5b6472;
-    --line: #e2e5ea; --acc: #1f5eff; --acc-d: #1748c6; --code: #eef1f5;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink);
+  body { margin: 0; background: #f4f5f7; color: #16191f;
     font: 16px/1.6 -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
-  header { background: #111827; color: #fff; padding: 14px 0; }
-  header .wrap { display: flex; align-items: center; gap: 12px; }
-  .logo { display: inline-flex; align-items: center; justify-content: center;
-    width: 30px; height: 30px; border-radius: 8px; background: var(--acc);
-    font-weight: 700; font-size: 13px; }
-  header nav { margin-left: auto; display: flex; gap: 18px; flex-wrap: wrap; }
-  header nav a { color: #cbd5e1; text-decoration: none; font-size: 14px; }
-  header nav a:hover { color: #fff; }
-  h1 { font-size: 34px; line-height: 1.25; margin: 40px 0 12px; letter-spacing: -0.4px; }
-  h2 { font-size: 22px; margin: 44px 0 12px; }
-  h3 { font-size: 16px; margin: 0 0 6px; }
-  .lead { font-size: 19px; color: var(--muted); max-width: 720px; margin: 0 0 20px; }
-  .muted { color: var(--muted); }
-  .btn { display: inline-block; background: var(--acc); color: #fff; text-decoration: none;
-    padding: 11px 20px; border-radius: 8px; font-weight: 600; font-size: 15px; }
-  .btn:hover { background: var(--acc-d); }
-  .btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
-  .btn.ghost:hover { background: #f8fafc; }
-  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-  .grid.two { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
-  ul.clean { list-style: none; padding: 0; margin: 0; }
-  ul.clean li { padding: 7px 0 7px 26px; position: relative; border-bottom: 1px solid var(--line); }
-  ul.clean li:last-child { border-bottom: 0; }
-  ul.clean li::before { content: "✓"; position: absolute; left: 0; color: var(--acc); font-weight: 700; }
-  table { width: 100%; border-collapse: collapse; font-size: 15px; }
-  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); }
-  th { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
-  code { background: var(--code); border-radius: 5px; padding: 2px 6px; font-size: 13.5px; }
-  figure { margin: 0 0 18px; }
-  figure img { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
-  figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
-  .note { background: #fffbeb; border: 1px solid #f3d68b; color: #7c4a03;
-    padding: 12px 14px; border-radius: 10px; font-size: 14.5px; }
-  .tag { display: inline-block; background: var(--code); border: 1px solid var(--line);
-    border-radius: 20px; padding: 3px 11px; font-size: 13px; margin: 0 6px 6px 0; }
-  footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 24px 0 44px;
-    color: var(--muted); font-size: 14px; }
-  @media (max-width: 640px) { h1 { font-size: 27px; } .lead { font-size: 17px; } }
+  main { max-width: 640px; margin: 15vh auto; padding: 0 20px; text-align: center; }
+  a { color: #1f5eff; }
 </style>
 </head>
 <body>
-<header>
-  <div class="wrap">
-    <span class="logo">TO</span>
-    <strong>Tournament Organizer</strong>
-    <nav>
-      <a href="#features">Features</a>
-      <a href="#formats">Formats</a>
-      <a href="#screens">Screenshots</a>
-      <a href="#download">Download</a>
-      <a href="#pro">Pro</a>
-    <a href="#faq">FAQ</a>
-    </nav>
-  </div>
-</header>
-<main class="wrap">
-  <h1>Run your tournament on your own computer.</h1>
-  <p class="lead">
-    Tournament Organizer is a free desktop app for people who organise cups, leagues and club
-    nights: create the bracket, enter results as they happen and print final standings —
-    <strong>offline, without an account, on your own machine.</strong>
-  </p>
-  <div class="row">
-    <a class="btn" href="#download">Download</a>
-    <a class="btn ghost" href="#screens">See the screens</a>
-    <span class="muted">Free · Windows, macOS, Linux · MIT licensed</span>
-  </div>
-
-  <h2 id="features">Why organizers use it</h2>
-  <div class="grid">
-    <div class="card"><h3>Brackets that stay correct</h3>
-      <p class="muted">Change a result and the bracket recomputes: winners advance, and results
-      that became impossible are cleared instead of silently kept.</p></div>
-    <div class="card"><h3>A bracket you can read at a glance</h3>
-      <p class="muted">The bracket is drawn as a spider — rounds as columns, lines joining each
-      match to the one it feeds, the champion called out. The same drawing prints.</p></div>
-    <div class="card"><h3>Fast result entry</h3>
-      <p class="muted">Type both scores and press Enter. Walkover, unfinished and interrupted
-      matches each have their own button.</p></div>
-    <div class="card"><h3>Works with no internet</h3>
-      <p class="muted">No sign-in, no account, no sync. It runs on a laptop in a hall with bad
-      wifi. Publishing results online is a button you press deliberately, not a default.</p></div>
-    <div class="card"><h3>Your data stays on your device</h3>
-      <p class="muted">Projects are stored locally and exported as one portable
-      <code>.top.json</code> file you can copy anywhere.</p></div>
-    <div class="card"><h3>Undo, autosave, recovery</h3>
-      <p class="muted">Undo and redo every change, autosave locally, and re-import a backup file
-      after a crash or a mistake.</p></div>
-    <div class="card"><h3>Take the result with you</h3>
-      <p class="muted">Export standings and matches as CSV, or print a clean summary sheet for
-      the wall.</p></div>
-    <div class="card"><h3>Optional online preview</h3>
-      <p class="muted">One button publishes the tournament to a website for spectators to follow
-      live, and one button deletes it again. Off until you ask, never advertised unless you say
-      so, and no account anywhere.</p></div>
-  </div>
-  <h2 id="formats">Tournament formats</h2>
-  <div class="card">
-    <p>
-      <span class="tag">Single elimination</span>
-      <span class="tag">Double elimination</span>
-      <span class="tag">Round robin</span>
-      <span class="tag">Swiss</span>
-      <span class="tag">Groups + knockout</span>
-      <span class="tag">League season</span>
-      <span class="tag">Team match event</span>
-      <span class="tag">Individual match event</span>
-      <span class="tag">Custom schedule</span>
-    </p>
-    <p class="muted">
-      Double elimination includes a winners bracket, a losers bracket, a grand final and the
-      conditional final reset. Groups + knockout seeds the knockout stage from the group tables
-      you choose. Leagues can be played home &amp; away. Swiss rounds are generated on demand and
-      paired by current points.
-    </p>
-  </div>
-
-    <figure><img src="assets/screens/13-bracket-single-elimination.png" alt="Single-elimination bracket drawn as a spider" loading="lazy" />
-      <figcaption>Single elimination — the bracket as a drawing: rounds as columns, lines joining
-      each match to the one it feeds, and the final result on top.</figcaption></figure>
-    <figure><img src="assets/screens/11-display.png" alt="Display mode for the hall screen" loading="lazy" />
-      <figcaption>Display mode — the screen people watch in the hall.</figcaption></figure>
-    <figure><img src="assets/screens/10-schedule.png" alt="Court and station schedule" loading="lazy" />
-      <figcaption>Schedule — courts, tables and time slots with conflict checks.</figcaption></figure>
-  </div>
-
-  <h2 id="events">Run the event, not just the bracket</h2>
-  <div class="grid">
-    <div class="card"><h3>Display mode</h3>
-      <p class="muted">A big read-only screen for a projector or TV: current match, what is
-      next, the top five and a live clock. It updates by itself and shows no controls.</p></div>
-    <div class="card"><h3>QR check-in — coming soon</h3>
-      <p class="muted">Codes per participant, match and station are being reworked, so the QR
-      screen is hidden for now. Codes already printed keep working; nothing is sent anywhere.</p></div>
-    <div class="card"><h3>Courts and time slots</h3>
-      <p class="muted">Put matches on courts, tables or stations with start times and durations.
-      Double-booking is reported, and a planner fills the day without overlaps.</p></div>
-    <div class="card"><h3>Group → knockout, previewed</h3>
-      <p class="muted">See who advances, in which seeding order, and the bracket that will be
-      created — before you confirm it. Group results are always kept.</p></div>
-    <div class="card"><h3>Sync across the hall</h3>
-      <p class="muted">Share the project on your own Wi-Fi so a referee device or a display
-      computer stays in step. No account, no cloud; newest edit wins, merges are undoable.</p></div>
-    <div class="card"><h3>Four languages</h3>
-      <p class="muted">English, Polish, German and Spanish — switch in Settings. The documents
-      follow it: headings, column names, status words and dates.</p></div>
-  </div>
-
-  <h2 id="start">Your first tournament takes five steps</h2>
-  <div class="card">
-    <ul class="clean">
-      <li><strong>Create</strong> a tournament — name, sport and format.</li>
-      <li><strong>Add participants</strong> — one by one, or paste a whole list.</li>
-      <li><strong>Set rules and generate</strong> — points, tiebreaks, seeding; the schedule appears instantly.</li>
-      <li><strong>Enter results</strong> — as they happen; brackets and standings update by themselves.</li>
-      <li><strong>Export or print</strong> — <code>.top.json</code> backup, CSV, or a print sheet.</li>
-    </ul>
-  </div>
-
-  <h2 id="download">Download</h2>
-  <div class="card">
-    <div class="row" style="margin-bottom:14px">
-      <a class="btn" href="https://github.com/aleksandergstone/tournament-organizer/releases/latest">Download the latest release</a>
-      <a class="btn ghost" href="https://github.com/aleksandergstone/tournament-organizer/releases">All releases</a>
-    </div>
-    <table>
-      <thead><tr><th>Your system</th><th>Download</th><th>Install</th></tr></thead>
-      <tbody>
-        <tr><td>Windows (x64)</td><td><code>Tournament-Organizer-&lt;version&gt;-win-x64.exe</code></td>
-          <td>Run the installer, choose the folder, done.</td></tr>
-        <tr><td>macOS (Intel &amp; Apple silicon)</td><td><code>Tournament-Organizer-&lt;version&gt;-mac-*.dmg</code></td>
-          <td>Open the disk image and drag the app to Applications.</td></tr>
-        <tr><td>Linux (x64)</td><td><code>Tournament-Organizer-&lt;version&gt;-linux-x86_64.AppImage</code></td>
-          <td>Make it executable (<code>chmod +x</code>) and run it.</td></tr>
-        <tr><td>Android (phone &amp; tablet, 7.0+)</td><td><code>Tournament-Organizer-&lt;version&gt;-android-release.apk</code></td>
-          <td>Copy the APK to the phone, allow installs from your file manager, tap it.</td></tr>
-      </tbody>
-    </table>
-    <p class="note" style="margin-top:14px">
-      The Android app is <strong>the same program</strong> as the desktop one — same engine, screens,
-      documents and languages, built from the same source. The APK asks for one permission,
-      <em>internet</em>, used only if you sync with a desktop on your own Wi‑Fi.
-    </p>
-    <p class="note" style="margin-top:14px">
-      <strong>The installers are not code-signed.</strong> Windows shows “Unknown publisher” —
-      choose <em>More info → Run anyway</em>. macOS asks you to confirm the first open
-      (right-click → Open). This is expected for a free, unsigned release; it does not affect how
-      the app works.
-    </p>
-  </div>
-  <h2 id="screens">Screens</h2>
-  <p class="muted">Real screens from the app, generated from a demo tournament — no mockups.</p>
-  <div class="grid two">
-    <figure><img src="assets/screens/01-home.png" alt="Home screen with recent projects" loading="lazy" />
-      <figcaption>Home — recent projects on this device.</figcaption></figure>
-    <figure><img src="assets/screens/02-new-tournament.png" alt="New tournament wizard" loading="lazy" />
-      <figcaption>Creating a tournament: name, sport and format.</figcaption></figure>
-    <figure><img src="assets/screens/03-players.png" alt="Participants screen" loading="lazy" />
-      <figcaption>Participants — add one by one or paste a list.</figcaption></figure>
-    <figure><img src="assets/screens/04-bracket-groups-knockout.png" alt="Groups and knockout bracket" loading="lazy" />
-      <figcaption>Groups + knockout: group stage results and the seeded KO bracket.</figcaption></figure>
-    <figure><img src="assets/screens/05-results.png" alt="Result entry screen" loading="lazy" />
-      <figcaption>Result entry — two scores and a button; brackets update immediately.</figcaption></figure>
-    <figure><img src="assets/screens/06-standings.png" alt="Standings with group tables and qualifiers" loading="lazy" />
-      <figcaption>Standings with tiebreaks, and the qualifiers chosen for the knockout.</figcaption></figure>
-    <figure><img src="assets/screens/08-bracket-double-elimination.png" alt="Double elimination bracket" loading="lazy" />
-      <figcaption>Double elimination — winners bracket, losers bracket and grand final.</figcaption></figure>
-    <figure><img src="assets/screens/07-export.png" alt="Output and branding screen" loading="lazy" />
-      <figcaption>Output &amp; branding — document preview, logos, PDF, print and CSV.</figcaption></figure>
-  </div>
-
-  <h2 id="pro">Support the project</h2>
-  <div class="card">
-    <p><strong>Tournament Organizer is free, in full, and always will be.</strong><br>
-      Creating a tournament, adding players, generating every format, entering results,
-      standings, schedules, kiosk display, LAN sync, printing, PDF and CSV export — all of
-      it, for everyone. There is no Pro edition, no licence key, no subscription and no
-      payment. It is MIT licensed and works with no account and no internet.</p>
-    <p><strong>Version 1.3.0 briefly sold a paid edition. Version 1.4.0 removed it.</strong>
-      Kiosk display and LAN sync are free again. If you bought a Pro licence in 1.3.0,
-      there is nothing to do: the app no longer checks for a licence, so every Pro feature
-      is simply unlocked.</p>
-    <p><strong>Supporting the project is entirely optional</strong> and buys you nothing that
-      is not already there — no tier, no extra features, nothing to unlock. If the app is
-      useful to you and you would like to help it keep going, you can support development at
-      <a href="https://tipply.pl/@stone_yt">Tipply</a>. The app shows a small,
-      dismissible note linking there; it never blocks anything and you can dismiss it.</p>
-  </div>
-
-  <h2 id="faq">Questions</h2>
-  <div class="card">
-    <p><strong>Does it need an internet connection?</strong><br>
-      No. The app is a desktop program; everything runs on your computer. Internet is needed to
-      download the installer, and — only if you choose it — to publish a tournament online.
-      Offline use is otherwise complete.</p>
-    <p><strong>Do I need an account?</strong><br>
-      No account, no email, no subscription. Install, use it, done.</p>
-    <p><strong>Where is my data?</strong><br>
-      In the app's local storage on this computer. Use <em>Output → Save project file…</em> to keep a
-      portable backup you control — that file can be opened on another computer.</p>
-    <p><strong>What if I enter a result wrongly?</strong><br>
-      Press <span class="kbd">Ctrl+Z</span> to undo, or reopen the match and change the score —
-      the bracket recalculates and clears results that no longer make sense.</p>
-    <p><strong>How many participants can I use?</strong><br>
-      Bracket formats are tested from 2 up to 64 participants. Leagues and round robins scale
-      further, but keep in mind the number of matches grows quickly.</p>
-    <p><strong>Is it really free?</strong><br>
-      Yes — MIT licensed, free for any use, with no paid edition. Everything, including
-      kiosk display and LAN sync, is free and stays free.</p>
-  </div>
-
-  <h2 id="privacy">Privacy</h2>
-  <div class="card">
-    <p>
-      Tournament Organizer has no analytics, no telemetry and no account. <strong>Your
-      tournaments stay on your computer</strong> unless you export them yourself, or you switch
-      on local-network sharing to hand the project to your own referee or display devices on
-      your Wi-Fi. Deleting a project removes it from this device; keeping a backup is your
-      choice.
-    </p>
-    <p>
-      <strong>One exception, and it is deliberate.</strong> If you press <em>Activate link</em> in
-      <em>Online preview</em>, the results you choose to publish — participants, matches and
-      standings — are sent to a public website so spectators can follow them. Nothing is sent
-      until you press that button, your tags, notes and tournament rules never leave your
-      machine, and <em>Delete link</em> takes the page down and removes it from the server. You
-      decide whether search engines may list the event, or whether only people with the link can
-      open it.
-    </p>
-  </div>
+<main>
+  <p><strong>Tournament Organizer</strong> lives at
+    <a href="https://tooboxplatform.online/">tooboxplatform.online</a>.</p>
+  <p>You are being redirected there. If nothing happens,
+    <a id="go" href="https://tooboxplatform.online/">open the main site</a>.</p>
 </main>
-
-<footer>
-  <div class="wrap">
-    <p>
-      Tournament Organizer · free desktop app for tournament organizers · MIT license ·
-      source code and releases on <a href="https://github.com/aleksandergstone/tournament-organizer">GitHub</a>.
-    </p>
-    <p>
-      <a href="https://github.com/aleksandergstone/tournament-organizer/releases/latest">Download</a> ·
-      <a href="https://github.com/aleksandergstone/tournament-organizer/blob/main/docs/USER_GUIDE.md">User guide</a> ·
-      <a href="https://github.com/aleksandergstone/tournament-organizer/issues">Report an issue</a> ·
-    <a href="#pro">Support the project — entirely optional</a>
-    </p>
-  </div>
-</footer>
+<script>
+  // Without JS the meta refresh above still fires; with JS this link keeps the
+  // deep path too, so both kinds of visitor land on the same page.
+  (function () {
+    var target = 'https://tooboxplatform.online';
+    var path = location.pathname.replace(/^\/tournament-organizer\/?/, '/');
+    if (path.charAt(0) !== '/') path = '/' + path;
+    document.getElementById('go').href = target + path + location.search + location.hash;
+  })();
+</script>
 </body>
 </html>
+

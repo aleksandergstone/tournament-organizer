@@ -55,6 +55,7 @@ export default function Home() {
         <p className="page-sub">{t('app.tagline')}</p>
         <div className="row">
           <button className="btn primary lg" onClick={() => go('wizard')}>{t('home.new')}</button>
+          <button className="btn lg" onClick={() => go('sailing-wizard')}>{t('sailing.wizardTitle')}</button>
           <button className="btn lg" onClick={openFromFile}>{t('home.openFile')}</button>
           <button className="btn quiet" onClick={() => go('import')}>{t('home.import')}</button>
           <button className="btn quiet" onClick={() => go('settings')}>{t('home.settings')}</button>

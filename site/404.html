@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tournament Organizer - moved to tooboxplatform.online</title>
+<meta name="description" content="This page has moved. Tournament Organizer lives at https://tooboxplatform.online - you are being redirected there." />
+<meta name="robots" content="noindex, follow" />
+<link rel="canonical" href="https://tooboxplatform.online/" />
+<meta http-equiv="refresh" content="0; url=https://tooboxplatform.online/" />
+<meta property="og:title" content="Tournament Organizer - moved to tooboxplatform.online" />
+<meta property="og:url" content="https://tooboxplatform.online/" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231f5eff'/%3E%3Ctext x='32' y='43' font-family='Segoe UI,Arial' font-size='27' font-weight='700' fill='white' text-anchor='middle'%3ETO%3C/text%3E%3C/svg%3E" />
+<script>
+(function () {
+  // Same redirect as index.html: GitHub Pages shows this file for any deep
+  // path, so it must carry the visitor to the same path on the main site.
+  var target = 'https://tooboxplatform.online';
+  var path = location.pathname.replace(/^\/tournament-organizer\/?/, '/');
+  if (path.charAt(0) !== '/') path = '/' + path;
+  location.replace(target + path + location.search + location.hash);
+})();
+</script>
+<style>
+  body { margin: 0; background: #f4f5f7; color: #16191f;
+    font: 16px/1.6 -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width: 640px; margin: 15vh auto; padding: 0 20px; text-align: center; }
+  a { color: #1f5eff; }
+</style>
+</head>
+<body>
+<main>
+  <p><strong>Tournament Organizer</strong> lives at
+    <a href="https://tooboxplatform.online/">tooboxplatform.online</a>.</p>
+  <p>You are being redirected there. If nothing happens,
+    <a id="go" href="https://tooboxplatform.online/">open the main site</a>.</p>
+</main>
+<script>
+  (function () {
+    var target = 'https://tooboxplatform.online';
+    var path = location.pathname.replace(/^\/tournament-organizer\/?/, '/');
+    if (path.charAt(0) !== '/') path = '/' + path;
+    document.getElementById('go').href = target + path + location.search + location.hash;
+  })();
+</script>
+</body>
+</html>

@@ -12,15 +12,42 @@ export type CompetitionFormat =
   | 'league'
   | 'team-match'
   | 'individual-match'
-  | 'custom';
+  | 'custom'
+  // Sailing-specific formats
+  | 'fleet-racing'
+  | 'match-racing'
+  | 'team-racing'
+  | 'round-robin'
+  | 'knockout'
+  | 'group-stage-finals'
+  | 'flighted-racing'
+  | 'medal-race'
+  | 'custom-regatta';
 
 export type ParticipantKind = 'player' | 'team' | 'club';
 
 export interface Participant {
   id: Id;
+  /** Full display name */
   name: string;
+  /** First name (for extended participant data) */
+  firstName?: string | null;
+  /** Last name (for extended participant data) */
+  lastName?: string | null;
   kind: ParticipantKind;
   tags: string[];
+  /** ISO 3166-1 alpha-3 country code (e.g., POL, GER, ESP) */
+  nationality?: string | null;
+  /** Birth year */
+  birthYear?: number | null;
+  /** Club / organization */
+  club?: string | null;
+  /** License number (if required by class rules) */
+  licenseNumber?: string | null;
+  /** Role in crew (skipper, crew, etc.) */
+  role?: 'skipper' | 'crew' | 'tactician' | 'navigator' | 'bowman' | 'other' | null;
+  /** Organizer notes */
+  notes?: string | null;
   seed?: number;
   rating?: number;
   groupId?: string | null;
@@ -96,9 +123,60 @@ export interface RuleSet {
   periodsToWin?: number;
   /** A period must be won by two clear points (volleyball, table tennis). */
   winByTwo?: boolean;
+  // Sailing-specific settings
+  /** Number of scheduled races in the series */
+  scheduledRaces?: number;
+  /** Minimum races to constitute a valid series */
+  minRacesForSeries?: number;
+  /** Whether to use flights (fleet splitting) */
+  useFlights?: boolean;
+  /** Fleet assignment method */
+  fleetAssignment?: 'random' | 'seeded' | 'qualifying';
+  /** Time limit for first boat (minutes) */
+  timeLimitFirstMin?: number;
+  /** Time limit for subsequent boats (minutes) */
+  timeLimitOthersMin?: number;
+  /** Target time for first boat (minutes) */
+  targetTimeMin?: number;
+  /** Scoring system */
+  scoringSystem?: 'low-point' | 'high-point' | 'bonus-point' | 'custom';
+  /** Whether to use handicap */
+  useHandicap?: boolean;
+  /** Handicap system name */
+  handicapSystem?: string;
+  /** Discard profile */
+  discardProfile?: {
+    racesToQualify: number;
+    schedule: [number, number][];
+  };
+  /** Custom points per finishing position (1-based) used when scoringSystem === 'custom'. */
+  customPoints?: Record<number, number>;
+  /**
+   * Points awarded to a boat that did not finish a race (DNS/DNF/DSQ/OCS/RET…).
+   * Absent = the RRS default: number of entered boats + 1 for low-point systems.
+   */
+  nonFinisherPoints?: number;
+  /** Configurable tie-break order for a sailing series (engine supplies a default). */
+  sailingTiebreak?: SailingTiebreakKey[];
+  /** Medal race / final-race configuration for the series. */
+  medalRace?: MedalRaceConfig;
 }
 
 export type TiebreakKey = 'points' | 'wins' | 'diff' | 'scored' | 'buchholz' | 'seed' | 'name';
+
+/**
+ * How equal net points are separated in a sailing series, in priority order.
+ * The engine applies these in sequence; the first that separates two boats wins.
+ */
+export type SailingTiebreakKey =
+  | 'net-points'      // fewest net points (low-point) / most (high-point) — always first
+  | 'most-first'      // most 1st places
+  | 'most-second'     // most 2nd places
+  | 'most-third'      // most 3rd places
+  | 'most-wins'       // most race wins (position 1)
+  | 'last-race'       // better result in the last sailed race
+  | 'fewest-discards' // fewest discarded points
+  | 'manual';         // organiser decides (stable order)
 
 /**
  * A validation problem, in the smallest shape that both the engine and the
@@ -176,6 +254,418 @@ export interface Match {
   bracket?: BracketMeta | null;
 }
 
+// ============================================================================
+// SAILING-SPECIFIC TYPES
+// ============================================================================
+
+/** Publication status of a race or series standing per RRS. */
+export type PublicationStatus =
+  | 'draft'                 // Working copy, not visible publicly
+  | 'provisional'           // Published but subject to change (protests pending)
+  | 'subject-to-protest'    // Published, protest filed, awaiting hearing
+  | 'official'              // Approved by race committee / protest committee
+  | 'corrected';            // Officially corrected after a decision
+
+/** A single correction entry for audit trail. */
+export interface CorrectionEntry {
+  id: Id;
+  /** ISO timestamp of the correction */
+  at: string;
+  /** Author (organizer name or ID) */
+  author: string;
+  /** What was corrected: 'result' | 'standing' | 'penalty' | 'status' | 'other' */
+  target: 'result' | 'standing' | 'penalty' | 'status' | 'other';
+  /** Human-readable description of the change */
+  description: string;
+  /** Previous value (JSON stringified) */
+  previousValue: string;
+  /** New value (JSON stringified) */
+  newValue: string;
+  /** Source of the decision */
+  source: 'race-committee' | 'protest-committee' | 'organizer' | 'technical-committee';
+  /** Reference to protest/hearing/decision ID if applicable */
+  decisionRef?: string | null;
+}
+
+/** A boat class (e.g., Laser, 470, Optimist, J/70, TP52) */
+export interface BoatClass {
+  id: Id;
+  name: string;
+  /** ISAF/World Sailing class code */
+  classCode?: string | null;
+  /** Description of the class */
+  description?: string | null;
+  /** ISO 3166-1 alpha-3 country code (e.g., POL, GER, ESP) */
+  country?: string | null;
+  /** Typical crew size */
+  crewSize?: number | null;
+  /** Whether this is a one-design class */
+  oneDesign?: boolean;
+  /** Class-specific rules (organizer-defined) */
+  classRules?: string | null;
+  /** Organizer notes */
+  notes?: string | null;
+}
+
+/** A boat entry in a regatta */
+export interface Boat {
+  id: Id;
+  /** Boat name */
+  name: string;
+  /** Sail number */
+  sailNumber: string;
+  /** Boat class reference */
+  classId: Id;
+  /** ISO 3166-1 alpha-3 country code (e.g., POL, GER, ESP) */
+  country?: string | null;
+  /** Build year / year of the unit */
+  buildYear?: number | null;
+  /** Owner name */
+  owner?: string | null;
+  /** Club / organization */
+  club?: string | null;
+  /** Team identity for team-racing events; distinct from the boat's club. */
+  teamName?: string | null;
+  /** Skipper (helm) participant ID */
+  skipperId?: Id | null;
+  /** Crew member participant IDs */
+  crewIds: Id[];
+  /** Whether this boat is active in the regatta */
+  active: boolean;
+  /** Measurement certificate reference */
+  measurementCert?: string | null;
+  /** Sail certificate / license number */
+  sailCertificate?: string | null;
+  /** Notes */
+  notes?: string | null;
+}
+
+/** A crew member */
+export interface CrewMember {
+  id: Id;
+  /** Participant ID (links to Participant) */
+  participantId: Id;
+  /** Role on the boat */
+  role: 'skipper' | 'crew' | 'tactician' | 'navigator' | 'bowman' | 'other';
+  /** Weight (kg) - for class rules */
+  weight?: number | null;
+}
+
+/** A crew assigned to a boat. Separate entity from Boat and BoatClass. */
+export interface Crew {
+  id: Id;
+  /** Crew name (e.g., "Team Australia", "Crew 1") */
+  name: string;
+  /** ISO 3166-1 alpha-3 country code (e.g., POL, GER, ESP) */
+  nationality?: string | null;
+  /** Boat this crew is assigned to (null = unassigned) */
+  boatId: Id | null;
+  /** Crew members with their roles */
+  members: CrewMember[];
+  /** Whether this crew is active */
+  active: boolean;
+  /** Organizer notes */
+  notes?: string | null;
+}
+
+/** A flight in a regatta (for large fleets split into flights) */
+export interface Flight {
+  id: Id;
+  name: string;          // e.g., "Gold", "Silver", "A", "B"
+  /** Boat class this flight belongs to */
+  classId: Id;
+  /** Boat IDs in this flight */
+  boatIds: Id[];
+  /** Flight order for display */
+  order: number;
+}
+
+/** Status of a race */
+export type RaceStatus =
+  | 'scheduled'
+  | 'started'
+  | 'finished'
+  | 'abandoned'
+  | 'postponed'
+  | 'cancelled';
+
+/** A single race in a regatta */
+export interface Race {
+  id: Id;
+  /** Race number (1-based) */
+  number: number;
+  /** Flight this race belongs to (optional, for fleet racing with flights) */
+  flightId?: Id | null;
+  /** Boat class */
+  classId: Id;
+  /** Scheduled start time (ISO string) */
+  scheduledStart?: string | null;
+  /** Actual start time (ISO string) */
+  actualStart?: string | null;
+  /** Course description (e.g., "W2", "Olympic Triangle") */
+  course?: string | null;
+  /** Distance (nautical miles) */
+  distanceNm?: number | null;
+  /** Time limit (minutes) */
+  timeLimitMin?: number | null;
+  /** Target time (minutes) */
+  targetTimeMin?: number | null;
+  /** Race status */
+  status: RaceStatus;
+  /** Publication status of this race's results */
+  publicationStatus: PublicationStatus;
+  /** When the race results were published */
+  publishedAt?: string | null;
+  /** Who published the race results */
+  publishedBy?: string | null;
+  /** History of corrections to this race */
+  corrections: CorrectionEntry[];
+  /** Race committee notes */
+  notes?: string | null;
+  /** Whether this race is the medal/final race (see RuleSet.medalRace). */
+  medalRace?: boolean;
+  /** Wind direction (degrees) */
+  windDirection?: number | null;
+  /** Wind speed (knots) */
+  windSpeed?: number | null;
+  /** Results for this race */
+  results: RaceResult[];
+}
+
+/** Result status codes per RRS Appendix A (standard uppercase codes) */
+export type RaceResultStatus =
+  | 'FINISHED'   // Normal finish
+  | 'DNC'        // Did Not Come to the starting area
+  | 'DNS'        // Did Not Start
+  | 'DNF'        // Did Not Finish
+  | 'DSQ'        // Disqualified
+  | 'OCS'        // On Course Side
+  | 'RET'        // Retired
+  | 'RDG'        // Redress Given
+  | 'DNE'        // Disqualification Not Excludable
+  | 'DGM'        // Disqualification Under Rule 69
+  | 'BFD'        // Black Flag Disqualification
+  | 'UFD'        // U Flag Disqualification
+  | 'SCP'        // Scoring Penalty
+  | 'NSC'        // No Score (custom)
+  | 'DPI'        // Discretionary Penalty Imposed
+  | 'ZFP';       // Z Flag Penalty
+
+/** A single boat's result in a race */
+export interface RaceResult {
+  id: Id;
+  /** Race ID */
+  raceId: Id;
+  /** Boat ID */
+  boatId: Id;
+  /** Position on the finish line (1 = first) */
+  position?: number | null;
+  /** Finish time (ISO string) */
+  finishTime?: string | null;
+  /** Elapsed time (seconds) */
+  elapsedSeconds?: number | null;
+  /** Corrected time (seconds) - for handicap racing */
+  correctedSeconds?: number | null;
+  /** Points scored */
+  points: number;
+  /** Result status */
+  status: RaceResultStatus;
+  /** Penalty details */
+  penalty?: Penalty | null;
+  /** Manual points adjustment */
+  adjustment?: number | null;
+  /** Notes from race committee */
+  notes?: string | null;
+}
+
+/** A penalty applied to a boat */
+export interface Penalty {
+  id: Id;
+  /** Type of penalty */
+  type: 'points' | 'time' | 'disqualification' | 'turns' | 'scoring';
+  /** Penalty value (points, seconds, number of turns) */
+  value: number;
+  /** Reason / rule reference */
+  reason: string;
+  /** Race this penalty applies to (null = series penalty) */
+  raceId?: Id | null;
+  /** Boat this penalty applies to */
+  boatId: Id;
+  /** Whether this penalty is a redress (negative penalty) */
+  isRedress: boolean;
+}
+
+/** Scoring system for a regatta */
+export type ScoringSystem =
+  | 'low-point'          // RRS Appendix A: 1st=1, 2nd=2, etc.
+  | 'high-point'         // Inverse: 1st=N, 2nd=N-1, etc.
+  | 'bonus-point'        // Low point with bonus for 1st
+  | 'custom';            // Custom points per position
+
+/** Discard profile: how many worst results to discard */
+export interface DiscardProfile {
+  /** Number of races completed before discards apply */
+  racesToQualify: number;
+  /** Discard schedule: [racesCompleted, discardsAllowed] */
+  schedule: [number, number][];
+}
+
+/**
+ * Medal race configuration. The medal race is a normal, configurable part of a
+ * series: the top boats after the qualifying races sail one final race whose
+ * points (optionally doubled) decide the podium.
+ */
+export interface MedalRaceConfig {
+  /** Whether a medal race is part of this series. */
+  enabled: boolean;
+  /** How many boats qualify for the medal race (top N of the qualifying series). */
+  qualifiedCount: number;
+  /** Medal race points are doubled (the usual RRS medal-race convention). */
+  doublePoints: boolean;
+  /** Whether medal race points are added to the series total (false = decider only). */
+  countsInSeries: boolean;
+}
+
+/** Sailing-specific event settings */
+export interface SailingEventSettings {
+  /** Scoring system */
+  scoringSystem: ScoringSystem;
+  /** Custom points per position (for custom scoring) */
+  customPoints?: Record<number, number>;
+  /** Discard profile */
+  discardProfile: DiscardProfile;
+  /** Number of races scheduled */
+  scheduledRaces: number;
+  /** Minimum races to constitute a series */
+  minRacesForSeries: number;
+  /** Time limit for first boat (minutes) */
+  timeLimitFirstMin?: number | null;
+  /** Time limit for subsequent boats after first (minutes) */
+  timeLimitOthersMin?: number | null;
+  /** Target time for first boat (minutes) */
+  targetTimeMin?: number | null;
+  /** Whether to use handicap (e.g., Portsmouth Yardstick, ORC) */
+  useHandicap: boolean;
+  /** Handicap system name */
+  handicapSystem?: string | null;
+  /** Whether flights are used */
+  useFlights: boolean;
+  /** Fleet assignment method */
+  fleetAssignment?: 'random' | 'seeded' | 'qualifying';
+}
+
+/** Series standing for a boat */
+export interface SeriesStanding {
+  boatId: Id;
+  /** Flight this standing belongs to (null/absent = single open fleet). */
+  flightId?: Id | null;
+  /** Results for each race (null = not sailed/DNS) */
+  raceResults: (RaceResult | null)[];
+  /** Total points including discards */
+  totalPoints: number;
+  /** Points after discards (net points) */
+  netPoints: number;
+  /** Points discarded */
+  discardedPoints: number;
+  /** Current rank */
+  rank: number;
+  /** Number of 1st places */
+  firstPlaces: number;
+  /** Number of 2nd places */
+  secondPlaces: number;
+  /** Number of 3rd places */
+  thirdPlaces: number;
+  /** Publication status of this standing */
+  publicationStatus: PublicationStatus;
+  /** Version of the standing (incremented on each recompute/publish) */
+  version: number;
+  /** When the standing was last published */
+  publishedAt?: string | null;
+  /** Who published/approved the standing */
+  publishedBy?: string | null;
+  /** History of corrections to this standing */
+  corrections: CorrectionEntry[];
+}
+
+/** Sailing Instruction document */
+export interface SailingInstruction {
+  id: Id;
+  title: string;
+  content: string;
+  /** Attachments (PDFs, images) */
+  attachments: Attachment[];
+  /** Version */
+  version: number;
+  /** Last updated */
+  updatedAt: string;
+  /** Published to public view */
+  published: boolean;
+}
+
+/** Notice of Race document */
+export interface NoticeOfRace {
+  id: Id;
+  title: string;
+  content: string;
+  attachments: Attachment[];
+  version: number;
+  updatedAt: string;
+  published: boolean;
+}
+
+/** Generic attachment */
+export interface Attachment {
+  id: Id;
+  name: string;
+  /** Base64 data URL or external URL */
+  url: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+}
+
+/** Public document for publishing */
+export interface PublicDocument {
+  id: Id;
+  title: string;
+  /** Document type */
+  type: 'sailing-instruction' | 'notice-of-race' | 'amendment' | 'bulletin' | 'other';
+  /** Content (markdown or plain text) */
+  content: string;
+  /** External URL (optional) */
+  url?: string | null;
+  /** Attachments */
+  attachments: Attachment[];
+  /** Published at */
+  publishedAt?: string | null;
+  /** Language */
+  locale?: string | null;
+}
+
+/** Sailing-specific tournament extension */
+export interface SailingTournamentExt {
+  /** Sailing event settings */
+  sailingSettings?: SailingEventSettings;
+  /** Full sailing regatta configuration (extended model) */
+  sailingConfig?: SailingRegattaConfig;
+  /** Boat classes in this regatta */
+  boatClasses: BoatClass[];
+  /** Boats entered */
+  boats: Boat[];
+  /** Flights */
+  flights: Flight[];
+  /** Races */
+  races: Race[];
+  /** Sailing instructions */
+  sailingInstructions: SailingInstruction[];
+  /** Notice of Race */
+  noticeOfRace: NoticeOfRace[];
+  /** Public documents */
+  publicDocuments: PublicDocument[];
+  /** Series standings (computed) */
+  seriesStandings: SeriesStanding[];
+}
+
 // Provenance of a bracket slot. Deterministic recomputation re-derives every
 // non-manual slot from these links + decided results, so result edits can
 // never leave stale downstream pairings behind.
@@ -226,6 +716,8 @@ export interface Tournament {
   updatedAt: string;
   archived: boolean;
   notes?: string;
+  /** Full sailing regatta configuration (extended model) */
+  sailingConfig?: SailingRegattaConfig;
   /** Document branding for exported sheets/PDFs. Optional: added after v1.0. */
   branding?: Branding;
   /**
@@ -268,6 +760,26 @@ export interface ProjectFile {
   audit: AuditEntry[];
   settings: AppSettings;
   resources?: VenueResource[]; // optional since v1.0 (venue scheduling)
+  // Sailing-specific data (optional, only present for sailing events)
+  boatClasses?: BoatClass[];
+  boats?: Boat[];
+  crews?: Crew[];
+  flights?: Flight[];
+  races?: Race[];
+  sailingInstructions?: SailingInstruction[];
+  noticeOfRace?: NoticeOfRace[];
+  publicDocuments?: PublicDocument[];
+  seriesStandings?: SeriesStanding[];
+  /** Full sailing regatta configuration (extended model) */
+  sailingConfig?: SailingRegattaConfig;
+  // Extended sailing data for new formats (Stage 2)
+  boatHandicaps?: BoatHandicap[];
+  matchRacePairings?: MatchRacePairing[];
+  teamRaceMatches?: TeamRaceMatch[];
+  teamRacingTeams?: TeamRacingTeam[];
+  groupStageConfigs?: GroupStageConfig[];
+  knockoutConfigs?: KnockoutConfig[];
+  groupFinalsStandings?: GroupFinalsStanding[];
 }
 
 export interface AppSettings {
@@ -319,3 +831,477 @@ export function uid(prefix = 'id'): Id {
 export function nowIso(): string {
   return new Date().toISOString();
 }
+
+// ============================================================================
+// EXTENDED SAILING CONFIGURATION MODELS
+// ============================================================================
+
+/** The type of regatta – the top-level format decision. */
+export type SailingRegattaType =
+  | 'fleet-racing'
+  | 'match-racing'
+  | 'team-racing'
+  | 'round-robin'
+  | 'knockout'
+  | 'group-stage-finals'
+  | 'flighted-racing'
+  | 'medal-race'
+  | 'custom-regatta';
+
+/** A stage in a multi-stage regatta (groups, knockout, finals, etc.). */
+export interface SailingStageConfig {
+  id: Id;
+  name: string;
+  /** Stage kind: qualifying group, knockout round, final, medal race, etc. */
+  kind: 'group' | 'knockout' | 'final' | 'medal-race' | 'series' | 'custom';
+  /** Which boats participate (empty = all boats). */
+  boatIds: Id[];
+  /** Which flights participate (empty = all flights). */
+  flightIds: Id[];
+  /** Number of races in this stage. */
+  raceCount: number;
+  /** Whether results from this stage count toward the series total. */
+  countsInSeries: boolean;
+  /** Whether discards apply to this stage. */
+  discardsEnabled: boolean;
+  /** Whether this stage is a medal race (points may be doubled). */
+  isMedalRace: boolean;
+  /** Top N boats advance from this stage (for groups/knockout). */
+  advanceCount?: number | null;
+  /** The stage that supplies qualifiers to this one (for knockout after groups). */
+  advancesFrom?: Id | null;
+}
+
+/** Points for a single race result status (keys match RaceResultStatus). */
+export interface StatusPoints {
+  /** DNC - Did Not Come to the starting area */
+  DNC?: number;
+  /** DNS - Did Not Start */
+  DNS?: number;
+  /** DNF - Did Not Finish */
+  DNF?: number;
+  /** DSQ - Disqualified */
+  DSQ?: number;
+  /** OCS - On Course Side */
+  OCS?: number;
+  /** RET - Retired */
+  RET?: number;
+  /** RDG - Redress Given */
+  RDG?: number;
+  /** DNE - Disqualification Not Excludable */
+  DNE?: number;
+  /** DGM - Disqualification Under Rule 69 */
+  DGM?: number;
+  /** BFD - Black Flag Disqualification */
+  BFD?: number;
+  /** UFD - U Flag Disqualification */
+  UFD?: number;
+  /** SCP - Scoring Penalty */
+  SCP?: number;
+  /** NSC - No Score (custom) */
+  NSC?: number;
+  /** DPI - Discretionary Penalty Imposed */
+  DPI?: number;
+  /** ZFP - Z Flag Penalty (20% scoring penalty) */
+  ZFP?: number;
+}
+
+/** Medal race scoring options. */
+export interface MedalRaceScoring {
+  /** Whether medal race is enabled. */
+  enabled: boolean;
+  /** How many boats qualify for medal race. */
+  qualifiedCount: number;
+  /** Medal race points multiplier (1 = normal, 2 = double). */
+  pointsMultiplier: number;
+  /** Whether medal race points count in series total (false = decider only). */
+  countsInSeries: boolean;
+  /** Whether medal race uses separate scoring from series. */
+  separateScoring: boolean;
+}
+
+/** Detailed scoring configuration for a regatta. Fully elastic — every system
+ *  is selectable, editable, and configurable after preset selection. */
+export interface SailingScoringConfig {
+  /** Scoring system */
+  system: ScoringSystem;
+  /** Custom points per finishing position (1-based) for 'custom' system. */
+  customPoints?: Record<number, number>;
+  /** Points for each non-finisher status (overrides defaults). */
+  statusPoints?: StatusPoints;
+  /** Discard profile (undefined = use top-level discard config). */
+  discard?: DiscardProfile;
+  /** Whether discards are enabled at all. */
+  discardsEnabled: boolean;
+  /** Number of races scheduled. */
+  scheduledRaces?: number;
+  /** Minimum races to constitute a valid series. */
+  minRacesForSeries?: number;
+  /** Bonus points for 1st place (bonus-point system). */
+  bonusPoints?: number;
+  /** Medal race scoring configuration. */
+  medalRace: MedalRaceScoring;
+  /** Tie-break keys in priority order. */
+  tiebreakOrder: SailingTiebreakKey[];
+  /** Points for a boat that did not finish (absent = RRS default). */
+  nonFinisherPoints?: number;
+  /** Whether to use handicap scoring. */
+  useHandicap: boolean;
+  /** Handicap system name (e.g., Portsmouth Yardstick, ORC). */
+  handicapSystem?: string | null;
+  /** Per-stage scoring overrides (stage ID → scoring overrides). */
+  stageScoring?: Record<string, Partial<SailingScoringConfig>>;
+}
+
+/** Discard configuration – how many worst results are dropped. */
+export interface DiscardConfig {
+  /** Whether discards are enabled. */
+  enabled: boolean;
+  /** Number of races completed before discards apply. */
+  racesToQualify: number;
+  /** Discard schedule: [racesCompleted, discardsAllowed]. */
+  schedule: [number, number][];
+}
+
+/** Medal race configuration – standalone, reusable. */
+export interface MedalRaceSetup {
+  /** Whether a medal race is part of this series. */
+  enabled: boolean;
+  /** How many boats qualify for the medal race. */
+  qualifiedCount: number;
+  /** Medal race points are doubled. */
+  doublePoints: boolean;
+  /** Medal race points count in series total. */
+  countsInSeries: boolean;
+}
+
+// ============================================================================
+// HANDICAP SCORING TYPES
+// ============================================================================
+
+/** Supported handicap rating systems. Official algorithms are NOT implemented here
+ *  (they require licensed data or proprietary formulas). This interface defines
+ *  the integration points for external implementations. */
+export type HandicapSystem =
+  | 'portsmouth-yardstick'    // RYA Portsmouth Yardstick
+  | 'irc'                     // IRC (offshore, licensed)
+  | 'orc'                     // ORC (offshore, licensed)
+  | 'phrf'                    // PHRF (US-based)
+  | 'nhc'                     // NHC (National Handicap for Cruisers)
+  | 'schrs'                   // SCHRS (Small Catamaran Handicap)
+  | 'texel'                   // Texel (catamaran)
+  | 'custom';                 // Custom rating provided by organizer
+
+/** Handicap rating for a single boat */
+export interface BoatHandicap {
+  boatId: Id;
+  /** Rating value (meaning depends on system) */
+  rating: number;
+  /** System this rating belongs to */
+  system: HandicapSystem;
+  /** For TOT: Time Correction Factor (TCF) */
+  tcf?: number | null;
+  /** For TOD: Time-on-Distance coefficient */
+  todCoeff?: number | null;
+  /** Custom notes */
+  notes?: string | null;
+}
+
+/** Corrected time calculation result */
+export interface CorrectedTimeResult {
+  boatId: Id;
+  /** Elapsed time in seconds */
+  elapsedSeconds: number;
+  /** Corrected time in seconds */
+  correctedSeconds: number;
+  /** Position after correction */
+  correctedPosition: number;
+  /** Points for corrected position */
+  points: number;
+}
+
+// ============================================================================
+// MATCH RACING TYPES
+// ============================================================================
+
+/** Match racing pairing (one race between two boats) */
+export interface MatchRacePairing {
+  id: Id;
+  /** Round number */
+  round: number;
+  /** Flight/group ID if applicable */
+  flightId?: Id | null;
+  /** First boat */
+  boat1Id: Id;
+  /** Second boat */
+  boat2Id: Id;
+  /** Winner boat ID (null if not finished) */
+  winnerId?: Id | null;
+  /** Loser boat ID */
+  loserId?: Id | null;
+  /** Race status */
+  status: RaceStatus;
+  /** Individual race results within the match (best of N) */
+  raceResults: MatchRaceResult[];
+  /** Notes */
+  notes?: string | null;
+}
+
+/** Individual race result within a match race */
+export interface MatchRaceResult {
+  id: Id;
+  /** Race number within the match */
+  raceNumber: number;
+  /** Winner boat ID */
+  winnerId: Id;
+  /** Time difference at finish (seconds) */
+  deltaSeconds?: number | null;
+  /** Status */
+  status: 'finished' | 'abandoned' | 'cancelled';
+}
+
+/** Match racing standings for round-robin */
+export interface MatchRaceStanding {
+  boatId: Id;
+  /** Matches won */
+  wins: number;
+  /** Matches lost */
+  losses: number;
+  /** Matches sailed */
+  sailed: number;
+  /** Points (usually = wins) */
+  points: number;
+  /** Rank */
+  rank: number;
+  /** Tie-break metrics */
+  tiebreak?: {
+    headToHead?: number;
+    rrWinPercentage?: number;
+  };
+}
+
+// ============================================================================
+// TEAM RACING TYPES
+// ============================================================================
+
+/** Team racing team */
+export interface TeamRacingTeam {
+  id: Id;
+  name: string;
+  /** Boat IDs belonging to this team */
+  boatIds: Id[];
+  /** Color identifier for umpiring */
+  color?: string | null;
+}
+
+/** Team racing match (two teams, multiple boats each) */
+export interface TeamRaceMatch {
+  id: Id;
+  /** Round number */
+  round: number;
+  /** Team 1 */
+  team1Id: Id;
+  /** Team 2 */
+  team2Id: Id;
+  /** Individual boat results (positions) */
+  boatResults: TeamRaceBoatResult[];
+  /** Winner team ID */
+  winnerTeamId?: Id | null;
+  /** Status */
+  status: RaceStatus;
+  /** Notes */
+  notes?: string | null;
+}
+
+/** Single boat result in a team race */
+export interface TeamRaceBoatResult {
+  boatId: Id;
+  teamId: Id;
+  /** Finishing position in the race (1-based) */
+  position: number;
+  /** Status */
+  status: RaceResultStatus;
+}
+
+/** Team racing standings (per Appendix D) */
+export interface TeamRaceStanding {
+  teamId: Id;
+  /** Matches won */
+  wins: number;
+  /** Matches lost */
+  losses: number;
+  /** Matches sailed */
+  sailed: number;
+  /** Total penalty turns awarded */
+  penaltyTurns: number;
+  /** Rank */
+  rank: number;
+}
+
+// ============================================================================
+// GROUP + FINALS TYPES
+// ============================================================================
+
+/** Group stage configuration */
+export interface GroupStageConfig {
+  id: Id;
+  name: string;
+  /** Boat IDs in this group */
+  boatIds: Id[];
+  /** Number of races in group stage */
+  raceCount: number;
+  /** How many boats advance from this group */
+  advanceCount: number;
+  /** Whether group results carry forward to finals */
+  carryForward: boolean;
+  /** Scoring overrides for this group */
+  scoring?: Partial<SailingScoringConfig>;
+}
+
+/** Knockout bracket configuration */
+export interface KnockoutConfig {
+  id: Id;
+  name: string;
+  /** Boat IDs participating (usually qualifiers from groups) */
+  boatIds: Id[];
+  /** Best of N races per match */
+  bestOf: number;
+  /** Whether losers go to a consolation bracket */
+  hasConsolation: boolean;
+  /** Scoring overrides */
+  scoring?: Partial<SailingScoringConfig>;
+}
+
+/** Final classification combining groups + knockout */
+export interface GroupFinalsStanding {
+  boatId: Id;
+  /** Group stage rank */
+  groupRank?: number | null;
+  /** Group stage net points */
+  groupNetPoints?: number | null;
+  /** Knockout result: winner, runner-up, semi-finalist, etc. */
+  knockoutResult?: 'winner' | 'runner-up' | 'semi-finalist' | 'quarter-finalist' | 'consolation-winner' | 'eliminated';
+  /** Final overall rank */
+  finalRank: number;
+}
+
+/** Preset reference stored with the event so it can be reapplied or changed. */
+export interface SailingPresetRef {
+  id: string;
+  name: string;
+  format: CompetitionFormat;
+  appliedAt: string;
+}
+
+/** Full sailing configuration, stored separately from the neutral RuleSet. */
+export interface SailingRegattaConfig {
+  /** Schema version for migration/compatibility */
+  sailingSchemaVersion: number;
+  /** The type of regatta. */
+  type: SailingRegattaType;
+  /** The preset used as a starting point (can be changed later). */
+  preset?: SailingPresetRef;
+  /** Scoring configuration. */
+  scoring: SailingScoringConfig;
+  /** Discard configuration. */
+  discard: DiscardConfig;
+  /** Medal race configuration. */
+  medalRace: MedalRaceSetup;
+  /** Stages (groups, knockout, finals, etc.). */
+  stages: SailingStageConfig[];
+  /** Whether flights are used. */
+  useFlights: boolean;
+  /** Fleet assignment method. */
+  fleetAssignment?: 'random' | 'seeded' | 'qualifying';
+  /** Time limit for first boat (minutes). */
+  timeLimitFirstMin?: number | null;
+  /** Time limit for subsequent boats (minutes). */
+  timeLimitOthersMin?: number | null;
+  /** Target time for first boat (minutes). */
+  targetTimeMin?: number | null;
+  /** Whether to use handicap. */
+  useHandicap: boolean;
+  /** Handicap system name. */
+  handicapSystem?: string | null;
+  /** Custom rules (organizer-defined). */
+  customRules?: string;
+}
+
+/** Default discard configuration. */
+export const DEFAULT_DISCARD_CONFIG: DiscardConfig = {
+  enabled: true,
+  racesToQualify: 4,
+  schedule: [[4, 1], [8, 2]],
+};
+
+/** Default medal race setup. */
+export const DEFAULT_MEDAL_RACE_SETUP: MedalRaceSetup = {
+  enabled: false,
+  qualifiedCount: 10,
+  doublePoints: true,
+  countsInSeries: true,
+};
+
+/** Default scoring configuration. */
+export const DEFAULT_SCORING_CONFIG: SailingScoringConfig = {
+  system: 'low-point',
+  customPoints: {},
+  /** Default status points per RRS Low Point System (fleet size + 1 for non-finishers).
+   *  The engine will override with fleetSize + 1 when computing if not set. */
+  statusPoints: {
+    DNC: 0,   // Will be overridden to fleetSize + 1
+    DNS: 0,   // Will be overridden to fleetSize + 1
+    DNF: 0,   // Will be overridden to fleetSize + 1
+    DSQ: 0,   // Will be overridden to fleetSize + 1
+    OCS: 0,   // Will be overridden to fleetSize + 1
+    RET: 0,   // Will be overridden to fleetSize + 1
+    RDG: 0,   // Special - computed from redress
+    DNE: 0,   // Will be overridden to fleetSize + 1 (not excludable)
+    DGM: 0,   // Will be overridden to fleetSize + 1
+    BFD: 0,   // Will be overridden to fleetSize + 1
+    UFD: 0,   // Will be overridden to fleetSize + 1
+    SCP: 0,   // Percentage penalty - handled separately
+    NSC: 0,   // Will be overridden to fleetSize + 1
+    DPI: 0,   // Arbitrary points - handled separately
+    ZFP: 0,   // 20% penalty - handled separately
+  },
+  discard: undefined,
+  scheduledRaces: 6,
+  minRacesForSeries: 1,
+  discardsEnabled: true,
+  bonusPoints: undefined,
+  medalRace: {
+    enabled: false,
+    qualifiedCount: 10,
+    pointsMultiplier: 2,
+    countsInSeries: true,
+    separateScoring: false,
+  },
+  tiebreakOrder: ['net-points', 'most-first', 'most-second', 'most-third'],
+  nonFinisherPoints: undefined,
+  useHandicap: false,
+  handicapSystem: null,
+  stageScoring: {},
+};
+
+/** Current sailing schema version */
+export const SAILING_SCHEMA_VERSION = 2;
+
+/** Default sailing regatta config. */
+export const DEFAULT_SAILING_REGATTA_CONFIG: SailingRegattaConfig = {
+  sailingSchemaVersion: SAILING_SCHEMA_VERSION,
+  type: 'fleet-racing',
+  preset: undefined,
+  scoring: { ...DEFAULT_SCORING_CONFIG },
+  discard: { ...DEFAULT_DISCARD_CONFIG },
+  medalRace: { ...DEFAULT_MEDAL_RACE_SETUP },
+  stages: [],
+  useFlights: false,
+  fleetAssignment: 'random',
+  timeLimitFirstMin: 60,
+  timeLimitOthersMin: 15,
+  targetTimeMin: 40,
+  useHandicap: false,
+  handicapSystem: null,
+  customRules: undefined,
+};
