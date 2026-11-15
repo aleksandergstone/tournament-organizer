@@ -15,7 +15,7 @@ export function swissPairings(
   for (const m of matches) {
     if (m.result.status === 'bye' && (m.homeId ?? m.awayId)) hadBye.add((m.homeId ?? m.awayId)!);
     if (!m.homeId || !m.awayId) continue;
-    if (m.result.status === 'scheduled' || m.result.status === 'unfinished' || m.result.status === 'interrupted') continue;
+    if (m.result.status === 'scheduled' || m.result.status === 'unfinished' || m.result.status === 'interrupted' || m.result.status === 'tbd') continue;
     if (!played.has(m.homeId)) played.set(m.homeId, new Set());
     if (!played.has(m.awayId)) played.set(m.awayId, new Set());
     played.get(m.homeId)!.add(m.awayId);

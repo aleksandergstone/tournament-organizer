@@ -44,8 +44,22 @@ export interface Branding {
   footerNote: string;
   /** Printed block near the end: notes, disclaimer. */
   notes: string;
-  /** Accent colour for rules, headers and highlights (#rrggbb). */
-  accent: string;
+  /** Primary accent colour for headers, rules and highlights (#rrggbb). */
+  accent1: string;
+  /** Secondary accent colour for secondary elements and contrast (#rrggbb). */
+  accent2: string;
+  /** Page background colour for documents and UI (#rrggbb). */
+  background: string;
+  /** Main text colour (#rrggbb). */
+  ink: string;
+  /** Secondary / muted text colour (#rrggbb). */
+  muted: string;
+  /** Border / separator line colour (#rrggbb). */
+  line: string;
+  /** Card / surface background colour (#rrggbb). */
+  surface: string;
+  /** Where the event logo sits in the document header. */
+  logoPlacement: 'top-left' | 'top-right' | 'center' | 'none';
   /** Show venue and date on the header line. */
   showVenueDate: boolean;
   /** Extra columns in standings (Buchholz, seed). */
@@ -96,7 +110,14 @@ export const DEFAULT_BRANDING: Branding = {
   headerNote: '',
   footerNote: '',
   notes: '',
-  accent: DEFAULT_ACCENT,
+  accent1: DEFAULT_ACCENT,
+  accent2: '#7c3aed',
+  background: '#ffffff',
+  ink: '#161c24',
+  muted: '#697386',
+  line: '#c8ced8',
+  surface: '#f5f7fa',
+  logoPlacement: 'top-left',
   showVenueDate: true,
   showAdvancedStats: false,
   compactStandings: false,
@@ -168,7 +189,14 @@ export function normalizeBranding(input?: Partial<Branding> | null): Branding {
     headerNote: pick('headerNote'),
     footerNote: pick('footerNote'),
     notes: pick('notes'),
-    accent: isHexColor(b.accent) ? b.accent.trim().toLowerCase() : DEFAULT_ACCENT,
+    accent1: isHexColor(b.accent1) ? b.accent1.trim().toLowerCase() : DEFAULT_ACCENT,
+    accent2: isHexColor(b.accent2) ? b.accent2.trim().toLowerCase() : DEFAULT_BRANDING.accent2,
+    background: isHexColor(b.background) ? b.background.trim().toLowerCase() : DEFAULT_BRANDING.background,
+    ink: isHexColor(b.ink) ? b.ink.trim().toLowerCase() : DEFAULT_BRANDING.ink,
+    muted: isHexColor(b.muted) ? b.muted.trim().toLowerCase() : DEFAULT_BRANDING.muted,
+    line: isHexColor(b.line) ? b.line.trim().toLowerCase() : DEFAULT_BRANDING.line,
+    surface: isHexColor(b.surface) ? b.surface.trim().toLowerCase() : DEFAULT_BRANDING.surface,
+    logoPlacement: oneOf(b.logoPlacement, ['top-left', 'top-right', 'center', 'none'], 'top-left'),
     showVenueDate: bool(b.showVenueDate, DEFAULT_BRANDING.showVenueDate),
     showAdvancedStats: bool(b.showAdvancedStats, DEFAULT_BRANDING.showAdvancedStats),
     compactStandings: bool(b.compactStandings, DEFAULT_BRANDING.compactStandings),

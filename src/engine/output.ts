@@ -1,4 +1,4 @@
-// Tournament output model — everything that leaves the app: printed sheets,
+// Tournament output model \u2014 everything that leaves the app: printed sheets,
 // PDFs and CSV files.
 //
 // Pure and deterministic. Builders take a snapshot of the project plus a
@@ -15,10 +15,10 @@ import { bracketSvg, buildBracketTree, knockoutPlaces } from './bracket-view';
 import { decidedWinner } from './pairings';
 import { computeStandings } from './standings';
 import { Group, Match, Participant, StandingRow, Tournament, VenueResource } from './types';
+import { disciplineOf, venueLabel } from './discipline';
 import { t, getLocale, INTL_LOCALES, type Dict } from '../i18n';
-import { disciplineOf, matchLabel, participantLabel, venueLabel } from './discipline';
 
-export type ReportKind = 'standings' | 'matches' | 'schedule' | 'bracket' | 'groups' | 'pack' | 'regulation';
+export type ReportKind = 'standings' | 'matches' | 'schedule' | 'bracket' | 'groups' | 'regulation';
 
 /** Labels and hints are dictionary keys: the Output screen translates them. */
 export const REPORT_KINDS: { kind: ReportKind; label: keyof Dict; hint: keyof Dict }[] = [
@@ -27,7 +27,6 @@ export const REPORT_KINDS: { kind: ReportKind; label: keyof Dict; hint: keyof Di
   { kind: 'schedule', label: 'out.kind.schedule', hint: 'out.kind.scheduleHint' },
   { kind: 'bracket', label: 'out.kind.bracket', hint: 'out.kind.bracketHint' },
   { kind: 'groups', label: 'out.kind.groups', hint: 'out.kind.groupsHint' },
-  { kind: 'pack', label: 'out.kind.pack', hint: 'out.kind.packHint' },
   { kind: 'regulation', label: 'out.kind.regulation', hint: 'out.kind.regulationHint' },
 ];
 
@@ -66,7 +65,7 @@ export interface Section {
   headerRow?: string;
   /** Free-running prose (a regulation): rendered line-for-line, never as a table. */
   prose?: string;
-  /** Start on a fresh page — keeps a title from being split from its table. */
+  /** Start on a fresh page \u2014 keeps a title from being split from its table. */
   pageBreakBefore?: boolean;
 }
 
@@ -79,13 +78,16 @@ export interface ReportMeta {
   subtitle: string;
   edition: string;
   headerNote: string;
-  /** "Sat 14 Mar 2026 · Sports Hall" — empty when the event has neither. */
+  /** "Sat 14 Mar 2026 \u00B7 Sports Hall" \u2014 empty when the event has neither. */
   contextLine: string;
   generatedLine: string;
   footer: string;
   notes: string;
-  accent: string;
+  accent1: string;
+  accent2: string;
+  background: string;
   logoDataUrl: string;
+  logoPlacement: 'top-left' | 'top-right' | 'center' | 'none';
   sponsorDataUrl: string;
   dateFormat: DateStyle;
   timeFormat: TimeStyle;
@@ -98,7 +100,7 @@ export interface Report { kind: ReportKind; meta: ReportMeta; sections: Section[
 /** Engine-owned status wording. Kept short so it fits a printed column. */
 const STATUS_KEYS: Record<string, keyof Dict> = {
   scheduled: 'doc.scheduled', played: 'doc.played', walkover: 'doc.walkover', draw: 'doc.draw',
-  overtime: 'doc.oet', interrupted: 'doc.interrupted', unfinished: 'doc.unfinished', bye: 'doc.bye',
+  overtime: 'doc.oet', interrupted: 'doc.interrupted', unfinished: 'doc.unfinished', bye: 'doc.bye', tbd: 'common.tbd',
 };
 
 export function matchStatusLabel(status: string): string {
@@ -141,7 +143,7 @@ export function fmtDateFull(iso?: string | null, style: DateStyle = 'locale'): s
   return `${wd} ${fmtDate(iso, style)}`;
 }
 
-/** 24-hour "14:30" by default — the notation referees and venue sheets expect. */
+/** 24-hour "14:30" by default \u2014 the notation referees and venue sheets expect. */
 export function fmtTime(iso?: string | null, style: TimeStyle = 'h24'): string {
   const d = asDate(iso);
   if (!d) return '';
@@ -176,7 +178,7 @@ interface Ctx {
 }
 
 /**
- * A bye is not a match — one side is empty and it is decided by default, so it
+ * A bye is not a match \u2014 one side is empty and it is decided by default, so it
  * never belongs on a sheet a referee works from. It still counts for standings
  * (bye points). A *pending* knockout match, on the other hand, must be printed
  * with an empty side, otherwise the bracket would hide its own final.
@@ -203,7 +205,7 @@ function buildContext(input: ReportInput): Ctx {
   };
 }
 
-const nameOf = (c: Ctx, id?: string | null): string => (id ? c.names.get(id) ?? t('common.unknown') : '—');
+const nameOf = (c: Ctx, id?: string | null): string => (id ? c.names.get(id) ?? t('common.unknown') : '\u2014');
 
 function courtOf(c: Ctx, m: Match): string {
   if (m.resourceId) return c.resources.get(m.resourceId)?.name ?? m.venue ?? '';
@@ -214,15 +216,15 @@ function scoreOf(m: Match): string {
   const r = m.result;
   if (r.status === 'bye') return 'Bye';
   if (r.status === 'walkover') return 'W/O';
-  if (r.homeScore === null || r.awayScore === null) return '–';
-  return `${r.homeScore}–${r.awayScore}`;
+  if (r.homeScore === null || r.awayScore === null) return '\u2013';
+  return `${r.homeScore}\u2013${r.awayScore}`;
 }
 
 function statusOf(c: Ctx, m: Match): string {
   const r = m.result;
   if (r.status === 'walkover') {
     const w = r.walkoverWinnerId ?? r.winnerId;
-    return w ? `${matchStatusLabel('walkover')} — ${nameOf(c, w)}` : matchStatusLabel('walkover');
+    return w ? `${matchStatusLabel('walkover')} \u2014 ${nameOf(c, w)}` : matchStatusLabel('walkover');
   }
   return matchStatusLabel(r.status);
 }
@@ -238,16 +240,17 @@ const TIEBREAK_KEYS: Record<string, keyof Dict> = {
 /** Printed so a dispute can be settled from the paper, not from memory. */
 function tiebreakNote(tour: Tournament): string {
   const order = (tour.rules.tiebreakOrder ?? []).map(k => { const key = TIEBREAK_KEYS[k]; return key ? t(key) : k; });
-  return order.length ? t('doc.tiebreaks', { order: order.join(' → ') }) : '';
+  return order.length ? t('doc.tiebreaks', { order: order.join(' \u2192 ') }) : '';
 }
 
 /** Columns and rows are produced together so they can never drift apart. */
 function standingTable(c: Ctx, rows: StandingRow[]): { columns: Column[]; rows: Cell[][] } {
   const b = c.b;
+  const isTeam = c.participants.size > 0 && [...c.participants.values()].every(p => p.kind === 'team');
   const columns: Column[] = [
     { key: 'rank', label: '#', align: 'center' },
-    // Discipline-aware: Crew, Team, Player — not just the team/player pair.
-    { key: 'name', label: participantLabel(c.t) },
+    // Discipline-aware: Crew, Team, Player \u2014 not just the team/player pair.
+    { key: 'name', label: isTeam ? t('doc.team') : t('doc.player') },
     { key: 'played', label: t('doc.colP'), align: 'right' },
     { key: 'wins', label: t('doc.colW'), align: 'right' },
   ];
@@ -299,11 +302,11 @@ function qualifiersSection(c: Ctx, tables: Map<string, StandingRow[]>): Section 
     sub: perGroup > 0 ? t('doc.qualifiersSub', { n: perGroup }) : '',
     columns: [
       { key: 'group', label: t('common.group') }, { key: 'pos', label: t('doc.pos'), align: 'center' },
-      { key: 'name', label: participantLabel(c.t) },
+      { key: 'name', label: c.participants.size > 0 && [...c.participants.values()].every(p => p.kind === 'team') ? t('doc.team') : t('doc.player') },
       { key: 'points', label: t('doc.colPts'), align: 'right' }, { key: 'diff', label: t('doc.colDiff'), align: 'right' },
     ],
     rows: picks.map(p => [
-      groupName.get(p.fromGroupId) ?? '—', p.groupRank,
+      groupName.get(p.fromGroupId) ?? '\u2014', p.groupRank,
       c.names.get(p.participantId) ?? 'Unknown', p.points, fmtSigned(p.diff),
     ]),
   };
@@ -316,11 +319,11 @@ function groupSections(c: Ctx): Section[] {
     const rows = groupRowsOf(c, g);
     tables.set(g.id, rows);
     out.push({
-      ...standingsSection(c, `group-${g.id}-table`, `${g.name} — standings`, '', rows),
+      ...standingsSection(c, `group-${g.id}-table`, `${g.name} \u2014 standings`, '', rows),
       // Every group starts on its own page: an organiser flips pages, not rows.
       pageBreakBefore: i > 0,
     });
-    out.push(matchListSection(c, { id: `group-${g.id}-matches`, title: `${g.name} — matches`, matches: c.ordered.filter(m => m.groupId === g.id) }));
+    out.push(matchListSection(c, { id: `group-${g.id}-matches`, title: `${g.name} \u2014 matches`, matches: c.ordered.filter(m => m.groupId === g.id) }));
   });
   out.push(qualifiersSection(c, tables));
   return out;
@@ -344,7 +347,7 @@ function matchListRows(c: Ctx, matches: Match[]): Cell[][] {
   const groupName = new Map(c.groups.map(g => [g.id, g.name]));
   return matches.map(m => {
     const row: Cell[] = [c.noOf.get(m.id) ?? ''];
-    if (c.groups.length > 0) row.push(m.groupId ? groupName.get(m.groupId) ?? '—' : '—');
+    if (c.groups.length > 0) row.push(m.groupId ? groupName.get(m.groupId) ?? '\u2014' : '\u2014');
     row.push(m.roundName || t('round.n', { n: m.round }), nameOf(c, m.homeId), scoreOf(m), nameOf(c, m.awayId),
       statusOf(c, m), m.scheduledAt ? fmtTime(m.scheduledAt, c.b.timeFormat) : '', courtOf(c, m));
     return row;
@@ -364,12 +367,13 @@ function matchListSection(c: Ctx, opts?: { id: string; title: string; matches: M
 // ---- Schedule -------------------------------------------------------------
 
 function scheduleSections(c: Ctx): Section[] {
-  const rows = c.ordered.filter(m => !!m.scheduledAt && !!m.homeId && !!m.awayId);
+  const rows = c.ordered.filter(m => !!m.scheduledAt && m.result.status !== 'bye'
+    && ((!!m.homeId && !!m.awayId) || m.result.status === 'tbd'));
   if (!rows.length) return [];
   const columns: Column[] = [
     { key: 'time', label: t('common.time'), align: 'right' },
     { key: 'court', label: venueLabel(c.t) },
-    { key: 'no', label: matchLabel(c.t), align: 'right' },
+    { key: 'no', label: t('doc.matchCol'), align: 'right' },
     { key: 'round', label: t('common.round') },
     { key: 'home', label: t('common.home') },
     { key: 'score', label: t('common.score'), align: 'center' },
@@ -445,7 +449,7 @@ function bracketSections(c: Ctx): Section[] {
   }];
   if (drawable) {
     const tree = buildBracketTree(matches, id => nameOf(c, id), {
-      emptyLabel: '—', roundName: n => t('round.n', { n }),
+      emptyLabel: '\u2014', byeLabel: matchStatusLabel('bye'), roundName: n => t('round.n', { n }),
     });
     out[0].bracket = bracketSvg({
       tree, title: t('doc.knockout'), championLabel: t('doc.championLabel'),
@@ -469,68 +473,18 @@ function bracketSections(c: Ctx): Section[] {
   return out;
 }
 
-// ---- Organizer pack -------------------------------------------------------
-
-const FINISHED: ReadonlySet<Match['result']['status']> =
-  new Set(['played', 'draw', 'walkover', 'overtime']);
-
-const SEEDING_KEYS: Record<string, keyof Dict> = {
-  seeded: 'rules.seedingSeeded', random: 'rules.seedingRandom', manual: 'rules.seedingManual',
-};
-
-function overviewSection(c: Ctx): Section {
-  // The tournament object is `c.t`; the translator is the module-level `t`.
-  const tour = c.t;
-  const played = c.ordered.filter(m => FINISHED.has(m.result.status)).length;
-  const dates = [fmtDate(tour.dates?.start), fmtDate(tour.dates?.end)].filter(Boolean);
-  const rules: Cell[] = [
-    t('doc.pointsRule', { win: tour.rules.winPoints, draw: tour.rules.drawPoints, loss: tour.rules.lossPoints }),
-    t(tour.rules.allowDraws ? 'doc.drawsAllowed' : 'doc.drawsNotAllowed'),
-    t(tour.rules.homeAway ? 'doc.homeAwayOn' : 'doc.homeAwayOff'),
-  ];
-  if ((tour.rules.tiebreakOrder ?? []).includes('buchholz')) rules.push(t('doc.buchholzRule'));
-  return {
-    id: 'overview', title: t('doc.information'),
-    columns: [{ key: 'field', label: t('doc.field') }, { key: 'value', label: t('doc.value') }],
-    rows: [
-      [t('doc.format'), describeFormat(tour.format)],
-      [participantLabel(tour), String(c.participants.size)],
-      [t('common.rounds'), String(c.ordered.length ? Math.max(...c.ordered.map(m => m.round)) : 0)],
-      [t('doc.matchesPlayed'), `${played} of ${c.ordered.filter(m => m.result.status !== 'bye').length}`],
-      [t('doc.dates'), dates.length > 1 && dates[0] !== dates[1] ? dates.join(' – ') : (dates[0] || '—')],
-      [t('common.venue'), tour.location || '—'],
-      [t('doc.rules'), rules.join(' · ')],
-      [t('doc.seeding'), t(SEEDING_KEYS[tour.rules.seeding] ?? 'rules.seedingManual')],
-    ],
-  };
-}
-
-function packSections(c: Ctx): Section[] {
-  const withGroups = c.groups.length > 0;
-  const final = finalResultSection(c);
-  const reg = regulationSection(c);
-  return [
-    overviewSection(c),
-    ...(withGroups ? groupSections(c) : final ? [final] : [overallStandings(c)]),
-    matchListSection(c),
-    ...scheduleSections(c),
-    ...bracketSections(c),
-    ...(reg && c.b.regulation.includeInDocs ? [reg] : []),
-  ];
-}
-
 // ---- Report ---------------------------------------------------------------
 
 function buildMeta(c: Ctx, generatedAt?: string): ReportMeta {
   const tour = c.t, b = c.b;
   const bits: string[] = [];
-  // The sport comes first: a sheet handed to a scorer has to say whose rules it
-  // is under. Only when one was chosen — the neutral document stays as it was.
-  const disc = disciplineOf(tour);
-  if (disc.id !== 'generic') bits.push(t(disc.label));
   if (b.showVenueDate) {
+    // The discipline name comes first when one was chosen: a sheet handed to a
+    // scorer has to say whose rules it is under. No discipline = no sport name.
+    const d = disciplineOf(tour);
+    if (d.id !== 'generic') bits.push(t(d.label));
     const start = fmtDate(tour.dates?.start, b.dateFormat), end = fmtDate(tour.dates?.end, b.dateFormat);
-    if (start && end && start !== end) bits.push(`${start} – ${end}`);
+    if (start && end && start !== end) bits.push(`${start} \u2013 ${end}`);
     else if (start || end) bits.push(start || end);
     if (tour.location) bits.push(tour.location);
   }
@@ -540,13 +494,13 @@ function buildMeta(c: Ctx, generatedAt?: string): ReportMeta {
     docTitle: documentTitle(b, title),
     fileNameBase: fileBaseName(b),
     subtitle: b.subtitle, edition: b.edition, headerNote: b.headerNote,
-    contextLine: bits.join('  ·  '),
+    contextLine: bits.join('  \u00B7  '),
     generatedLine: generatedAt
       ? t('doc.generated', { date: fmtDateFull(generatedAt, b.dateFormat), time: fmtTime(generatedAt, b.timeFormat) })
       : '',
 
-    footer: b.footerNote, notes: b.notes, accent: b.accent,
-    logoDataUrl: b.logoDataUrl, sponsorDataUrl: b.sponsorDataUrl,
+    footer: b.footerNote, notes: b.notes, accent1: b.accent1, accent2: b.accent2, background: b.background,
+    logoDataUrl: b.logoDataUrl, logoPlacement: b.logoPlacement, sponsorDataUrl: b.sponsorDataUrl,
     dateFormat: b.dateFormat, timeFormat: b.timeFormat,
   };
 }
@@ -588,7 +542,7 @@ function buildSections(c: Ctx, kind: ReportKind): Section[] {
   const reg = regulationSection(c);
   const inlineReg = reg && c.b.regulation.includeInDocs ? [reg] : [];
   switch (kind) {
-    // A group event has no meaningful overall table — the groups *are* the table.
+    // A group event has no meaningful overall table \u2014 the groups *are* the table.
     case 'standings':
     case 'groups': {
       const base = c.groups.length > 0 ? groupSections(c) : final ? [final] : [overallStandings(c)];
@@ -597,7 +551,6 @@ function buildSections(c: Ctx, kind: ReportKind): Section[] {
     case 'matches': return [matchListSection(c)];
     case 'schedule': return scheduleSections(c);
     case 'bracket': return bracketSections(c);
-    case 'pack': return packSections(c);
     case 'regulation': return reg ? [reg] : [];
   }
 }
@@ -608,7 +561,7 @@ export function buildReport(input: ReportInput, kind: ReportKind): Report {
   return { kind, meta: buildMeta(c, input.generatedAt), sections: buildSections(c, kind) };
 }
 
-/** Every row of a report, flattened — the basis for CSV export. */
+/** Every row of a report, flattened \u2014 the basis for CSV export. */
 export function reportRows(report: Report): { title: string; cells: string[] }[] {
   const out: { title: string; cells: string[] }[] = [];
   for (const s of report.sections) {
@@ -629,5 +582,15 @@ export function reportRows(report: Report): { title: string; cells: string[] }[]
 export function reportToCsv(report: Report): string {
   const esc = (v: string) => /[";\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
   const lines = reportRows(report).map(r => r.cells.map(esc).join(';'));
-  return lines.length ? '﻿' + lines.join('\r\n') + '\r\n' : '';
+  return lines.length ? '\uFEFF' + lines.join('\r\n') + '\r\n' : '';
 }
+
+
+
+
+
+
+
+
+
+

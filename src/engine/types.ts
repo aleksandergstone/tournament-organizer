@@ -214,7 +214,8 @@ export type MatchStatus =
   | 'overtime'
   | 'interrupted'
   | 'unfinished'
-  | 'bye';
+  | 'bye'
+  | 'tbd';
 
 /** One period of a match: a set, a game, a leg, a quarter. */
 export interface SetScore {
@@ -727,6 +728,21 @@ export interface Tournament {
   discipline?: string | null;
   /** Season or series this tournament belongs to (added in v1.5). */
   season?: SeasonRef | null;
+  /** Public-facing event information */
+  publicInfo?: TournamentPublicInfo;
+}
+
+export interface TournamentPublicInfo {
+  shortDescription: string;
+  fullDescription: string;
+  organiser: string;
+  contactEmail: string;
+  contactPhone: string;
+  website: string;
+  facebook: string;
+  instagram: string;
+  otherLink: string;
+  otherLinkLabel: string;
 }
 
 export interface StandingRow {

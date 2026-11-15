@@ -47,7 +47,7 @@ export function recomputeBracket(matches: Match[]): Match[] {
     }
     const h = resolveSrc(b.srcHome);
     const a = resolveSrc(b.srcAway);
-    setDerivedSlot(m, h, a);
+    setDerivedSlot(m, h, a, byId, b.srcHome, b.srcAway);
   }
   guardLosersRematches(matches, byId);
   return matches;
@@ -66,7 +66,7 @@ function guardLosersRematches(matches: Match[], byId: Map<string, Match>): void 
   const wbPairs = new Set<string>();
   for (const m of matches) {
     if (m.bracket?.kind !== 'winners' || !m.homeId || !m.awayId) continue;
-    if (m.result.status === 'scheduled' || m.result.status === 'unfinished' || m.result.status === 'interrupted') continue;
+    if (m.result.status === 'scheduled' || m.result.status === 'unfinished' || m.result.status === 'interrupted' || m.result.status === 'tbd') continue;
     wbPairs.add(pairKey(m.homeId, m.awayId));
   }
   if (wbPairs.size === 0) return;
@@ -108,22 +108,43 @@ function pairKey(a: string, b: string): string {
   return a < b ? `${a}~${b}` : `${b}~${a}`;
 }
 
-function setDerivedSlot(m: Match, h: string | null, a: string | null): void {
+function setDerivedSlot(
+  m: Match,
+  h: string | null,
+  a: string | null,
+  byId: Map<string, Match>,
+  srcHome: { w?: string; l?: string; seed?: string | null } | null | undefined,
+  srcAway: { w?: string; l?: string; seed?: string | null } | null | undefined,
+): void {
+  // A resolved winner plus a structurally empty opposing source is a genuine
+  // automatic advance (e.g. an odd-sized bracket), not an unknown TBD entrant.
+  const homeSourceVacant = !srcHome || ('seed' in srcHome && srcHome.seed === null);
+  const awaySourceVacant = !srcAway || ('seed' in srcAway && srcAway.seed === null);
+  const homeSourceWaiting = !!srcHome && !('seed' in srcHome) && !h;
+  const awaySourceWaiting = !!srcAway && !('seed' in srcAway) && !a;
+  const homeMatch = srcHome?.w || srcHome?.l ? byId.get(srcHome.w ?? srcHome.l!) : undefined;
+  const awayMatch = srcAway?.w || srcAway?.l ? byId.get(srcAway.w ?? srcAway.l!) : undefined;
+  const resolvedAgainstVacancy = (h && awaySourceVacant)
+    || (a && homeSourceVacant)
+    || (h && awaySourceWaiting && awayMatch?.result.status === 'bye')
+    || (a && homeSourceWaiting && homeMatch?.result.status === 'bye')
+    || (h && awaySourceWaiting && awayMatch?.bracket?.manual && !awayMatch.awayId)
+    || (a && homeSourceWaiting && homeMatch?.bracket?.manual && !homeMatch.awayId)
+    || (h && awaySourceWaiting && awayMatch?.bracket?.manual && !awayMatch.homeId)
+    || (a && homeSourceWaiting && homeMatch?.bracket?.manual && !homeMatch.homeId);
   m.homeId = h; m.awayId = a;
-  if (h === null || a === null) {
-    // TBD: never keep a decided result, and never auto-award a 'bye' win for
-    // a derived slot — bye auto-advance applies only to generation-time
-    // manual byes. A single occupant waits as scheduled.
-    m.result = { homeScore: null, awayScore: null, winnerId: null, status: 'scheduled' };
+  if (resolvedAgainstVacancy) {
+    m.result = { homeScore: null, awayScore: null, winnerId: h ?? a, status: 'bye' };
     return;
   }
-  if (m.result.status === 'bye') {
-    // Derived matches are created by mkMatch(null,null) as a placeholder
-    // 'bye'. When both sources resolve before any play (e.g. two W1 byes
-    // meeting in W2 for non-power-of-two fields) the placeholder must become
-    // a real scheduled match — a derived match is never a bye, and leaving
-    // it 'bye' would auto-advance a player with winnerId still null while
-    // decidedLoser() returns null for every l: feed downstream.
+  if (h === null || a === null) {
+    // A derived slot with unknown entrants is a planned TBD match, not a bye.
+    m.result = { homeScore: null, awayScore: null, winnerId: null, status: 'tbd' };
+    return;
+  }
+  if (m.result.status === 'bye' || m.result.status === 'tbd') {
+    // Derived slots are never byes. When both sources resolve, replace the
+    // TBD placeholder with a real scheduled match before accepting a result.
     m.result = { homeScore: null, awayScore: null, winnerId: null, status: 'scheduled' };
     return;
   }
@@ -137,18 +158,19 @@ function setDerivedSlot(m: Match, h: string | null, a: string | null): void {
 
 function resolveReset(reset: Match, byId: Map<string, Match>): void {
   const gf = [...byId.values()].find(m => m.round === GF_ROUND);
-  if (!gf) { reset.homeId = reset.awayId = null; reset.result = { homeScore: null, awayScore: null, winnerId: null, status: 'scheduled' }; return; }
+  if (!gf) { reset.homeId = reset.awayId = null; reset.result = { homeScore: null, awayScore: null, winnerId: null, status: 'tbd' }; return; }
   const w = decidedWinner(gf);
-  if (!w) { reset.homeId = reset.awayId = null; reset.result = { homeScore: null, awayScore: null, winnerId: null, status: 'scheduled' }; return; }
+  if (!w) { reset.homeId = reset.awayId = null; reset.result = { homeScore: null, awayScore: null, winnerId: null, status: 'tbd' }; return; }
   // GF srcHome = W-champion side, srcAway = L-champion side.
   const wSrc = gf.bracket?.srcHome?.w ? byId.get(gf.bracket.srcHome.w) : undefined;
   const wSide = wSrc ? decidedWinner(wSrc) : null;
   if (w === wSide) {
     // W-side won: tournament over, reset stays dormant.
-    reset.homeId = reset.awayId = null; reset.result = { homeScore: null, awayScore: null, winnerId: null, status: 'scheduled' };
+    reset.homeId = reset.awayId = null; reset.result = { homeScore: null, awayScore: null, winnerId: null, status: 'tbd' };
   } else {
     // L-side won GF1: same two finalists replay.
     reset.homeId = gf.homeId; reset.awayId = gf.awayId;
+    if (reset.result.status === 'tbd') reset.result = { homeScore: null, awayScore: null, winnerId: null, status: 'scheduled' };
     const tag = vsTag(reset.result);
     if (reset.result.status !== 'scheduled' && tag !== `${reset.homeId}|${reset.awayId}` && tag !== null) {
       reset.result = { homeScore: null, awayScore: null, winnerId: null, status: 'scheduled' };

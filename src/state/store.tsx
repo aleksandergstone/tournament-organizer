@@ -9,7 +9,7 @@ import { StandingRow } from '../engine/types';
 import { parseProject } from '../engine/storage';
 import { ProjectFile } from '../engine/types';
 import { t, resolveLocale, setLocale } from '../i18n';
-export type Screen = 'home'|'wizard'|'overview'|'participants'|'rules'|'bracket'|'matches'|'live'|'standings'|'export'|'settings'|'import'|'display'|'schedule'|'codes'|'season'|'regulation'|'publish'|'sailing-wizard'|'sailing-overview'|'sailing-boats'|'sailing-races'|'sailing-standings'|'sailing-documents'|'sailing-settings'|'sailing-classes'|'sailing-crews';
+export type Screen = 'home'|'wizard'|'overview'|'participants'|'rules'|'bracket'|'matches'|'standings'|'export'|'personalize'|'settings'|'import'|'schedule'|'codes'|'regulation'|'publish'|'sailing-wizard'|'sailing-overview'|'sailing-boats'|'sailing-races'|'sailing-standings'|'sailing-documents'|'sailing-settings'|'sailing-classes'|'sailing-crews'|'sailing-assignments'|'tournament-type';
 const SAILING_FORMATS = new Set(['fleet-racing', 'match-racing', 'team-racing']);
 
 /** Landing screen for a persisted project, based on the data model it uses. */
@@ -233,7 +233,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
 }
 function freshT(): Domain['tournament'] {
   return { id: uid('t'), name: '', sport: 'Football', individualOrTeam: 'team', format: 'single-elimination', participantCountExpected: null, dates: { start: null, end: null }, location: '', visibility: 'private',
-  rules: { winPoints: 3, drawPoints: 1, lossPoints: 0, allowDraws: true, tiebreakOrder: ['points','wins','diff','scored','seed','name'], walkoverWinnerPoints: 3, overtimeAllowed: false, seeding: 'seeded', groupCount: 2, advancePerGroup: 2, homeAway: false, swissRounds: 5, byePoints: 3 },
+  rules: { winPoints: 3, drawPoints: 1, lossPoints: 0, allowDraws: false, tiebreakOrder: ['points','wins','diff','scored','seed','name'], walkoverWinnerPoints: 3, overtimeAllowed: false, seeding: 'seeded', groupCount: 2, advancePerGroup: 2, homeAway: false, swissRounds: 5, byePoints: 3 },
   createdAt: nowIso(), updatedAt: nowIso(), archived: false };
 }
 export function useApp(): Ctx { const v = useContext(C); if (!v) throw new Error('no provider'); return v; }

@@ -24,6 +24,9 @@ function match(id: string, home: string | null, away: string | null, over: Parti
     durationMin: over.durationMin ?? null,
     modifiedAt: over.modifiedAt ?? null,
     bracket: over.bracket ?? null,
+    refereeId: over.refereeId ?? null,
+    customData: over.customData ?? null,
+    groupId: over.groupId ?? null,
   };
 }
 const nameMap = (list: { id: string; name: string }[]) => new Map(list.map(p => [p.id, p.name]));
@@ -133,6 +136,34 @@ describe('venue scheduling', () => {
       list.push({ from, to });
       byCourt.set(s.resourceId, list);
     }
+  });
+  it('can schedule a TBD fixture without losing its time when entrants become known', () => {
+    const tbd = match('tbd-match', null, null, {
+      roundName: 'Final',
+      result: { homeScore: null, awayScore: null, winnerId: null, status: 'tbd' },
+      durationMin: 75,
+      refereeId: 'official-7',
+      customData: { courtNote: 'TV court', broadcast: true },
+    } as Partial<Match>);
+    const plan = suggestSlots([tbd], resources, { dayStart: at(9) });
+    expect(plan).toHaveLength(1);
+    const assigned = { ...tbd, resourceId: plan[0].resourceId, venue: plan[0].resourceName, scheduledAt: plan[0].start };
+    expect(toEntries([assigned], resources).map(e => e.matchId)).toEqual(['tbd-match']);
+    const bracket = [
+      match('sf-a', 'p0', 'p1', { roundName: 'Semifinal', bracket: { kind: 'winners', manual: true } }),
+      match('sf-b', 'p2', 'p3', { roundName: 'Semifinal', bracket: { kind: 'winners', manual: true } }),
+      { ...assigned, bracket: { kind: 'winners' as const, srcHome: { w: 'sf-a' }, srcAway: { w: 'sf-b' } } },
+    ];
+    const before = bracket[2];
+    const resolved = { ...before, homeId: 'p0', awayId: 'p2', result: { ...before.result, status: 'scheduled' as const } };
+    expect(toEntries([resolved], resources)[0].start).toBe(plan[0].start);
+    expect(resolved).toMatchObject({
+      id: 'tbd-match', roundName: 'Final', homeId: 'p0', awayId: 'p2',
+      resourceId: plan[0].resourceId, venue: plan[0].resourceName,
+      scheduledAt: plan[0].start, durationMin: 75, refereeId: 'official-7',
+      customData: { courtNote: 'TV court', broadcast: true },
+    });
+    expect(detectConflicts([resolved], resources)).toEqual([]);
   });
   it('is deterministic: the same input gives the same plan', () => {
     const ms = [match('m2', 'p2', 'p3'), match('m1', 'p0', 'p1')];

@@ -205,6 +205,14 @@ export const PRESETS: readonly Preset[] = [
     level: 'advanced',
     rules: { scheduledRaces: 10, minRacesForSeries: 3, scoringSystem: 'custom', useFlights: true },
   },
+  {
+    id: 'season-league', format: 'round-robin',
+    label: 'preset.seasonLeague.label',
+    what: 'preset.seasonLeague.what', why: 'preset.seasonLeague.why', fits: 'preset.seasonLeague.fits',
+    generates: 'preset.seasonLeague.generates', matters: 'preset.seasonLeague.matters',
+    level: 'simple',
+    rules: { seeding: 'seeded', homeAway: false, allowDraws: true, tiebreakOrder: ['points', 'wins', 'diff', 'scored'] },
+  },
 ];
 
 const BY_FORMAT = new Map<CompetitionFormat, Preset[]>();

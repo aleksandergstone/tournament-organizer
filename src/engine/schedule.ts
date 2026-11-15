@@ -44,7 +44,8 @@ export function endOf(start: string, durationMin: number): string {
 
 /** Matches that are scheduled (have a time) — regardless of status. */
 export function scheduledMatches(matches: Match[]): Match[] {
-  return matches.filter(m => !!m.scheduledAt && !!m.homeId && !!m.awayId);
+  return matches.filter(m => !!m.scheduledAt && m.result.status !== 'bye'
+    && ((!!m.homeId && !!m.awayId) || m.result.status === 'tbd'));
 }
 
 export function toEntries(matches: Match[], resources: VenueResource[]): ScheduleEntry[] {
@@ -125,7 +126,9 @@ export function suggestSlots(
   if (Number.isNaN(base.getTime())) return [];
 
   const queue = matches
-    .filter(m => m.homeId && m.awayId && !m.scheduledAt && (!wanted || wanted.has(m.id)))
+    .filter(m => m.result.status !== 'bye' && !m.scheduledAt
+      && ((m.homeId && m.awayId) || m.result.status === 'tbd')
+      && (!wanted || wanted.has(m.id)))
     .sort((a, b) => a.round - b.round || (a.id < b.id ? -1 : 1));
 
   // Occupied intervals per resource, from already-scheduled matches.

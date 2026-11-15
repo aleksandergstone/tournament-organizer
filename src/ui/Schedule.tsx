@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../state/store';
 import { resourcesOf } from '../engine/model';
-import { disciplineOf, venueLabel } from '../engine/discipline';
+
 import { detectConflicts, suggestSlots, toEntries, DEFAULT_DURATION_MIN } from '../engine/schedule';
 import { ResourceKind, uid } from '../engine/types';
 import { Alert, Empty, Field, Page, Panel, Segmented } from './kit';
@@ -28,6 +28,8 @@ export default function Schedule() {
   const resources = useMemo(() => resourcesOf(domain), [domain]);
   const names = useMemo(() => new Map(domain.participants.map(p => [p.id, p.name])), [domain.participants]);
   const pn = (id: string | null) => (id ? names.get(id) ?? t('common.unknown') : t('common.tbd'));
+  const matchName = (m: typeof domain.matches[number]) =>
+    `${m.roundName}: ${pn(m.homeId)} vs ${pn(m.awayId)}`;
 
   const [name, setName] = useState('');
   /**
@@ -36,7 +38,7 @@ export default function Schedule() {
    * tables. A manual choice always wins — `null` means "not chosen", not "none".
    */
   const [chosenKind, setChosenKind] = useState<ResourceKind | null>(null);
-  const kind = chosenKind ?? disciplineOf(domain.tournament).venueKind;
+  const kind = chosenKind ?? 'court';
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [dayStart, setDayStart] = useState(() => toLocalInput(null));
@@ -44,7 +46,8 @@ export default function Schedule() {
 
   const conflicts = useMemo(() => detectConflicts(domain.matches, resources), [domain.matches, resources]);
   const entries = useMemo(() => toEntries(domain.matches, resources), [domain.matches, resources]);
-  const playable = useMemo(() => domain.matches.filter(m => m.homeId && m.awayId), [domain.matches]);
+  const playable = useMemo(() => domain.matches.filter(m => m.result.status !== 'bye'
+    && ((m.homeId && m.awayId) || m.result.status === 'tbd')), [domain.matches]);
   const unscheduled = useMemo(() => playable.filter(m => !m.scheduledAt), [playable]);
   const scheduledById = new Map(entries.map(e => [e.matchId, e]));
   const rows = onlyFree ? unscheduled : playable;
@@ -120,7 +123,7 @@ export default function Schedule() {
       {/* The discipline's own word for a place: courts, tables, boards or starts.
           The sub-line stays neutral, because it explains what the list is for
           rather than naming it. */}
-      <Panel title={venueLabel(domain.tournament)} sub={t('sch.placesSub')}>
+      <Panel title={t('doc.place')} sub={t('sch.placesSub')}>
         <div className="row">
           <input className="search" style={{ maxWidth: 240 }} value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addResource()} placeholder={t('sch.placePlaceholder')} aria-label={t('sch.placeName')} />
@@ -200,7 +203,7 @@ export default function Schedule() {
               </tr></thead>
               <tbody>{rows.map(m => (
                 <tr key={m.id}>
-                  <td className="name">{m.roundName}: {pn(m.homeId)} vs {pn(m.awayId)}</td>
+                  <td className="name">{matchName(m)}</td>
                   <td>
                     <select value={m.resourceId ?? ''} aria-label={t('sch.placeFor', { home: pn(m.homeId), away: pn(m.awayId) })}
                       onChange={ev => {
@@ -253,7 +256,7 @@ export default function Schedule() {
                   <tr key={e.matchId}>
                     <td className="name">{new Date(e.start!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                     <td className="muted">{e.resourceName || '—'}</td>
-                    <td>{m.roundName}: {pn(m.homeId)} vs {pn(m.awayId)}</td>
+                    <td>{matchName(m)}</td>
                     <td className="num muted">{e.durationMin}′</td>
                   </tr>
                 );

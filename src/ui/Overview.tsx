@@ -106,8 +106,6 @@ export default function Overview() {
               <span className="muted">{open} {tr('common.open').toLowerCase()}</span></div>
             <div className="row"><button className="btn" onClick={() => go('schedule')}>{tr('nav.schedule')}</button>
               <span className="muted">{tr('overview.shortSchedule')}</span></div>
-            <div className="row"><button className="btn" onClick={() => go('display')}>{tr('nav.display')}</button>
-              <span className="muted">{tr('overview.shortDisplay')}</span></div>
             <div className="row"><button className="btn" onClick={() => go('export')}>{tr('out.title')}</button>
               <span className="muted">{tr('overview.shortOutput')}</span></div>
           </div>

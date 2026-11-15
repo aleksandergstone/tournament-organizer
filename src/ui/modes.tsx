@@ -12,7 +12,6 @@ import {
   type FieldRule, type ScoreEffect, type SettingStatus, type ModeSpec,
 } from '../engine/mode-info';
 import { presetsFor, activePresetId, type Preset } from '../engine/presets';
-import { templatesFor } from '../engine/discipline';
 import { isSailingFormat } from '../engine/sailing-modes';
 import { CUSTOM_STAGES, GENERATED_CUSTOM_STAGES, type CustomStage, type DrawResolution, type RuleSet, type TiebreakKey, type ValidationIssueLike } from '../engine/types';
 import { describeFormat } from '../engine/generate';
@@ -24,15 +23,15 @@ type Patch = (p: Partial<RuleSet>) => void;
 
 const GROUP_TITLE: Record<SettingGroup, Key> = {
   scoring: 'rules.scoring',
-  sets: 'mode.set.sets',
-  draws: 'mode.set.draws',
+  sets: 'mode.why.matchLength',
+  draws: 'mode.sum.draws',
   tiebreak: 'rules.tiebreak',
   seeding: 'rules.seeding',
-  groups: 'mode.set.groups',
-  rounds: 'mode.set.rounds',
-  meeting: 'mode.set.meeting',
-  byes: 'mode.set.byes',
-  structure: 'mode.set.structure',
+  groups: 'mode.sum.groups',
+  rounds: 'mode.sum.rounds',
+  meeting: 'mode.sum.meeting',
+  byes: 'mode.sum.bye',
+  structure: 'mode.sum.groupPlan',
   reporting: 'mode.set.reporting',
   // Sailing-specific setting groups
   races: 'mode.why.scheduledRaces',
@@ -251,34 +250,40 @@ export function ModeExplainer({ format, rules, count }: {
   /** Would this field do anything in this mode? */
   const live = (f: keyof RuleSet) => fieldEffect(format, f) !== 'none';
   return (
-    <div className="mode-explain">
-      <p className="mode-explain-meaning">{t(m.meaning)}</p>
-      <dl className="mode-explain-list">
-        <div>
-          <dt>{t('mode.exampleLabel')}</dt>
-          <dd>{t(m.example)}</dd>
-        </div>
-        <div>
-          <dt>{t('mode.goodForLabel')}</dt>
-          <dd>{t(m.goodFor)}</dd>
-        </div>
-        <div>
-          <dt>{t('mode.notIncludedLabel')}</dt>
-          <dd>{t(m.notIncluded)}</dd>
-        </div>
-      </dl>
-      <ModeRules format={format} rules={rules} count={count} />
-      {hidden.length > 0 ? (
-        <p className="f-hint">
-          {!live('winPoints') ? t('mode.hiddenPoints')
-            : !live('groupCount') && !live('swissRounds') && !live('homeAway') ? t('mode.hiddenStructure')
-              : null}
-        </p>
-      ) : null}
-      {inert.length > 0 ? (
-        <p className="f-hint">{t('mode.err.inertSettings', { names: inert.map(f => labelOfField(f.field)).join(', ') })}</p>
-      ) : null}
-    </div>
+    <Collapse
+      title={t('mode.describeTitle')}
+      sub={t('mode.describeSub')}
+      className="mode-describe"
+    >
+      <div className="mode-explain">
+        <p className="mode-explain-meaning">{t(m.meaning)}</p>
+        <dl className="mode-explain-list">
+          <div>
+            <dt>{t('mode.exampleLabel')}</dt>
+            <dd>{t(m.example)}</dd>
+          </div>
+          <div>
+            <dt>{t('mode.goodForLabel')}</dt>
+            <dd>{t(m.goodFor)}</dd>
+          </div>
+          <div>
+            <dt>{t('mode.notIncludedLabel')}</dt>
+            <dd>{t(m.notIncluded)}</dd>
+          </div>
+        </dl>
+        <ModeRules format={format} rules={rules} count={count} />
+        {hidden.length > 0 ? (
+          <p className="f-hint">
+            {!live('winPoints') ? t('mode.hiddenPoints')
+              : !live('groupCount') && !live('swissRounds') && !live('homeAway') ? t('mode.hiddenStructure')
+                : null}
+          </p>
+        ) : null}
+        {inert.length > 0 ? (
+          <p className="f-hint">{t('mode.err.inertSettings', { names: inert.map(f => labelOfField(f.field)).join(', ') })}</p>
+        ) : null}
+      </div>
+    </Collapse>
   );
 }
 
@@ -301,18 +306,13 @@ const LEVEL_KEY: Record<Preset['level'], Key> = {
  * switches format says so rather than changing the event behind the organizer's
  * back. With no discipline â€” or a neutral one â€” this is exactly the old list.
  */
-export function PresetPicker({ format, rules, onApply, discipline }: {
+export function PresetPicker({ format, rules, onApply }: {
   format: string;
   rules: RuleSet;
   onApply(preset: Preset): void;
-  /** The chosen discipline id, when one is. */
-  discipline?: string | null;
 }) {
   const t = useT();
-  const templates = templatesFor(discipline);
-  // A discipline with no templates of its own keeps the format's full list, so
-  // choosing one can never leave the organizer with nothing to pick from.
-  const list = templates.length > 0 ? templates.map(x => x.preset) : presetsFor(format);
+  const list = presetsFor(format);
   if (list.length === 0) return null;
   const active = activePresetId(format, rules);
   return (
@@ -522,66 +522,14 @@ function DrawSettings({ format, rules, set, err }: {
           error={err('drawResolution')}>
           <select
             value={rules.drawResolution ?? 'none'}
-            onChange={e => set({ drawResolution: e.target.value as DrawResolution })}
-            disabled={!rules.allowDraws}>
+            onChange={e => {
+              const res = e.target.value as DrawResolution;
+              set({ drawResolution: res, allowDraws: res !== 'none' });
+            }}>
             <option value="none">{t('mode.resolution.none')}</option>
             {RESOLUTIONS.map(r => <option key={r} value={r}>{t(`mode.resolution.${r}` as Key)}</option>)}
           </select>
         </Field>
-      ) : null}
-    </>
-  );
-}
-
-/**
- * The periods of a match â€” the thresholds the live scorer counts to.
- *
- * 0 points means the sport has no periods at all (football, chess): the score is
- * one running total and the other two fields would be meaningless, so they are
- * not even shown. Once a threshold is set, they appear and the scorer ends a set
- * by itself.
- */
-function SetSettings({ format, rules, set, err }: {
-  format: string; rules: RuleSet; set: Patch; err: (f: string) => string | undefined;
-}) {
-  const t = useT();
-  const perRule = fieldRule(format, 'periodPoints');
-  const needRule = fieldRule(format, 'periodsToWin');
-  const twoRule = fieldRule(format, 'winByTwo');
-  const per = Math.max(0, Math.floor(rules.periodPoints ?? 0));
-  return (
-    <>
-      <p className="rule-note">{t('mode.set.setsNote')}</p>
-      <Field
-        field="periodPoints"
-        label={<>{t('rules.periodPoints')}{perRule ? <RuleTag status={perRule.status} affects={perRule.affects} /> : null}</>}
-        hint={perRule ? t(perRule.why) : undefined}
-        error={err('periodPoints')}>
-        <input type="number" min={0} value={per} onChange={e => set({ periodPoints: Number(e.target.value) })} />
-      </Field>
-      {/*
-        The two follow-up fields stay on screen even when the sport has no sets.
-        A control that appears and disappears with another number is worse than a
-        disabled one, and the mode contract is that every field a mode declares
-        has exactly one place on the page.
-      */}
-      <Field
-        field="periodsToWin"
-        label={<>{t('rules.periodsToWin')}{needRule ? <RuleTag status={needRule.status} affects={needRule.affects} /> : null}</>}
-        hint={needRule ? t(needRule.why) : undefined}
-        error={err('periodsToWin')}>
-        <input type="number" min={1} value={rules.periodsToWin ?? 1} disabled={per === 0}
-          onChange={e => set({ periodsToWin: Number(e.target.value) })} />
-      </Field>
-      <Switch
-        field="winByTwo"
-        checked={rules.winByTwo !== false}
-        onChange={v => set({ winByTwo: v })}
-        disabled={per === 0}
-        label={<>{t('rules.winByTwo')}{twoRule ? <RuleTag status={twoRule.status} affects={twoRule.affects} /> : null}</>}
-        hint={twoRule ? t(twoRule.why) : undefined} />
-      {per > 0 ? (
-        <p className="rule-note">{t('mode.set.bestOf', { n: 2 * Math.max(1, Math.floor(rules.periodsToWin ?? 1)) - 1 })}</p>
       ) : null}
     </>
   );
@@ -632,14 +580,14 @@ function GroupSettings({ format, rules, set, count, err }: {
 function groupHint(count: number | null | undefined, groups: number): string | undefined {
   const t = useT();
   if (typeof count !== 'number' || count < 2 || groups < 1) return undefined;
-  return t('mode.set.advanceHint', { n: count, g: Math.floor(count / groups) });
+  return t('mode.sum.groupsValue', { groups: count, advance: Math.floor(count / groups) });
 }
 
 /** How many rounds a field of this size could hold without a repeated opponent. */
 function roundsHint(count: number | null | undefined): string | undefined {
   const t = useT();
   if (typeof count !== 'number' || count < 2) return undefined;
-  return t('mode.set.roundsHint', { n: count, m: count - 1 });
+  return t('mode.sum.roundsValue', { rounds: count });
 }
 
 /**
@@ -688,18 +636,35 @@ export function SettingsForMode({ format, rules, set, count, issues = [], groups
     const fs = specFor(format).fields.filter(f => f.group === g);
     return fs.length > 0 && fs.every(f => f.status === 'advanced');
   };
-  const primary = groups.filter(g => !advancedOf(g));
-  const secondary = groups.filter(advancedOf);
+  // Groups the organiser actually meets for this mode, but which benefit from
+  // being folded away so the first screen answers "what kind of event is this?"
+  // before "what does every field do?".
+  const KEY_GROUPS: readonly SettingGroup[] = ['scoring', 'draws', 'seeding', 'meeting'];
+  const keyGroups = groups.filter(g => KEY_GROUPS.includes(g));
+  const primary = groups.filter(g => !KEY_GROUPS.includes(g) && !advancedOf(g));
+  const secondary = groups.filter(g => !KEY_GROUPS.includes(g) && advancedOf(g));
 
   // Returns the panel itself, not a fragment: a key inside a fragment belongs to
   // nothing, and React then warns about every rendered group.
-  const renderGroup = (g: SettingGroup) => (
-    <Panel key={g} title={t(GROUP_TITLE[g])}>
+  const renderGroup = (g: SettingGroup) => {
+    // When every scoring field is reporting-only (bracket), relabel the panel
+    // so the organiser understands points never decide advancement.
+    const titleKey =
+      g === 'scoring' &&
+      specFor(format).fields.filter(f => f.group === 'scoring').every(f => f.affects === 'reporting')
+        ? 'mode.set.reporting'
+        : GROUP_TITLE[g];
+    return <Panel key={g} title={t(titleKey)}>
           {g === 'scoring' || g === 'reporting'
             ? <PointsFields format={format} rules={rules} set={set} reporting={g === 'reporting'} />
             : null}
 
-          {g === 'sets' ? <SetSettings format={format} rules={rules} set={set} err={err} /> : null}
+          {g === 'sets' && live('matchLengthMin') ? (
+            <Field field="matchLengthMin" label={<>{labelOfField('matchLengthMin')}{tag('matchLengthMin')}</>} hint={t('mode.why.matchLength')}>
+              <input type="number" min={0} value={rules.matchLengthMin ?? ''} onChange={e => set({ matchLengthMin: e.target.value ? Number(e.target.value) : null })} />
+            </Field>
+          ) : null}
+
 
           {g === 'draws' && live('allowDraws') ? <DrawSettings format={format} rules={rules} set={set} err={err} /> : null}
 
@@ -776,11 +741,20 @@ export function SettingsForMode({ format, rules, set, count, issues = [], groups
             </>
           ) : null}
     </Panel>
-  );
+  };
 
   return (
     <>
       {primary.map(renderGroup)}
+      {keyGroups.length > 0 ? (
+        <Collapse
+          title={t('mode.keySettingsTitle')}
+          sub={t('mode.keySettingsSub')}
+          className="mode-advanced"
+        >
+          {keyGroups.map(renderGroup)}
+        </Collapse>
+      ) : null}
       {secondary.length > 0 ? (
         <Collapse title={t('mode.advancedTitle')} sub={t('mode.advancedSub')}>
           {secondary.map(renderGroup)}

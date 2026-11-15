@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../state/store';
 import { REPORT_KINDS, ReportKind, buildReport, reportToCsv } from '../engine/output';
-import { hasPointTable } from '../engine/generate';
+import { hasBracket, hasPointTable } from '../engine/generate';
 import { renderReportHtml, reportFileName } from '../engine/pdf';
 import { Branding, normalizeBranding } from '../engine/branding';
 import { desktop } from '../engine/desktop';
@@ -19,7 +19,6 @@ import { useT } from '../i18n';
 export default function Output() {
   const tr = useT();
   const { domain, update, settings } = useApp();
-  const [kind, setKind] = useState<ReportKind>('standings');
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   // Branding is edited as a draft and committed when a field loses focus, so a
@@ -29,6 +28,27 @@ export default function Output() {
   useEffect(() => { setDraft(null); }, [t.branding]);
   const branding = draft ?? normalizeBranding(t.branding);
 
+  // A knockout prints its final result where a league prints a table.
+  const points = hasPointTable(domain.tournament.format);
+  const hasBkt = hasBracket(domain.tournament.format);
+
+  // Dokumenty zależą od formatu turnieju:
+  //  - drabinka → tylko drabinka, mecze, terminarz (bez tabeli i grup)
+  //  - tabela/punkty → tylko tabela, mecze, terminarz (bez drabinki)
+  //  - grupy → tylko gdy turniej faktycznie ma grupy
+  const visibleKinds = useMemo(() => {
+    const out: ReportKind[] = [];
+    if (points) out.push('standings');
+    if (hasBkt) out.push('bracket');
+    out.push('matches');
+    out.push('schedule');
+    if (domain.groups.length > 0) out.push('groups');
+    return out;
+  }, [points, hasBkt, domain.groups.length]);
+
+  // Domyślnie wybieramy pierwszy widoczny dokument.
+  const [kind, setKind] = useState<ReportKind>(() => visibleKinds.length > 0 ? visibleKinds[0] : 'standings');
+
   const report = useMemo(() => buildReport({
     tournament: t, participants: domain.participants, groups: domain.groups,
     matches: domain.matches, resources: domain.resources,
@@ -36,8 +56,6 @@ export default function Output() {
   }, kind), [t, domain, kind]);
   const html = useMemo(() => renderReportHtml(report), [report]);
   const hasData = domain.matches.length > 0;
-  // A knockout prints its final result where a league prints a table.
-  const points = hasPointTable(domain.tournament.format);
 
   const commitBranding = (next: Branding) => {
     setDraft(next);
@@ -90,7 +108,7 @@ export default function Output() {
       ) : (
         <Panel title={tr('out.docPanel')} sub={tr('out.docPanelSub')}>
           <div className="variants" role="tablist" aria-label={tr('out.docType')}>
-            {REPORT_KINDS.map(k => (
+            {REPORT_KINDS.filter(k => visibleKinds.includes(k.kind)).map(k => (
               <button key={k.kind} role="tab" type="button" aria-selected={kind === k.kind}
                 className={'variant' + (kind === k.kind ? ' on' : '')} onClick={() => setKind(k.kind)}>
                 <strong>{tr(k.label)}</strong>

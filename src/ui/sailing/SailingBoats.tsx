@@ -41,9 +41,8 @@ export default function SailingBoats() {
       buildYear: boatDraft.buildYear ?? null,
       owner: boatDraft.owner ?? null,
       club: boatDraft.club ?? null,
-      teamName: boatDraft.teamName ?? null,
-      skipperId: boatDraft.skipperId ?? undefined,
-      crewIds: boatDraft.crewIds ?? [],
+      // skipperId and crewIds are stored on the crew assignment, not the boat
+      crewIds: [],
       active: true,
       measurementCert: '',
       sailCertificate: boatDraft.sailCertificate ?? null,

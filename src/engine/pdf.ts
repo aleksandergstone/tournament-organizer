@@ -13,12 +13,14 @@ export function escapeHtml(v: string): string {
 }
 
 /** Only safe inline images reach the document (branding normalizes the rest). */
-function safeImage(src: string): string {
+function safeImage(src: string | undefined | null): string {
+  if (!src) return '';
   return /^data:image\/(png|jpe?g|webp|gif|svg\+xml);base64,[A-Za-z0-9+/=\s]+$/.test(src.trim()) ? src.trim() : '';
 }
 
 /** #rrggbb → rgba() so the accent can tint backgrounds without a colour lib. */
-function tint(hex: string, alpha: number): string {
+function tint(hex: string | undefined | null, alpha: number): string {
+  if (!hex) return `rgba(31, 94, 255, ${alpha})`;
   const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
   if (!m) return `rgba(31, 94, 255, ${alpha})`;
   return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})`;
@@ -46,13 +48,22 @@ const CSS = `
     font-size: 10.5pt; line-height: 1.45; color: #1a1d21; background: #fff;
   }
   .head { display: flex; align-items: flex-start; gap: 12px;
-          border-bottom: 2px solid var(--accent); padding-bottom: 8px; margin-bottom: 16px; }
+          border-bottom: 2px solid var(--accent1); padding-bottom: 8px; margin-bottom: 16px;
+          flex-wrap: wrap; }
+  .head.head-top-left { justify-content: flex-start; }
+  .head.head-top-right { justify-content: space-between; align-items: center; }
+  .head.head-center { justify-content: center; flex-direction: column; align-items: center; }
+  .head.head-none { justify-content: center; }
+  .head.head-center .titles { text-align: center; }
+  .head.head-center .titles .logo { display: block; margin: 0 auto 8px; }
+  .head.head-top-right .titles { flex: 1; min-width: 0; }
+  .head.head-top-right .logo { margin-left: auto; }
   .head img.logo { max-height: 46px; max-width: 150px; object-fit: contain; }
   .head .sponsor { margin-left: auto; max-height: 30px; max-width: 120px; object-fit: contain; }
   .head .titles { flex: 1; min-width: 0; }
   h1 { font-size: 17pt; line-height: 1.2; margin: 0; letter-spacing: -0.2px; }
   .subtitle { font-size: 11.5pt; margin: 2px 0 0; color: #3d4450; }
-  .edition { font-size: 9.5pt; margin: 3px 0 0; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
+  .edition { font-size: 9.5pt; margin: 3px 0 0; color: var(--accent1); font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
   .ctx, .hint, .generated { font-size: 9pt; color: #5b6472; margin: 4px 0 0; }
   .hint { font-style: italic; }
   section { margin-bottom: 18px; }
@@ -67,18 +78,29 @@ const CSS = `
   thead { display: table-header-group; }
   tr { break-inside: avoid; page-break-inside: avoid; }
   th { text-align: left; background: var(--accent-soft); color: #1a1d21; font-weight: 600;
-       padding: 5px 7px; border-bottom: 1px solid var(--accent); white-space: nowrap; }
+       padding: 5px 7px; border-bottom: 1px solid var(--accent1); white-space: nowrap; }
   td { padding: 4px 7px; border-bottom: 1px solid #e6e9ee; vertical-align: top; }
   tbody tr:nth-child(even) td { background: #fafbfc; }
   th.r, td.r { text-align: right; font-variant-numeric: tabular-nums; }
   th.c, td.c { text-align: center; }
-  th.day-row, tr.day-row th { background: var(--accent-soft); color: var(--accent);
+  th.day-row, tr.day-row th { background: var(--accent-soft); color: var(--accent1);
        font-size: 9.5pt; letter-spacing: 0.4px; text-transform: uppercase; }
   td.name { font-weight: 600; }
   .round { margin-top: 10px; break-inside: avoid; }
-  .round h3 { font-size: 10.5pt; margin: 0 0 4px; color: var(--accent); }
+  .round h3 { font-size: 10.5pt; margin: 0 0 4px; color: var(--accent1); }
   .note { font-size: 8.5pt; color: #5b6472; margin: 6px 0 0; }
   .notes { border-left: 3px solid var(--accent-soft); padding: 4px 0 4px 10px; white-space: pre-wrap; }
+  .regulation { margin: 10px 0; padding: 12px; background: #fafbfc; border: 1px solid var(--line); border-radius: 6px; }
+  .regulation h1, .regulation h2, .regulation h3, .regulation h4 { color: var(--accent1); margin-top: 12px; }
+  .regulation h1 { font-size: 14pt; }
+  .regulation h2 { font-size: 12pt; }
+  .regulation h3 { font-size: 11pt; }
+  .regulation p { margin: 6px 0; }
+  .regulation ul, .regulation ol { margin: 6px 0 6px 20px; }
+  .regulation li { margin: 3px 0; }
+  .regulation strong { color: var(--accent1); }
+  .regulation em { color: #1a1d21; }
+  .regulation img { max-width: 100%; height: auto; border-radius: 4px; }
   .empty { font-size: 10pt; color: #5b6472; font-style: italic; }
   .foot { position: fixed; left: 0; right: 0; bottom: 0; padding-top: 4px;
           border-top: 1px solid #e6e9ee; font-size: 8pt; color: #6b7280; }
@@ -119,14 +141,14 @@ export function renderReportHtml(report: Report): string {
   const logo = safeImage(m.logoDataUrl), sponsor = safeImage(m.sponsorDataUrl);
   // The document carries the app's variable names so the drawn bracket picks up
   // the event's accent colour, and always prints on white paper.
-  const style = `:root { --accent: ${m.accent}; --accent-soft: ${tint(m.accent, 0.1)};
-    --acc: ${m.accent}; --ink: #1a1d21; --muted: #5b6472; --line: #c8ced8; --panel: #ffffff; }`;
+  const style = `:root { --accent1: ${m.accent1}; --accent-soft: ${tint(m.accent1, 0.1)};
+    --acc: ${m.accent1}; --ink: #1a1d21; --muted: #5b6472; --line: #c8ced8; --panel: #ffffff; }`;
   const body = report.sections.map(s => `
     <section class="${s.pageBreakBefore ? 'break' : ''}${s.bracket ? ' wide' : ''}">
       <h2>${escapeHtml(s.title)}</h2>
       ${s.sub ? `<p class="sub">${escapeHtml(s.sub)}</p>` : ''}
       ${s.columns && s.rows ? tableHtml(s) : ''}
-      ${s.prose ? `<p class="notes">${escapeHtml(s.prose)}</p>` : ''}
+      ${s.prose ? `<div class="regulation">${s.prose}</div>` : ''}
       ${s.bracket ? `<div class="spider">${s.bracket}</div>` : ''}
       ${s.rounds && !s.bracket ? roundsHtml(s) : ''}
       ${s.note ? `<p class="note">${escapeHtml(s.note)}</p>` : ''}
@@ -144,15 +166,17 @@ export function renderReportHtml(report: Report): string {
 <title>${escapeHtml(m.docTitle || m.title)} — ${escapeHtml(kindLabel ? t(kindLabel) : m.subtitle)}</title>
 <style>${style}${CSS}</style></head>
 <body>
-  <div class="head">
-    ${logo ? `<img class="logo" src="${logo}" alt="" />` : ''}
-    <div class="titles">
+  <div class="head head-${m.logoPlacement}">
+    ${m.logoPlacement === 'top-left' && logo ? `<img class="logo" src="${logo}" alt="" />` : ''}
+    <div class="titles${m.logoPlacement === 'center' ? ' centered' : ''}">
+      ${m.logoPlacement === 'center' && logo ? `<img class="logo" src="${logo}" alt="" />` : ''}
       <h1>${escapeHtml(m.title)}</h1>
       ${m.subtitle ? `<p class="subtitle">${escapeHtml(m.subtitle)}</p>` : ''}
       ${m.edition ? `<p class="edition">${escapeHtml(m.edition)}</p>` : ''}
       ${m.contextLine ? `<p class="ctx">${escapeHtml(m.contextLine)}</p>` : ''}
       ${m.headerNote ? `<p class="hint">${escapeHtml(m.headerNote)}</p>` : ''}
     </div>
+    ${m.logoPlacement === 'top-right' && logo ? `<img class="logo" src="${logo}" alt="" />` : ''}
     ${sponsor ? `<img class="sponsor" src="${sponsor}" alt="" />` : ''}
   </div>
   ${body || '<p class="empty">' + t('doc.empty') + '</p>'}
@@ -160,3 +184,11 @@ export function renderReportHtml(report: Report): string {
   ${foot ? `<div class="foot">${foot}</div>` : ''}
 </body></html>`;
 }
+
+
+
+
+
+
+
+

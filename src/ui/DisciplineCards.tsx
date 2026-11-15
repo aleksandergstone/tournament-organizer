@@ -9,10 +9,12 @@ export interface DisciplineCardChoice {
   label: string;
   /** The short sentence shown on the card. */
   sentence: string;
-  /** What the card affects, as short tags. */
+  /** What the card affects, as short tags. */  
   affects: string[];
   /** A one-line example shown under the sentence. */
   example: string;
+  /** If true, the discipline is implemented but not yet available. */
+  soon: boolean;
 }
 
 /** Pick one card and get its sentence, tags and example. */
@@ -38,6 +40,7 @@ export function DisciplineCards({
         t(disc.match),
       ],
       example: templateDefaultsLine(disc, t) ?? '',
+      soon: !!disc.soon,
     };
   }).filter(Boolean) as DisciplineCardChoice[];
 
@@ -47,11 +50,13 @@ export function DisciplineCards({
         <button
           key={c.id}
           type="button"
-          className={'mode-card' + (c.id === value ? ' on' : '')}
-          onClick={() => onChange(c.id)}
+          className={'mode-card' + (c.id === value ? ' on' : '') + (c.soon ? ' soon' : '')}
+          onClick={c.soon ? undefined : () => onChange(c.id)}
           aria-pressed={c.id === value}
+          disabled={c.soon}
         >
           <span className="mode-card-name">{c.label}</span>
+          {c.soon ? <span className="mode-card-soon">{t('soon')}</span> : null}
           <span className="mode-card-meaning">{c.sentence}</span>
           <span>
             {c.affects.map((a) => (

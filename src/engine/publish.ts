@@ -11,9 +11,9 @@
 
 import { computeStandings } from './standings';
 import { describeFormat } from './generate';
-import { disciplineOf, matchLabel, participantLabel, venueLabel } from './discipline';
 import { brandingOf, DEFAULT_BRANDING, isHexColor } from './branding';
 import type { Group, Match, Participant, Tournament, VenueResource } from './types';
+import { disciplineOf, matchLabel, participantLabel, venueLabel } from './discipline';
 import { getLocale, t } from '../i18n';
 
 export type PublishVisibility = 'private' | 'unlisted' | 'public';
@@ -31,11 +31,10 @@ export interface Snapshot {
   revision: number;
   event: {
     name: string;
-    discipline: string | null;
-    disciplineLabel: string;
     format: string;
     formatLabel: string;
     sport: string;
+    disciplineLabel: string;
     dateStart: string | null;
     dateEnd: string | null;
     venue: string | null;
@@ -82,10 +81,10 @@ const TABLE_FORMATS = new Set(['round-robin', 'league', 'swiss', 'groups-knockou
  * the caller instead.
  */
 function publishableBranding(raw: Tournament['branding']): {
-  title?: string; subtitle?: string; edition?: string; note?: string; accent?: string;
+  title?: string; subtitle?: string; edition?: string; note?: string; accent?: string; accent1?: string;
 } | null {
   const b = brandingOf({ name: '', branding: raw });
-  const out: { title?: string; subtitle?: string; edition?: string; note?: string; accent?: string } = {};
+  const out: { title?: string; subtitle?: string; edition?: string; note?: string; accent?: string; accent1?: string } = {};
   const put = (key: 'title' | 'subtitle' | 'edition' | 'note', value: string) => {
     if (value.trim()) out[key] = value.trim();
   };
@@ -96,7 +95,7 @@ function publishableBranding(raw: Tournament['branding']): {
   // Only an accent the organizer actually chose. The default colour is the app's
   // own, and publishing it to everybody would put a mark on the page of an event
   // that never asked for one.
-  if (isHexColor(b.accent) && b.accent !== DEFAULT_BRANDING.accent) out.accent = b.accent;
+  if (isHexColor(b.accent1) && b.accent1 !== DEFAULT_BRANDING.accent1) out.accent1 = b.accent1;
   return Object.keys(out).length > 0 ? out : null;
 }
 
@@ -142,7 +141,6 @@ export function buildSnapshot(input: BuildInput): Snapshot {
   const names = new Map(participants.map(p => [p.id, p.name]));
   const resourceName = new Map(resources.map(r => [r.id, r.name]));
   const played = matches.filter(m => FINISHED.has(m.result.status)).length;
-  const disc = disciplineOf(tournament);
 
   // A format with no table publishes `standings: null`, and the site then hides
   // the standings page entirely rather than showing an empty one.
@@ -161,13 +159,13 @@ export function buildSnapshot(input: BuildInput): Snapshot {
     revision: input.revision,
     event: {
       name: tournament.name || t('app.untitled'),
-      discipline: tournament.discipline ?? null,
-      // Empty for a neutral event: the site then omits the sport from titles
-      // rather than inventing one.
-      disciplineLabel: disc.id === 'generic' ? '' : t(disc.label),
       format: tournament.format,
       formatLabel: describeFormat(tournament.format),
       sport: tournament.sport,
+      disciplineLabel: (() => {
+        const d = disciplineOf(tournament);
+        return d.id === 'generic' ? '' : t(d.label);
+      })(),
       dateStart: tournament.dates.start ?? null,
       dateEnd: tournament.dates.end ?? null,
       venue: tournament.location ?? null,

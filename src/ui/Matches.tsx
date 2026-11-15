@@ -30,7 +30,7 @@ export default function Matches() {
   const knockout = KNOCKOUT.has(domain.tournament.format);
   const isKoMatch = (m: Match) => knockout || m.bracket?.eliminatedOnLoss === true;
   let list = domain.matches;
-  if (onlyOpen) list = list.filter(m => !FINISHED.has(m.result.status));
+  if (onlyOpen) list = list.filter(m => m.result.status !== 'bye' && !FINISHED.has(m.result.status));
   if (q) list = list.filter(m => (pn(m.homeId) + ' ' + pn(m.awayId) + ' ' + m.roundName).toLowerCase().includes(q.toLowerCase()));
   const visible = list.slice(0, 200);
   // A QR code may point at a match hidden by the current filter — always show it.
@@ -66,7 +66,7 @@ export default function Matches() {
     else if (e.key === 'k' || e.key === 'ArrowUp') { e.preventDefault(); setSel(s => Math.max(s - 1, 0)); }
     else if (e.key === '/') { e.preventDefault(); searchRef.current?.focus(); }
   };
-  const openCount = domain.matches.filter(m => !FINISHED.has(m.result.status)).length;
+  const openCount = domain.matches.filter(m => m.result.status !== 'bye' && !FINISHED.has(m.result.status)).length;
 
 
   return (
@@ -125,6 +125,8 @@ export default function Matches() {
 
           {shown.map((m, i) => {
             const done = FINISHED.has(m.result.status);
+            const canEnterResult = m.result.status !== 'bye' && m.result.status !== 'tbd'
+              && !!m.homeId && !!m.awayId;
             const winner = m.result.winnerId;
             return (
               <div
@@ -145,20 +147,24 @@ export default function Matches() {
                     <span className="vs">vs</span>
                     <span className={'side' + (winner && winner === m.awayId ? ' win' : '')}>{pn(m.awayId)}</span>
                   </div>
-                  <div className="mcard-score" onClick={e => e.stopPropagation()}>
-                    <input type="number" min={0} value={m.result.homeScore ?? ''} aria-label={`${pn(m.homeId)} score`}
-                      onChange={e => setScore(m, e.target.value === '' ? null : Number(e.target.value), m.result.awayScore)}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitPlayed(m); } e.stopPropagation(); }} />
-                    <span className="sep">:</span>
-                    <input type="number" min={0} value={m.result.awayScore ?? ''} aria-label={`${pn(m.awayId)} score`}
-                      onChange={e => setScore(m, m.result.homeScore, e.target.value === '' ? null : Number(e.target.value))}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitPlayed(m); } e.stopPropagation(); }} />
-                  </div>
-                  <button className={'btn' + (i === sel && !done ? ' primary' : '')} onClick={() => commitPlayed(m)}>
-                    {done ? t('res.correct') : t('res.save')}
-                  </button>
+                  {canEnterResult ? (
+                    <>
+                      <div className="mcard-score" onClick={e => e.stopPropagation()}>
+                        <input type="number" min={0} value={m.result.homeScore ?? ''} aria-label={`${pn(m.homeId)} score`}
+                          onChange={e => setScore(m, e.target.value === '' ? null : Number(e.target.value), m.result.awayScore)}
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitPlayed(m); } e.stopPropagation(); }} />
+                        <span className="sep">:</span>
+                        <input type="number" min={0} value={m.result.awayScore ?? ''} aria-label={`${pn(m.awayId)} score`}
+                          onChange={e => setScore(m, m.result.homeScore, e.target.value === '' ? null : Number(e.target.value))}
+                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitPlayed(m); } e.stopPropagation(); }} />
+                      </div>
+                      <button className={'btn' + (i === sel && !done ? ' primary' : '')} onClick={() => commitPlayed(m)}>
+                        {done ? t('res.correct') : t('res.save')}
+                      </button>
+                    </>
+                  ) : <span className="muted" style={{ marginLeft: 'auto', alignSelf: 'center', fontSize: 13 }}>{t(m.result.status === 'bye' ? 'engine.bye' : 'engine.tbd')}</span>}
                 </div>
-                <div className="mcard-extra" onClick={e => e.stopPropagation()}>
+                {canEnterResult && <div className="mcard-extra" onClick={e => e.stopPropagation()}>
                   <details className="disclosure">
                     <summary>{t('res.otherOutcomes')}</summary>
                     <div className="row" style={{ marginTop: 8 }}>
@@ -174,7 +180,7 @@ export default function Matches() {
                       {done && <button className="btn sm quiet" onClick={() => setStatus(m, 'scheduled')}>{t('res.reset')}</button>}
                     </div>
                   </details>
-                </div>
+                </div>}
               </div>
             );
           })}

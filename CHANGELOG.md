@@ -3,6 +3,24 @@
 All notable changes to Tournament Organizer.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semver.
 
+## [1.0.0] — 2026-11-15
+
+### Added
+
+- First public release of Tournament Organizer
+- Tournament creation wizard with discipline selection (generic, volleyball, football, table tennis, chess, badminton, basketball, darts, sailing)
+- Single elimination, double elimination, round-robin, Swiss, groups-knockout and league formats
+- Live match scoring with period/set tracking
+- Bracket generation and standings tables
+- PDF/HTML export of matches, standings and brackets
+- Online publishing to tournament site
+- LAN sync between devices
+- Sailing regatta support (implemented but locked — marked "Coming soon" in the UI)
+
+### Note
+
+- The sailing discipline is implemented in the engine but not yet available in the UI. Selecting it shows a "Coming soon" badge and cannot be chosen.
+
 ## [1.8.0] — 2026-11-10
 
 ### Fixed

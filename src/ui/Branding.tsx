@@ -92,13 +92,31 @@ export function BrandingForm({ branding, onChange }: {
         {text('eventTitle', t('brand.eventTitle'), t('brand.eventTitleHint'), t('brand.eventTitlePlaceholder'))}
         {text('subtitle', t('brand.subtitle'), t('brand.subtitlePlaceholder'), 'Optional second line')}
         {text('edition', t('brand.edition'), t('brand.editionPlaceholder'), 'Optional')}
-        <Field label={t('brand.accent')} hint={t('brand.accentHint')}>
+        <Field label={t('brand.accent1')} hint={t('brand.accent1Hint')}>
           <div className="row">
-            <input type="color" className="color-input" aria-label={t('brand.accent')}
-              value={isHexColor(branding.accent) ? branding.accent : DEFAULT_BRANDING.accent}
-              onChange={e => set('accent', e.target.value)} />
-            <input className="hex-input" value={branding.accent} aria-label="Accent colour hex value"
-              onChange={e => set('accent', e.target.value)} />
+            <input type="color" className="color-input" aria-label={t('brand.accent1')}
+              value={isHexColor(branding.accent1) ? branding.accent1 : DEFAULT_BRANDING.accent1}
+              onChange={e => set('accent1', e.target.value)} />
+            <input className="hex-input" value={branding.accent1} aria-label="Accent 1 hex value"
+              onChange={e => set('accent1', e.target.value)} />
+          </div>
+        </Field>
+        <Field label={t('brand.accent2')} hint={t('brand.accent2Hint')}>
+          <div className="row">
+            <input type="color" className="color-input" aria-label={t('brand.accent2')}
+              value={isHexColor(branding.accent2) ? branding.accent2 : DEFAULT_BRANDING.accent2}
+              onChange={e => set('accent2', e.target.value)} />
+            <input className="hex-input" value={branding.accent2} aria-label="Accent 2 hex value"
+              onChange={e => set('accent2', e.target.value)} />
+          </div>
+        </Field>
+        <Field label={t('brand.background')} hint={t('brand.backgroundHint')}>
+          <div className="row">
+            <input type="color" className="color-input" aria-label={t('brand.background')}
+              value={isHexColor(branding.background) ? branding.background : DEFAULT_BRANDING.background}
+              onChange={e => set('background', e.target.value)} />
+            <input className="hex-input" value={branding.background} aria-label="Background hex value"
+              onChange={e => set('background', e.target.value)} />
           </div>
         </Field>
       </div>

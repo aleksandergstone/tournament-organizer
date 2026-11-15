@@ -58,6 +58,12 @@ export interface Discipline {
   /** Starting rules — merged into the current rules when chosen. */
   defaults: Partial<RuleSet>;
   /**
+   * If true, this discipline is implemented but not yet available. The card
+   * shows a "soon" badge and cannot be selected. Used for upcoming sports
+   * like sailing that have engine code but no public UI yet.
+   */
+  soon?: boolean;
+  /**
    * The presets this sport is normally played with, most common first. Empty
    * means "no opinion": the generic discipline offers every preset of whatever
    * format is selected, which is the neutral behaviour the app had before
@@ -188,6 +194,7 @@ export const DISCIPLINES: readonly Discipline[] = [
       periodPoints: 0, periodsToWin: 1,
       tiebreakOrder: ['points', 'wins', 'diff', 'scored'],
     },
+    soon: true,
     // Sailing-specific templates pointing to sailing presets.
     templates: ['fleet-standard', 'fleet-olympic', 'match-racing-standard', 'team-racing-standard'],
   },

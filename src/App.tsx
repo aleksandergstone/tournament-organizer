@@ -8,56 +8,33 @@ import Participants from './ui/Participants';
 import Rules from './ui/Rules';
 import Bracket from './ui/Bracket';
 import Matches from './ui/Matches';
-import Live from './ui/Live';
-import Season from './ui/Season';
 import RegulationTab from './ui/Regulation';
 import Standings from './ui/Standings';
 import Output from './ui/Output';
+import Personalize from './ui/Personalize';
 import Publish from './ui/Publish';
 import Settings from './ui/Settings';
 import Import from './ui/Import';
-import Display from './ui/Display';
 import Schedule from './ui/Schedule';
 import ComingSoon from './ui/ComingSoon';
 import ErrorBoundary from './ui/ErrorBoundary';
 import { Alert } from './ui/kit';
 import { parseDeepLink, resolveDeepLink } from './engine/deeplink';
-import { hasBracket } from './engine/generate';
+import { hasBracket, hasPointTable } from './engine/generate';
 import { isNativeApp } from './engine/mobile-bridge';
 import { App as CapacitorApp } from '@capacitor/app';
 import { nowIso } from './engine/types';
 import { useT, type Dict } from './i18n';
-// Sailing imports
-import SailingWizard from './ui/sailing/SailingWizard';
-import SailingOverview from './ui/sailing/SailingOverview';
-import SailingBoats from './ui/sailing/SailingBoats';
-import SailingRaces from './ui/sailing/SailingRaces';
-import SailingStandings from './ui/sailing/SailingStandings';
-import SailingDocuments from './ui/sailing/SailingDocuments';
-import SailingSettings from './ui/sailing/SailingSettings';
-import SailingClasses from './ui/sailing/SailingClasses';
-import SailingCrews from './ui/sailing/SailingCrews';
+import TournamentTypePicker from './ui/TournamentTypePicker';
 
-// Navigation is grouped by what the organizer is doing, not by feature name.
+// Navigation grouped by what the organizer is doing.
+// The second group shows only screens that apply to the current format:
+// bracket appears for elimination formats, schedule for fixture-based formats,
+// output/personalize/publish are always available once a project exists.
 const NAV: { items: readonly (readonly [Screen, keyof Dict])[] }[] = [
   { items: [['home', 'nav.home'], ['overview', 'nav.overview'], ['participants', 'nav.participants'], ['rules', 'nav.rules']] },
-  { items: [['bracket', 'nav.bracket'], ['matches', 'nav.results'], ['live', 'nav.live'], ['standings', 'nav.standings']] },
-  { items: [['schedule', 'nav.schedule'], ['display', 'nav.display'], ['codes', 'nav.codes'], ['regulation', 'nav.regulation'], ['season', 'nav.season'], ['publish', 'nav.publish'], ['export', 'nav.output']] },
-  // Sailing navigation (only shown for sailing events)
-  { items: [
-    ['sailing-overview', 'sailing.overview'],
-    ['sailing-classes', 'sailing.boatClasses'],
-    ['sailing-boats', 'sailing.boats'],
-    ['sailing-crews', 'sailing.crews'],
-    ['sailing-races', 'sailing.races'],
-    ['sailing-standings', 'sailing.viewStandings'],
-    ['sailing-documents', 'sailing.documents'],
-    ['sailing-settings', 'sailing.regattaSettings'],
-  ] },
+  { items: [['bracket', 'nav.bracket'], ['schedule', 'nav.schedule'], ['matches', 'nav.results'], ['standings', 'nav.standings'], ['regulation', 'nav.regulation'], ['export', 'nav.output'], ['personalize', 'nav.personalize'], ['publish', 'nav.publish']] },
 ];
-
-// A window opened with #display is a projector: organizer controls are hidden.
-const DISPLAY_WINDOW = typeof window !== 'undefined' && window.location.hash === '#display';
 
 export default function App() {
   const { screen, go, back, undo_, redo_, canUndo, canRedo, save, dirty, lastSaved, saveError, hasProject,
@@ -123,10 +100,6 @@ export default function App() {
     }
   }, [hasProject, domain, update, go, setFocusMatch]);
 
-  if (DISPLAY_WINDOW) {
-    return <ErrorBoundary><Display /></ErrorBoundary>;
-  }
-
   return (
     <div>
       <div className="topbar">
@@ -144,6 +117,8 @@ export default function App() {
           const items = group.items.filter(([k]) => {
             if (k === 'codes') return false;
             if (k === 'bracket' && !hasBracket(domain.tournament.format)) return false;
+            if (k === 'standings' && !hasPointTable(domain.tournament.format)) return false;
+            if (k === 'schedule' && !hasPointTable(domain.tournament.format) && !hasBracket(domain.tournament.format)) return false;
             if (k.startsWith('sailing-') && !isSailing) return false;
             if (isSailing && k !== 'home' && !k.startsWith('sailing-')) return false;
             return true;
@@ -193,32 +168,21 @@ export default function App() {
       )}
       {screen === 'home' && <Home />}
       {screen === 'wizard' && <Wizard />}
-      {screen === 'sailing-wizard' && <SailingWizard />}
       {screen === 'overview' && (hasProject ? <Overview /> : <Home />)}
       {screen === 'participants' && (hasProject ? <Participants /> : <Home />)}
       {screen === 'rules' && (hasProject ? <Rules /> : <Home />)}
       {screen === 'bracket' && (hasProject ? <Bracket /> : <Home />)}
       {screen === 'matches' && (hasProject ? <Matches /> : <Home />)}
-      {screen === 'live' && (hasProject ? <Live /> : <Home />)}
       {screen === 'standings' && (hasProject ? <Standings /> : <Home />)}
       {screen === 'regulation' && (hasProject ? <RegulationTab /> : <Home />)}
-      {screen === 'season' && (hasProject ? <Season /> : <Home />)}
       {screen === 'schedule' && (hasProject ? <Schedule /> : <Home />)}
-      {screen === 'display' && (hasProject ? <Display /> : <Home />)}
       {screen === 'codes' && <ComingSoon title="codes" />}
       {screen === 'export' && (hasProject ? <Output /> : <Home />)}
+      {screen === 'personalize' && (hasProject ? <Personalize /> : <Home />)}
       {screen === 'publish' && (hasProject ? <Publish /> : <Home />)}
       {screen === 'settings' && <Settings />}
       {screen === 'import' && <Import />}
-      {/* Sailing screens */}
-      {screen === 'sailing-overview' && (hasProject ? <SailingOverview /> : <Home />)}
-      {screen === 'sailing-boats' && (hasProject ? <SailingBoats /> : <Home />)}
-      {screen === 'sailing-races' && (hasProject ? <SailingRaces /> : <Home />)}
-      {screen === 'sailing-standings' && (hasProject ? <SailingStandings /> : <Home />)}
-      {screen === 'sailing-documents' && (hasProject ? <SailingDocuments /> : <Home />)}
-      {screen === 'sailing-settings' && (hasProject ? <SailingSettings /> : <Home />)}
-      {screen === 'sailing-classes' && (hasProject ? <SailingClasses /> : <Home />)}
-      {screen === 'sailing-crews' && (hasProject ? <SailingCrews /> : <Home />)}
+      {screen === 'tournament-type' && <TournamentTypePicker />}
     </div>
   );
 }

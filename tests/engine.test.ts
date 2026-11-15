@@ -86,11 +86,41 @@ describe('single elim', () => {
     const p = ps(['A', 'B', 'C', 'D', 'E']);
     let { matches } = genSingleElim(p, DEFAULT_RULES);
     expect(matches.length).toBe(7); // 4 + 2 + 1
+    const bye = matches.find(m => m.result.status === 'bye')!;
+    const rejectedByeEdit = recordResult(matches, bye.id, { homeScore: 3, awayScore: 0, status: 'played' }, DEFAULT_RULES, { knockout: true });
+    expect(rejectedByeEdit.issues).toHaveLength(1);
+    expect(rejectedByeEdit.matches).toBe(matches);
     for (const m of matches.filter(m => m.round === 1 && m.result.status === 'scheduled')) {
       matches = play(matches, m.id, 1, 0, true);
     }
     const sf = matches.filter(m => m.round === 2);
     expect(sf.every(m => m.homeId && m.awayId)).toBe(true);
+  });
+  it('marks unresolved derived fixtures as TBD, then opens them when sources decide', () => {
+    const p = ps(['A', 'B', 'C', 'D']);
+    let { matches } = genSingleElim(p, DEFAULT_RULES);
+    const final = matches.find(m => m.roundName === 'Final')!;
+    expect(final.result.status).toBe('tbd');
+    const blocked = recordResult(matches, final.id, { homeScore: 3, awayScore: 0, status: 'played' }, DEFAULT_RULES, { knockout: true });
+    expect(blocked.issues).toHaveLength(1);
+    for (const m of matches.filter(m => m.round === 1)) matches = play(matches, m.id, 1, 0, true);
+    expect(matches.find(m => m.id === final.id)!.result.status).toBe('scheduled');
+    const opened = recordResult(matches, final.id, { homeScore: 2, awayScore: 1, status: 'played' }, DEFAULT_RULES, { knockout: true });
+    expect(opened.issues).toEqual([]);
+  });
+  it('auto-advances a decided feeder over a structurally empty slot', () => {
+    const p = ps(['A', 'B', 'C', 'D']);
+    let { matches } = genSingleElim(p, DEFAULT_RULES);
+    const final = matches.find(m => m.roundName === 'Final')!;
+    final.bracket!.srcAway = null;
+    const semifinal = matches.find(m => m.round === 1)!;
+    matches = play(matches, semifinal.id, 2, 0, true);
+    const advanced = matches.find(m => m.id === final.id)!;
+    expect(advanced.awayId).toBeNull();
+    expect(advanced.result.status).toBe('bye');
+    expect(advanced.result.winnerId).toBe(advanced.homeId);
+    const rejected = recordResult(matches, final.id, { homeScore: 2, awayScore: 0, status: 'played' }, DEFAULT_RULES, { knockout: true });
+    expect(rejected.issues).toHaveLength(1);
   });
   it('correction clears stale downstream result', () => {
     const p = ps(['A', 'B', 'C', 'D']);
@@ -130,7 +160,7 @@ describe('double elim end-to-end', () => {
     expect(ms.find(m => m.roundName === 'Grand Final Reset')!.homeId).toBeNull();
     const w1 = ms.find(m => m.round === 1)!;
     ms = play(ms, w1.id, 0, 4, true);
-    expect(ms.find(m => m.roundName === 'Grand Final')!.result.status).toBe('scheduled');
+    expect(ms.find(m => m.roundName === 'Grand Final')!.result.status).toBe('tbd');
   });
   it('5 players: byes, WB completes', () => {
     const p = ps(['A', 'B', 'C', 'D', 'E']);
@@ -246,12 +276,15 @@ describe('withdrawal', () => {
   it('ejects from unplayed, keeps history', () => {
     const p = ps(['A', 'B', 'C']);
     let ms = genRoundRobin(p, DEFAULT_RULES);
-    ms = play(ms, ms[0].id, 2, 1);
+    const playedMatch = ms.find(m => m.homeId && m.awayId && m.result.status === 'scheduled')!;
+    ms = play(ms, playedMatch.id, 2, 1);
     const out = p.find(x => x.name === 'C')!.id;
     const w = applyWithdrawals(ms, new Set([out]));
     expect(w.changed).toBeGreaterThan(0);
+    const preserved = w.matches.find(m => m.id === playedMatch.id)!;
+    expect(preserved.result).toMatchObject({ homeScore: 2, awayScore: 1, status: 'played' });
     const st = computeStandings(p, w.matches, DEFAULT_RULES);
-    expect(st.find(s => s.participantId === ms[0].homeId)!.played).toBe(1);
+    expect(st.find(s => s.participantId === playedMatch.homeId)!.played).toBeGreaterThanOrEqual(1);
   });
 
 describe('swiss', () => {

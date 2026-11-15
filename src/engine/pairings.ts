@@ -47,7 +47,7 @@ export function nextPow2(n: number): number {
 
 export function decidedLoser(m: Match): string | null {
   const r = m.result;
-  if (r.status === 'scheduled' || r.status === 'unfinished' || r.status === 'interrupted') return null;
+  if (r.status === 'scheduled' || r.status === 'unfinished' || r.status === 'interrupted' || r.status === 'tbd') return null;
   if (r.status === 'bye') return null; // bye has no loser
   if (r.status === 'walkover') {
     const w = r.walkoverWinnerId ?? r.winnerId;
@@ -70,6 +70,7 @@ export function decidedLoser(m: Match): string | null {
 
 export function decidedWinner(m: Match): string | null {
   const r = m.result;
+  if (r.status === 'scheduled' || r.status === 'unfinished' || r.status === 'interrupted' || r.status === 'tbd') return null;
   if (r.status === 'bye') return r.winnerId ?? m.homeId ?? m.awayId ?? null;
   if (r.status === 'walkover') return r.walkoverWinnerId ?? r.winnerId ?? null;
   return r.winnerId;

@@ -83,6 +83,15 @@ describe('the bracket as a spider', () => {
     expect(tree.width).toBeGreaterThan(NODE_W * 3);
   });
 
+  it('shows BYE separately from TBD in the bracket tree', () => {
+    const { names, matches } = ko(['A', 'B', 'C', 'D', 'E']);
+    const tree = buildBracketTree(matches, nameOf(names), {
+      emptyLabel: 'To be determined', byeLabel: 'Bye', roundName: n => `Round ${n}`,
+    });
+    expect(tree.nodes.some(n => n.away === 'Bye')).toBe(true);
+    expect(tree.nodes.some(n => n.away === 'To be determined')).toBe(true);
+  });
+
   it('connects every match to the one it feeds', () => {
     const { names, matches } = ko(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
     const tree = buildBracketTree(matches, nameOf(names), { emptyLabel: '—', roundName: n => `R${n}` });

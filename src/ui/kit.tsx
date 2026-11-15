@@ -4,6 +4,8 @@
 // and empty states look and behave the same everywhere. Nothing here knows
 // about tournament rules — presentation only.
 import type { ReactNode } from 'react';
+import { useRef, useState } from 'react';
+import { useT } from '../i18n';
 import { t } from '../i18n';
 import type { Dict } from '../i18n';
 
@@ -190,6 +192,7 @@ const STATUS: Record<string, { key: keyof Dict & string; tone: Tone }> = {
   unfinished:  { key: 'status.unfinished',  tone: 'warn' },
   interrupted: { key: 'status.interrupted', tone: 'warn' },
   bye:         { key: 'status.bye',         tone: 'neutral' },
+  tbd:         { key: 'status.tbd',         tone: 'info' },
 };
 
 /** Human-readable match state in the active language — never the engine value. */
@@ -388,5 +391,104 @@ export function Meta({ items }: { items: { label: string; value: ReactNode }[] }
         <div key={i.label}><dt>{i.label}</dt><dd>{i.value}</dd></div>
       ))}
     </dl>
+  );
+}
+
+/* ------------------------------------------------------------- rich text editor */
+
+/**
+ * A small rich-text editor built on a contenteditable div. Produces HTML that
+ * can be stored as the regulation body and rendered directly in documents.
+ * No external dependencies — plain execCommand plus a file picker for images.
+ */
+export interface RichTextEditorProps {
+  value: string;
+  onChange(html: string): void;
+  label?: ReactNode;
+  hint?: ReactNode;
+  className?: string;
+}
+
+export function RichTextEditor({ value, onChange, label, hint, className = '' }: RichTextEditorProps) {
+  const t = useT();
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [imgErr, setImgErr] = useState('');
+
+  const format = (cmd: string, value?: string) => {
+    document.execCommand(cmd, false, value ?? '');
+    editorRef.current?.focus();
+    emit();
+  };
+
+  const insertImage = async (file: File) => {
+    if (!/^image\/(png|jpe?g|webp|gif)$/.test(file.type)) {
+      setImgErr(t('brand.errType')); return;
+    }
+    if (file.size > 12 * 1024 * 1024) { setImgErr(t('brand.errSize')); return; }
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result ?? ''));
+      fr.onerror = () => reject(new Error('Cannot read image'));
+      fr.readAsDataURL(file);
+    });
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image(); el.onload = () => resolve(el); el.onerror = reject; el.src = dataUrl;
+    });
+    for (const width of [800, 600, 400, 280]) {
+      if (img.width <= width) break;
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = Math.round((img.height / img.width) * width);
+      canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const out = canvas.toDataURL(file.type === 'image/jpeg' ? 'image/jpeg' : 'image/png', 0.85);
+      if (out.length <= 400 * 1024) {
+        document.execCommand('insertImage', false, out);
+        editorRef.current?.focus();
+        emit();
+        return;
+      }
+    }
+    setImgErr(t('brand.errTooDetailed'));
+  };
+
+  const emit = () => {
+    const html = editorRef.current?.innerHTML ?? '';
+    if (html !== value) onChange(html);
+  };
+
+  const pickImage = (input: HTMLInputElement | null) => {
+    setImgErr('');
+    input?.click();
+  };
+
+  return (
+    <div className={'rich-editor ' + className}>
+      {label && <div className="rich-label">{label}</div>}
+      {hint && <span className="f-hint">{hint}</span>}
+      <div className="rich-toolbar">
+        <button type="button" title={t('rich.bold')} onClick={() => format('bold')}>B</button>
+        <button type="button" title={t('rich.italic')} onClick={() => format('italic')}>I</button>
+        <button type="button" title={t('rich.heading1')} onClick={() => format('formatBlock', '<h1>')}>H1</button>
+        <button type="button" title={t('rich.heading2')} onClick={() => format('formatBlock', '<h2>')}>H2</button>
+        <button type="button" title={t('rich.ulist')} onClick={() => format('insertUnorderedList')}>⬤</button>
+        <button type="button" title={t('rich.olist')} onClick={() => format('insertOrderedList')}>1.</button>
+        <button type="button" title={t('rich.link')} onClick={() => {
+          const url = window.prompt(t('rich.urlPrompt'));
+          if (url) format('createLink', url);
+        }}>🔗</button>
+        <button type="button" title={t('rich.alignLeft')} onClick={() => format('justifyLeft')}>↔</button>
+        <button type="button" title={t('rich.alignCenter')} onClick={() => format('justifyCenter')}>⌐</button>
+        <button type="button" title={t('rich.alignRight')} onClick={() => format('justifyRight')}>↔</button>
+        <button type="button" title={t('rich.image')} onClick={() => pickImage(document.getElementById('rich-img-input') as HTMLInputElement)}>🖼</button>
+        <input id="rich-img-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden
+          onChange={e => { const f = e.target.files?.[0]; if (f) { void insertImage(f); } e.target.value = ''; }} />
+        {imgErr && <span className="f-err">{imgErr}</span>}
+      </div>
+      <div className="rich-area" ref={editorRef}
+        contentEditable={true}
+        onInput={emit}
+        onBlur={emit}
+        dangerouslySetInnerHTML={{ __html: value }}
+        spellCheck={false} />
+    </div>
   );
 }

@@ -207,14 +207,14 @@ describe('the event describes itself', () => {
         branding: {
           eventTitle: 'Puchar Mistrzów', subtitle: 'Finał sezonu',
           edition: 'Edycja 12', headerNote: 'Sekretariat: biuro@klub.pl',
-          footerNote: 'Do widzenia w przyszłym roku', accent: '#a23b12',
+          footerNote: 'Do widzenia w przyszłym roku', accent1: '#a23b12',
           logoDataUrl: 'data:image/png;base64,AAAA', sponsorDataUrl: 'data:image/png;base64,BBBB',
         },
       }),
     }));
     expect(branded.event.branding).toMatchObject({
       title: 'Puchar Mistrzów', subtitle: 'Finał sezonu', edition: 'Edycja 12',
-      note: 'Sekretariat: biuro@klub.pl', accent: '#a23b12',
+      note: 'Sekretariat: biuro@klub.pl', accent1: '#a23b12',
     });
     // The logo is an image, not a line of text: it travels on its own field, so a
     // snapshot that has none says nothing rather than carrying an empty string.

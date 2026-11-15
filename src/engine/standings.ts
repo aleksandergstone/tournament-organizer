@@ -28,7 +28,7 @@ export function computeStandings(
   for (const m of matches) {
     const { homeId, awayId, result: r } = m;
     if (!homeId && !awayId) continue;
-    if (r.status === 'scheduled' || r.status === 'unfinished' || r.status === 'interrupted') continue;
+    if (r.status === 'scheduled' || r.status === 'unfinished' || r.status === 'interrupted' || r.status === 'tbd') continue;
     if (r.status === 'bye') {
       const pid = decidedWinner(m);
       if (pid && rows.has(pid)) {

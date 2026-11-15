@@ -4,10 +4,9 @@ import { useState } from 'react';
 import { validateTournament, ValidationIssue } from '../engine/validate';
 import { adaptRulesToFormat, validateModeSetup, visibleGroups } from '../engine/mode-info';
 import { applyPreset, type Preset } from '../engine/presets';
-import { applyDiscipline, DISCIPLINES, disciplineOf, templateDefaultsLine, type DisciplineId } from '../engine/discipline';
 import { uid, nowIso } from '../engine/types';
 import { describeFormat } from '../engine/generate';
-import { Alert, Field, Page, Panel, StepBar } from './kit';
+import { Alert, Collapse, Field, Page, Panel, StepBar } from './kit';
 import {
   Glossary, ModeExplainer, ModePicker, PresetPicker, PreviewWarning, SettingsForMode,
   SetupSummary, StructurePreviewBox,
@@ -32,10 +31,6 @@ export default function Wizard() {
   const setRules = (patch: Partial<RuleSet>) => setF(s => ({ ...s, rules: { ...s.rules, ...patch } }));
   const errOf = (field: string) => issues.find(i => i.field === field)?.message;
   const others = issues.filter(i => !['name', 'sport', 'dates'].includes(i.field));
-  // Never null: the neutral profile, so an unchosen sport still gets a sentence.
-  const disc = disciplineOf(f);
-  // The neutral profile has nothing to declare, so it declares nothing.
-  const defaultsLine = disc.id === 'generic' ? null : templateDefaultsLine(disc, t);
   const count = typeof f.participantCountExpected === 'number' ? f.participantCountExpected : null;
   // Live, while typing: the same checks the engine runs on save.
   const liveIssues = validateModeSetup(f.format, f.rules, count);
@@ -67,20 +62,6 @@ export default function Wizard() {
     };
   });
 
-  /**
-   * The discipline is a starting point, not a lock: it brings its own rules and
-   * its own kind of competitor, and the organizer can still change every value
-   * below. It is applied to the wizard state, not to the engine, so nothing here
-   * can quietly override a later manual edit.
-   */
-  const pickDiscipline = (id: DisciplineId | null) => {
-    setF(s => {
-      const next = applyDiscipline({ ...s, discipline: id, rules: s.rules, individualOrTeam: s.individualOrTeam }, id);
-      // The format may have been chosen before the discipline. Its own shape
-      // still wins over the discipline's generic rules, so re-adapt afterwards.
-      return { ...next, rules: { ...next.rules, ...adaptRulesToFormat(next.format, next.rules) } };
-    });
-  };
   const submit = () => {
     const t = { ...f, id: f.id.startsWith('t_') ? f.id : uid('t'), createdAt: f.createdAt || nowIso(), updatedAt: nowIso(), archived: false };
     const bad = validateTournament(t);
@@ -119,15 +100,6 @@ export default function Wizard() {
       </Panel>
 
 
-      <Panel title={t('disc.pick')} sub={t('disc.pickHint')}>
-        <Field label={t('disc.pick')} hint={t('disc.namesHint')}>
-          <select
-            value={f.discipline ?? 'generic'}
-            onChange={e => pickDiscipline(e.target.value as DisciplineId)}>
-            {DISCIPLINES.filter(d => d.id !== 'sailing').map(d => <option key={d.id} value={d.id}>{t(d.label)}</option>)}
-          </select>
-        </Field>
-      </Panel>
 
       <Panel title={t('mode.pickTitle')} sub={t('mode.pickSub')}>
         <ModePicker value={f.format} onChange={pickFormat} excludeSailing />
@@ -135,18 +107,7 @@ export default function Wizard() {
       </Panel>
 
       <Panel title={t('mode.presetsTitle')} sub={t('mode.presetsSub')}>
-        {/* Frames the list in this sport's own terms, and says plainly that a template
-          locks nothing in: every setting it touched stays editable below. */}
-      <p className="rule-note">{t(disc.hint)}</p>
-      {/* "What this sport sets by default", read from the discipline's own numbers
-          so it can never claim a rule the catalogue does not actually apply. */}
-      {defaultsLine ? (
-        <p className="rule-note">
-          <b>{t('mode.presetSets')}:</b> {defaultsLine}
-        </p>
-      ) : null}
-      <PresetPicker format={f.format} rules={f.rules} onApply={usePreset} discipline={f.discipline} />
-      <p className="table-note">{t('disc.templatesHint')}</p>
+        <PresetPicker format={f.format} rules={f.rules} onApply={p => applyPreset(f.rules, p)} />
       </Panel>
 
       <div className="section-head">
@@ -161,7 +122,7 @@ export default function Wizard() {
         <StructurePreviewBox format={f.format} count={count} rules={f.rules} />
       </Panel>
 
-      <Panel title={t('wizard.whenWhere')} sub={t('wizard.whenWhereSub')}>
+      <Collapse title={t('wizard.whenWhere')} sub={t('wizard.whenWhereSub')} className="mode-advanced">
         <div className="grid3">
           <Field label={t('wizard.startDate')} error={errOf('dates')}>
             <input type="date" value={f.dates.start ?? ''} onChange={e => set('dates', { ...f.dates, start: e.target.value || null })} />
@@ -173,7 +134,7 @@ export default function Wizard() {
             <input value={f.location ?? ''} onChange={e => set('location', e.target.value)} placeholder={t('wizard.venuePlaceholder')} />
           </Field>
         </div>
-      </Panel>
+      </Collapse>
 
       <Panel title={t('mode.summaryTitle')}>
         <SetupSummary format={f.format} rules={f.rules} count={count} />

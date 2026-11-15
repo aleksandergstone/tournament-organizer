@@ -1,4 +1,4 @@
-import { Match, MatchResult, MatchStatus, RuleSet, SetScore } from './types';
+import { Match, MatchResult, MatchStatus, RuleSet } from './types';
 import { t } from '../i18n';
 import { validateMatch } from './validate';
 import { recomputeBracket, stampVs } from './recompute';
@@ -15,13 +15,13 @@ export interface EditSpec {
   walkoverWinnerId?: string | null;
   note?: string;
   clearScores?: boolean;
-  /** Periods of the match (the live scorer). Absent = leave what is stored. */
-  sets?: SetScore[];
   /**
    * An explicit winner. Needed when the match is decided by periods rather than
-   * by the aggregate score — the live scorer knows which side took the last set.
+   * by the aggregate score.
    */
   winnerId?: string | null;
+  /** Per-set/period scores (used by live scoring). */
+  sets?: { home: number; away: number }[];
 }
 
 export function recordResult(
@@ -30,8 +30,11 @@ export function recordResult(
 ): { matches: Match[]; issues: string[] } {
   const m = matches.find(x => x.id === matchId);
   if (!m) return { matches, issues: [t('engine.matchNotFound')] };
-  if (m.result.status === 'bye' && (spec.status ?? 'bye') === 'bye') {
+  if (m.result.status === 'bye') {
     return { matches, issues: [t('engine.bye')] };
+  }
+  if (m.result.status === 'tbd' || !m.homeId || !m.awayId) {
+    return { matches, issues: [t('engine.tbd')] };
   }
   let r: MatchResult = { ...m.result };
   if (spec.homeScore !== undefined) r.homeScore = spec.homeScore;
@@ -39,12 +42,9 @@ export function recordResult(
   if (spec.status !== undefined) r.status = spec.status;
   if (spec.walkoverWinnerId !== undefined) r.walkoverWinnerId = spec.walkoverWinnerId;
   if (spec.note !== undefined) r.note = spec.note;
-  if (spec.sets !== undefined) r.sets = spec.sets;
   if (spec.clearScores || r.status === 'scheduled' || r.status === 'unfinished' || r.status === 'interrupted') {
     if (spec.homeScore === undefined) r.homeScore = null;
     if (spec.awayScore === undefined) r.awayScore = null;
-    // The running periods go with the scores when a match is wiped or reopened.
-    if (spec.sets === undefined) r.sets = undefined;
     if (r.status === 'scheduled' || r.status === 'unfinished' || r.status === 'interrupted') r.winnerId = null;
     if (r.status === 'scheduled') { r.walkoverWinnerId = null; r.overtime = false; }
   }
@@ -112,7 +112,7 @@ export function applyWithdrawals(
     if (withdrawnIds.size === 0) return m;
     const w = m.homeId && withdrawnIds.has(m.homeId) ? m.homeId : m.awayId && withdrawnIds.has(m.awayId) ? m.awayId : null;
     if (!w) return m;
-    if (m.result.status === 'played' || m.result.status === 'draw' || m.result.status === 'overtime' || m.result.status === 'walkover') return m; // history stands
+    if (m.result.status === 'bye' || m.result.status === 'played' || m.result.status === 'draw' || m.result.status === 'overtime' || m.result.status === 'walkover') return m; // automatic advances and history stand
     const survivor = m.homeId === w ? m.awayId : m.homeId;
     changed++;
     return {

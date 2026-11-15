@@ -5,10 +5,17 @@ import { useApp } from '../state/store';
 import { Match } from '../engine/types';
 import { describeFormat, hasBracket } from '../engine/generate';
 import { bracketSvg, buildBracketTree, knockoutPlaces } from '../engine/bracket-view';
+import { Branding, normalizeBranding } from '../engine/branding';
 import { Empty, Meta, Page, Panel, StatusPill } from './kit';
 import { useT } from '../i18n';
 
 const FINISHED = new Set(['played', 'draw', 'walkover', 'overtime']);
+
+function tintColor(hex: string, alpha: number): string {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+  if (!m) return `rgba(31, 94, 255, ${alpha})`;
+  return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})`;
+}
 
 function useNames() {
   const t = useT();
@@ -22,6 +29,7 @@ export default function Bracket() {
   const { domain, go } = useApp();
   const pn = useNames();
   const fmt = domain.tournament.format;
+  const branding = normalizeBranding(domain.tournament.branding);
 
   // A league (or any format without a knockout stage) has no bracket to draw.
   if (!hasBracket(fmt)) {
@@ -51,18 +59,19 @@ export default function Bracket() {
   const played = domain.matches.filter(m => FINISHED.has(m.result.status)).length;
   const sub = t('bracket.subPlayed', { format: describeFormat(fmt), played, total: domain.matches.length });
 
-  if (fmt === 'double-elimination') return <DoubleView pn={pn} sub={sub} />;
-  if (fmt === 'groups-knockout' && domain.groups.length > 0) return <GroupsKoView pn={pn} sub={sub} />;
+  if (fmt === 'double-elimination') return <DoubleView pn={pn} sub={sub} branding={branding} />;
+  if (fmt === 'groups-knockout' && domain.groups.length > 0) return <GroupsKoView pn={pn} sub={sub} branding={branding} />;
 
   // Single elimination: the bracket as a drawn spider, the same drawing the
   // document prints — one picture, no second rendering to keep in sync.
   const koMs = domain.matches.filter(m => !m.groupId);
   const tree = useMemo(() => buildBracketTree(koMs, pn, {
-    emptyLabel: t('common.tbd'), roundName: n => t('round.n', { n }),
+    emptyLabel: t('common.tbd'), byeLabel: t('status.bye'), roundName: n => t('round.n', { n }),
   }), [koMs, pn, t]);
   const spider = useMemo(() => bracketSvg({
     tree, title: t('bracket.title'), championLabel: t('st.champion'),
-  }), [tree, t]);
+    accent1: branding.accent1, accent2: branding.accent2, background: branding.background,
+  }), [tree, t, branding]);
   const places = useMemo(() => knockoutPlaces(koMs, pn), [koMs, pn]);
 
   return (
@@ -70,9 +79,19 @@ export default function Bracket() {
       actions={<button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>}>
       {places.length > 0 && (
         <Panel title={t('st.finalTitle')}>
-          <div className="champion-row">
+          <div className="champion-row" style={{
+            display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap',
+            marginBottom: 12,
+          }}>
             {places.map(p => (
-              <span className={`champion-place place-${p.place}`} key={p.place}>
+              <span key={p.place} className={`champion-place place-${p.place}`} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', borderRadius: 20,
+                background: p.place === 1 ? branding.accent1 : branding.background,
+                color: p.place === 1 ? '#ffffff' : branding.accent1,
+                border: `1px solid ${p.place === 1 ? branding.accent1 : branding.accent2}`,
+                fontWeight: p.place === 1 ? 700 : 600,
+              }}>
                 <b>{p.place}</b> {p.name}
               </span>
             ))}
@@ -80,7 +99,16 @@ export default function Bracket() {
         </Panel>
       )}
       <Panel>
-        <div className="bracket-svg" dangerouslySetInnerHTML={{ __html: spider }} />
+        <div className="bracket-wrap" style={{
+          background: branding.background,
+          border: `1px solid ${branding.accent2}`,
+          borderRadius: 8,
+          padding: 16,
+          overflowX: 'auto',
+          marginBottom: 12,
+        }}>
+          <div className="bracket-svg" dangerouslySetInnerHTML={{ __html: spider }} />
+        </div>
         <p className="table-note">{t('doc.spiderNote')}</p>
       </Panel>
       <div className="footbar">
@@ -94,7 +122,7 @@ export default function Bracket() {
 }
 
 
-function GroupsKoView({ pn, sub }: { pn: (id: string | null) => string; sub: string }) {
+function GroupsKoView({ pn, sub, branding }: { pn: (id: string | null) => string; sub: string; branding: Branding }) {
   const t = useT();
   const { domain, go } = useApp();
   const groupMs = domain.matches.filter(m => m.groupId != null);
@@ -120,7 +148,7 @@ function GroupsKoView({ pn, sub }: { pn: (id: string | null) => string; sub: str
         <div className="bracket">{rounds.map(r => (
           <div className="bround" key={r}>
             <h3>{koMs.find(m => m.round === r)?.roundName ?? 'Round ' + r}</h3>
-            {koMs.filter(m => m.round === r).map(m => <MCard key={m.id} m={m} pn={pn} />)}
+            {koMs.filter(m => m.round === r).map(m => <MCard key={m.id} m={m} pn={pn} branding={branding} />)}
           </div>
         ))}</div>
       )}
@@ -152,23 +180,36 @@ function GroupsKoView({ pn, sub }: { pn: (id: string | null) => string; sub: str
   );
 }
 
-function MCard({ m, pn }: { m: Match; pn: (id: string | null) => string }) {
+function MCard({ m, pn, branding }: { m: Match; pn: (id: string | null) => string; branding: Branding }) {
   const w = m.result.winnerId;
   const done = FINISHED.has(m.result.status);
+  const wonHome = w === m.homeId;
+  const wonAway = w === m.awayId;
   return (
-    <div className={'bmatch' + (done ? ' settled' : '')}>
-      <div className="rh"><span>{m.roundName}</span><StatusPill status={m.result.status} /></div>
-      <div className={'nm' + (w === m.homeId ? ' w' : w ? ' l' : '')}>
-        <span>{pn(m.homeId)}</span><b>{m.result.homeScore ?? ''}</b>
+    <div className={'bmatch' + (done ? ' settled' : '')} style={{
+      border: `1px solid ${done ? (wonHome || wonAway ? branding.accent1 : branding.accent2) : branding.accent2}`,
+      borderRadius: 8,
+      background: done ? (wonHome || wonAway ? tintColor(branding.accent1, 0.1) : branding.background) : 'transparent',
+      padding: 10,
+      marginBottom: 8,
+    }}>
+      <div className="rh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <span style={{ fontWeight: 600, color: branding.accent1 }}>{m.roundName}</span>
+        <StatusPill status={m.result.status} />
       </div>
-      <div className={'nm' + (w === m.awayId ? ' w' : w ? ' l' : '')}>
-        <span>{pn(m.awayId)}</span><b>{m.result.awayScore ?? ''}</b>
+      <div className={'nm' + (wonHome ? ' w' : w ? ' l' : '')} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+        <span style={{ color: wonHome ? branding.accent1 : '#1a1d21' }}>{pn(m.homeId)}</span>
+        <b style={{ color: wonHome ? branding.accent1 : '#1a1d21' }}>{m.result.homeScore ?? ''}</b>
+      </div>
+      <div className={'nm' + (wonAway ? ' w' : w ? ' l' : '')} style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <span style={{ color: wonAway ? branding.accent1 : '#1a1d21' }}>{pn(m.awayId)}</span>
+        <b style={{ color: wonAway ? branding.accent1 : '#1a1d21' }}>{m.result.awayScore ?? ''}</b>
       </div>
     </div>
   );
 }
 
-function DoubleView({ pn, sub }: { pn: (id: string | null) => string; sub: string }) {
+function DoubleView({ pn, sub, branding }: { pn: (id: string | null) => string; sub: string; branding: Branding }) {
   const t = useT();
   const { domain, go } = useApp();
   const wb = domain.matches.filter(m => m.bracket?.kind === 'winners').sort((a, b) => a.round - b.round);
@@ -179,7 +220,7 @@ function DoubleView({ pn, sub }: { pn: (id: string | null) => string; sub: strin
     <div className="bround">
       <h3>{title} ({ms.length})</h3>
       {hint ? <p className="f-hint" style={{ margin: '-4px 0 8px' }}>{hint}</p> : null}
-      {ms.map(m => <MCard key={m.id} m={m} pn={pn} />)}
+      {ms.map(m => <MCard key={m.id} m={m} pn={pn} branding={branding} />)}
     </div>
   );
   return (

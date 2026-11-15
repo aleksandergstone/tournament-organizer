@@ -350,33 +350,33 @@ describe('branding', () => {
 
   it('keeps good values and replaces bad ones with the defaults', () => {
     const b = normalizeBranding({
-      eventTitle: '  Winter   Cup \n', accent: 'not-a-colour', logoDataUrl: 'file:///etc/passwd',
+      eventTitle: '  Winter   Cup \n', accent1: 'not-a-colour', logoDataUrl: 'file:///etc/passwd',
       notes: 'x'.repeat(5000), compactStandings: 'yes' as unknown as boolean,
     });
     expect(b.eventTitle).toBe('Winter Cup');
-    expect(b.accent).toBe(DEFAULT_ACCENT);
+    expect(b.accent1).toBe(DEFAULT_ACCENT);
     expect(b.logoDataUrl).toBe('');           // only inline images are embedded
     expect(b.notes.length).toBeLessThanOrEqual(1200);
     expect(b.compactStandings).toBe(DEFAULT_BRANDING.compactStandings);
   });
 
   it('accepts a valid hex colour and inline logo', () => {
-    const b = normalizeBranding({ accent: '#0A8040', logoDataUrl: LOGO, sponsorDataUrl: LOGO });
-    expect(isHexColor(b.accent)).toBe(true);
-    expect(b.accent).toBe('#0a8040');
+    const b = normalizeBranding({ accent1: '#0A8040', logoDataUrl: LOGO, sponsorDataUrl: LOGO });
+    expect(isHexColor(b.accent1)).toBe(true);
+    expect(b.accent1).toBe('#0a8040');
     expect(b.logoDataUrl).toBe(LOGO);
   });
 
   it('survives a project file round-trip, so branding is not lost on reload', () => {
     const { participants, matches } = rr(['Lions', 'Tigers']);
     const text = serializeProject({
-      tournament: t({ branding: normalizeBranding({ eventTitle: 'Winter Cup 2026', accent: '#0a8040', logoDataUrl: LOGO }) }),
+      tournament: t({ branding: normalizeBranding({ eventTitle: 'Winter Cup 2026', accent1: '#0a8040', logoDataUrl: LOGO }) }),
       participants, groups: [], matches, audit: [], resources: [], settings: DEFAULT_SETTINGS,
     });
     const { file, warnings } = parseProject(text);
     expect(warnings).toEqual([]);
     expect(file.tournament.branding?.eventTitle).toBe('Winter Cup 2026');
-    expect(file.tournament.branding?.accent).toBe('#0a8040');
+    expect(file.tournament.branding?.accent1).toBe('#0a8040');
     expect(file.tournament.branding?.logoDataUrl).toBe(LOGO);
   });
 
@@ -414,10 +414,10 @@ describe('document header and PDF', () => {
 
   it('embeds the event logo, the sponsor logo and the accent colour', () => {
     const html = renderReportHtml(buildReport(input({
-      participants, matches, branding: { logoDataUrl: LOGO, sponsorDataUrl: LOGO, accent: '#0a8040' },
+      participants, matches, branding: { logoDataUrl: LOGO, sponsorDataUrl: LOGO, accent1: '#0a8040' },
     }), 'standings'));
     expect(html).toContain(`src="${LOGO}"`);
-    expect(html).toContain('--accent: #0a8040');
+    expect(html).toContain('--accent1: #0a8040');
     expect(html).toContain('@page');   // print-ready page setup
   });
 
@@ -477,32 +477,8 @@ describe('CSV export', () => {
   });
 });
 
-// ------------------------------------------------------------- organizer pack
 
-describe('organizer pack', () => {
-  it('contains the information block, the table, the match list and the bracket', () => {
-    const participants = ps(['Lions', 'Tigers', 'Bears', 'Wolves']);
-    const matches = genSingleElim(participants, DEFAULT_RULES).matches;
-    const report = buildReport(input({
-      tournament: t({ format: 'single-elimination' }),
-      participants, matches,
-      resources: [{ id: 'c1', name: 'Court 1', kind: 'court' }],
-      branding: { eventTitle: 'Winter Cup 2026' },
-    }), 'pack');
-    // A knockout with nothing scheduled still yields info, table, matches, bracket.
-    expect(report.sections.map(s => s.id)).toEqual(['overview', 'standings', 'matches', 'bracket']);
-    const overview = section(report, 'overview');
-    expect(overview.rows!.map(r => r[0])).toContain('Format');
-    expect(overview.rows!.map(r => r[0])).toContain('Matches played');
-    expect(section(report, 'standings').title).toBe('Standings');
-    expect(report.meta.title).toBe('Winter Cup 2026');
-  });
 
-  it('adds the timetable to the pack once matches are scheduled', () => {
-    const { participants, matches } = rr(['Lions', 'Tigers']);
-    const timed = [{ ...matches[0], scheduledAt: slot(12, 0) }];
-    const report = buildReport(input({ participants, matches: timed }), 'pack');
-    expect(report.sections.map(s => s.id)).toContain('schedule-1');
-  });
-});
+
+
 

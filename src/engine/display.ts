@@ -72,7 +72,7 @@ export function buildDisplay(input: {
   const { matches, names, standings, updatedAt } = input;
   const order = upcomingOrder(matches);
   const playedCount = matches.filter(m => PLAYED.has(m.result.status)).length;
-  const totalCount = matches.filter(m => m.homeId && m.awayId).length;
+  const totalCount = matches.filter(m => (m.homeId && m.awayId) || m.result.status === 'tbd').length;
 
   let status: DisplayStatus;
   let statusLabel: string;

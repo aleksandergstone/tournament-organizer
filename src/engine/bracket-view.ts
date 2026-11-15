@@ -70,7 +70,7 @@ function scoreOf(m: Match): [string, string] {
 export function buildBracketTree(
   matches: Match[],
   nameOf: (id: string | null | undefined) => string,
-  opts: { emptyLabel: string; roundName: (round: number) => string },
+  opts: { emptyLabel: string; byeLabel?: string; roundName: (round: number) => string },
 ): BracketTree {
   const byRound = new Map<number, Match[]>();
   for (const m of matches) {
@@ -85,7 +85,7 @@ export function buildBracketTree(
     round: m.round,
     roundName: m.roundName,
     home: m.homeId ? nameOf(m.homeId) : opts.emptyLabel,
-    away: m.awayId ? nameOf(m.awayId) : opts.emptyLabel,
+    away: m.awayId ? nameOf(m.awayId) : m.result.status === 'bye' ? (opts.byeLabel ?? opts.emptyLabel) : opts.emptyLabel,
     ...(() => { const [h, a] = scoreOf(m); return { homeScore: h, awayScore: a }; })(),
     homeWon: !!m.result.winnerId && m.result.winnerId === m.homeId,
     awayWon: !!m.result.winnerId && m.result.winnerId === m.awayId,
@@ -164,6 +164,12 @@ export interface BracketSvgOptions {
   title: string;
   /** Small caption over the champion's box, e.g. "Champion". */
   championLabel: string;
+  /** Primary brand colour (hex, with or without #). */
+  accent1?: string;
+  /** Secondary brand colour (hex, with or without #). */
+  accent2?: string;
+  /** Panel / surface background colour (hex, with or without #). */
+  background?: string;
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, ch => (
@@ -171,18 +177,30 @@ const esc = (s: string) => s.replace(/[&<>"]/g, ch => (
 
 // Colours come from CSS variables, so the same drawing follows the app theme
 // and the document's branding accent.
+const DEFAULT_COLORS = {
+  acc: '#1f5eff',
+  ink: '#161c24',
+  muted: '#697386',
+  line: '#c8ced8',
+  card: '#ffffff',
+};
+
 const C = {
-  acc: 'var(--acc, #1f5eff)',
-  ink: 'var(--ink, #161c24)',
-  muted: 'var(--muted, #697386)',
-  line: 'var(--line, #c8ced8)',
-  card: 'var(--panel, #ffffff)',
+  acc: DEFAULT_COLORS.acc,
+  ink: DEFAULT_COLORS.ink,
+  muted: DEFAULT_COLORS.muted,
+  line: DEFAULT_COLORS.line,
+  card: DEFAULT_COLORS.card,
 };
 
 /** Renders the tree as one self-contained, printable SVG. */
 export function bracketSvg(o: BracketSvgOptions): string {
-  const { tree, title, championLabel } = o;
-  const { acc, ink, muted, line, card } = C;
+  const { tree, title, championLabel, accent1, accent2, background } = o;
+  const acc = accent1 ?? DEFAULT_COLORS.acc;
+  const ink = DEFAULT_COLORS.ink;
+  const muted = DEFAULT_COLORS.muted;
+  const line = DEFAULT_COLORS.line;
+  const card = background ?? DEFAULT_COLORS.card;
   const parts: string[] = [];
   parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${tree.width} ${tree.height}" `
     + `width="100%" height="auto" preserveAspectRatio="xMinYMin meet" role="img" `
@@ -246,3 +264,9 @@ export function knockoutPlaces(
   if (third && third !== loser) out.push({ place: 3, name: nameOf(third) });
   return out;
 }
+
+
+
+
+
+
