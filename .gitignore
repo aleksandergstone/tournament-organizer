@@ -56,5 +56,8 @@ s-err.txt
 tools-setup.log
 tools-setup.err
 
+# Embedded repo — not part of this repository
+phonebox/
+
 # One-off artifacts from a manual license issuance check
 e2e-out.txt
