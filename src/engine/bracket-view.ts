@@ -5,14 +5,16 @@
 // from the same links that keep results correct. One layout serves the screen
 // and the printed document, so a bracket looks the same in the app, in the PDF
 // and on paper.
+//
 import { Match } from './types';
 
-export const NODE_W = 170;
-export const NODE_H = 46;
-export const COL_GAP = 38;
-export const ROW_GAP = 12;
-export const HEAD_H = 28;
-export const PAD = 10;
+// These constants MUST match the ones used by BracketCanvas.tsx (UI rendering).
+export const NODE_W = 160;
+export const NODE_H = 90;
+export const COL_GAP = 60;
+export const ROW_GAP = 14;
+export const HEAD_H = 26;
+export const PAD = 14;
 
 export interface BracketNode {
   id: string;
@@ -26,6 +28,8 @@ export interface BracketNode {
   homeWon: boolean;
   awayWon: boolean;
   decided: boolean;
+  /** Match result status (scheduled, played, draw, walkover, bye, tbd, …). */
+  resultStatus: string;
   /** ids of the matches feeding this one, in slot order (home, away). */
   feeders: (string | null)[];
 }
@@ -90,6 +94,7 @@ export function buildBracketTree(
     homeWon: !!m.result.winnerId && m.result.winnerId === m.homeId,
     awayWon: !!m.result.winnerId && m.result.winnerId === m.awayId,
     decided: FINISHED.has(m.result.status) && !!m.result.winnerId,
+    resultStatus: m.result.status,
     feeders: [feederId(m.bracket?.srcHome), feederId(m.bracket?.srcAway)],
     col: colOf.get(m.round) ?? 0,
     x: 0,
@@ -99,42 +104,54 @@ export function buildBracketTree(
   const step = NODE_H + ROW_GAP;
   const top = PAD + HEAD_H;
 
-  // Column 1 is an evenly spaced list; later columns centre on their feeders.
-  for (const round of roundNumbers) {
-    (byRound.get(round) ?? []).forEach((m, i) => {
-      const n = byId.get(m.id)!;
+  // Column 1 is an evenly spaced list — matches are in slot order (0, 1, 2, …).
+  const firstRound = roundNumbers[0];
+  const firstCol = (byRound.get(firstRound) ?? []).map(m => byId.get(m.id)!);
+  for (let i = 0; i < firstCol.length; i++) {
+    firstCol[i].y = top + i * step;
+    firstCol[i].x = PAD;
+  }
+  // prevCol holds the previous round's placed nodes in slot order.
+  let prevCol = firstCol;
+
+  // Later columns: each match i sits between visual slots (2*i, 2*i+1) of the
+  // previous round — regardless of which feeders the match data references.
+  for (let r = 1; r < roundNumbers.length; r++) {
+    const round = roundNumbers[r];
+    const col = (byRound.get(round) ?? []).map(m => byId.get(m.id)!);
+    for (let i = 0; i < col.length; i++) {
+      const n = col[i];
+      const f0 = prevCol[2 * i];
+      const f1 = prevCol[2 * i + 1];
+      if (f0 && f1) {
+        n.y = (f0.y + f1.y) / 2 - NODE_H / 2;
+      } else if (f0) {
+        n.y = f0.y;
+      } else if (f1) {
+        n.y = f1.y;
+      } else {
+        n.y = top;
+      }
       n.x = PAD + n.col * (NODE_W + COL_GAP);
-      n.y = top + (n.col === 0 ? i * step : 0);
-    });
-  }
-  for (const round of roundNumbers.slice(1)) {
-    for (const m of byRound.get(round) ?? []) {
-      const n = byId.get(m.id)!;
-      const ys = n.feeders.map(f => (f ? byId.get(f) : undefined))
-        .filter((f): f is PlacedNode => !!f).map(f => f.y);
-      if (ys.length) n.y = (Math.min(...ys) + Math.max(...ys)) / 2;
     }
-  }
-  // Relax: keep a minimum gap in a column, then re-centre it on the first
-  // column so the web reads as one shape instead of drifting downwards.
-  const first = (byRound.get(roundNumbers[0]) ?? []).map(m => byId.get(m.id)!);
-  for (const round of roundNumbers) {
-    const col = (byRound.get(round) ?? []).map(m => byId.get(m.id)!).sort((a, b) => a.y - b.y);
-    for (let i = 1; i < col.length; i++) {
-      if (col[i].y - col[i - 1].y < step) col[i].y = col[i - 1].y + step;
-    }
-    if (first.length > 1) {
-      const want = (first[0].y + first[first.length - 1].y) / 2;
-      const have = (col[0].y + col[col.length - 1].y) / 2;
-      for (const n of col) n.y = Math.max(top, n.y + want - have);
-    }
+    prevCol = col;
   }
 
+  // Connector links: one pair per match — from visual slots (2*i, 2*i+1)
+  // of the previous round into match i of this round.
   const links: BracketLink[] = [];
-  for (const n of nodes) {
-    n.feeders.forEach((f, i) => {
-      if (f && byId.has(f)) links.push({ from: f, to: n.id, slot: i as 0 | 1 });
-    });
+  for (let r = 1; r < roundNumbers.length; r++) {
+    const prevRound = roundNumbers[r - 1];
+    const round = roundNumbers[r];
+    const prevMatches = byRound.get(prevRound) ?? [];
+    const curMatches = byRound.get(round) ?? [];
+    for (let i = 0; i < curMatches.length; i++) {
+      const f0 = prevMatches[2 * i];
+      const f1 = prevMatches[2 * i + 1];
+      const target = curMatches[i];
+      if (f0) links.push({ from: f0.id, to: target.id, slot: 0 });
+      if (f1) links.push({ from: f1.id, to: target.id, slot: 1 });
+    }
   }
 
   const lastRound = roundNumbers[roundNumbers.length - 1];
@@ -183,14 +200,6 @@ const DEFAULT_COLORS = {
   muted: '#697386',
   line: '#c8ced8',
   card: '#ffffff',
-};
-
-const C = {
-  acc: DEFAULT_COLORS.acc,
-  ink: DEFAULT_COLORS.ink,
-  muted: DEFAULT_COLORS.muted,
-  line: DEFAULT_COLORS.line,
-  card: DEFAULT_COLORS.card,
 };
 
 /** Renders the tree as one self-contained, printable SVG. */
@@ -264,9 +273,3 @@ export function knockoutPlaces(
   if (third && third !== loser) out.push({ place: 3, name: nameOf(third) });
   return out;
 }
-
-
-
-
-
-

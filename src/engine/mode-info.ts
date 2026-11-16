@@ -756,6 +756,7 @@ const ROLES: Record<ModeClass, Partial<Record<keyof RuleSet, Role>>> = {
 
 /** What each field does, in one line. Shared: the nuance is in status/affects. */
 const WHY: Record<keyof RuleSet, keyof Dict> = {
+  doubleElimEnding: 'double.endingHint',
   rounds: 'mode.why.rounds',
   matchLengthMin: 'mode.why.matchLength',
   winPoints: 'mode.why.winPoints',
@@ -800,6 +801,7 @@ medalRace: 'mode.why.medalRace',
  * under a different prefix, and a missing key would print itself in the UI.
  */
 const FIELD_LABELS: Record<keyof RuleSet, keyof Dict> = {
+  doubleElimEnding: 'double.endingLabel',
   rounds: 'rules.swissRounds',
   matchLengthMin: 'mode.why.matchLength',
   winPoints: 'rules.win',
@@ -1110,6 +1112,9 @@ export function fieldEffect(format: string, field: keyof RuleSet): ScoreEffect {
  */
 export function adaptRulesToFormat(format: string, rules: RuleSet): Partial<RuleSet> {
   const spec = specFor(format);
+  if (format === 'double-elimination' && rules.doubleElimEnding === undefined) {
+    return { ...rules, doubleElimEnding: 'single' as const };
+  }
   if (spec.draws.policy === 'requires-resolution') {
     // A bracket starts closed: no draws until a rule to settle them is chosen.
     return { allowDraws: false, drawResolution: 'none' };

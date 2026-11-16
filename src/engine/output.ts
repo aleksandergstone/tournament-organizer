@@ -1,4 +1,4 @@
-// Tournament output model \u2014 everything that leaves the app: printed sheets,
+﻿// Tournament output model \u2014 everything that leaves the app: printed sheets,
 // PDFs and CSV files.
 //
 // Pure and deterministic. Builders take a snapshot of the project plus a
@@ -11,7 +11,8 @@
 // The PDF/print renderer and the CSV writer both consume only this structure.
 import { Branding, brandingOf, documentTitle, fileBaseName, hasRegulation, type DateStyle, type TimeStyle } from './branding';
 import { describeFormat, hasPointTable, pickQualifiers } from './generate';
-import { bracketSvg, buildBracketTree, knockoutPlaces } from './bracket-view';
+import { buildBracketTree, knockoutPlaces } from './bracket-view';
+import { renderBracketHtml } from './bracket-html';
 import { decidedWinner } from './pairings';
 import { computeStandings } from './standings';
 import { Group, Match, Participant, StandingRow, Tournament, VenueResource } from './types';
@@ -437,31 +438,62 @@ function bracketRounds(c: Ctx, matches: Match[]): RoundView[] {
 function bracketSections(c: Ctx): Section[] {
   const matches = knockoutMatches(c);
   if (!matches.length) return [];
-  // A single-elimination bracket reads far better as the drawn "spider"; a
-  // double-elimination one has an irregular shape, so it stays as round tables.
-  // The round rows are kept either way: the CSV writer has no drawing to read.
-  const drawable = c.t.format !== 'double-elimination' && matches.length > 1;
-  const out: Section[] = [{
-    id: 'bracket', title: c.b.titleBracket || t('doc.knockout'),
+  const fmt = c.t.format;
+  const branding = c.b;
+
+  const sections: Section[] = [];
+
+  // Bracket section â€” drawn identically to the "Drabinka" tab (same HTML, same geometry).
+  sections.push({
+    id: 'bracket', title: branding.titleBracket || t('doc.knockout'),
     sub: t('doc.knockoutSub'),
     pageBreakBefore: true,
-    rounds: bracketRounds(c, matches),
-  }];
-  if (drawable) {
+  });
+
+  if (fmt === 'double-elimination') {
+    const ending = (c.t.rules as any).doubleElimEnding ?? 'single';
+
+    // Winners bracket â€” own tree, own page.
+    const wb = matches.filter(m => m.bracket?.kind === 'winners');
+    if (wb.length) {
+      sections.push(...bracketTreeSections(c, wb, branding.titleBracket || t('bracket.winners'), t('bracket.winners')));
+    }
+    // Losers bracket â€” own tree, own page.
+    const lb = matches.filter(m => m.bracket?.kind === 'losers');
+    if (lb.length) {
+      sections.push(...bracketTreeSections(c, lb, t('bracket.losers'), t('bracket.losers')));
+    }
+    // Grand final â€” own tree, own page.
+    const gf = matches.filter(m => m.bracket?.kind === 'final');
+    if (gf.length) {
+      sections.push(...bracketTreeSections(c, gf, t('bracket.grandFinal'), t('doc.championLabel'), ending === 'double', ending === 'thirdPlace'));
+    }
+  } else {
+    // Single elimination or groups-knockout: add the drawn SVG to the main
+    // bracket section (for PDF). The round table above already covers CSV.
     const tree = buildBracketTree(matches, id => nameOf(c, id), {
       emptyLabel: '\u2014', byeLabel: matchStatusLabel('bye'), roundName: n => t('round.n', { n }),
     });
-    out[0].bracket = bracketSvg({
-      tree, title: t('doc.knockout'), championLabel: t('doc.championLabel'),
-    });
-    out[0].note = t('doc.spiderNote');
+    const drawable = matches.length > 1;
+    if (drawable) {
+      const bracketSection = sections.find(s => s.id === 'bracket')!;
+      bracketSection.bracket = renderBracketHtml({
+        nodes: tree.nodes, links: tree.links, rounds: tree.rounds,
+        width: tree.width, height: tree.height,
+        championMatchId: null,
+        championLabel: t('doc.championLabel'),
+        pn: id => id ? c.names.get(id) ?? '\u2014' : '\u2014',
+        branding: c.b,
+      });
+      bracketSection.note = t('doc.spiderNote');
+    }
   }
 
-  // The final is the highest round present; decided means a champion exists.
+  // Champion result table.
   const last = matches[matches.length - 1];
   const champ = last ? decidedWinner(last) : null;
   if (champ) {
-    out.push({
+    sections.push({
       id: 'champion', title: t('doc.result'),
       columns: [{ key: 'label', label: '' }, { key: 'name', label: '' }],
       rows: [
@@ -470,7 +502,65 @@ function bracketSections(c: Ctx): Section[] {
       ],
     });
   }
-  return out;
+  return sections;
+}
+
+/**
+ * Builds one or more bracket-drawing sections for a set of matches.
+ * Splits into multiple pages when the bracket has too many rounds to fit
+ * on a single sheet. Each segment gets its own tree so the drawing stays
+ * readable instead of being squeezed.
+ */
+function bracketTreeSections(c: Ctx, matches: Match[], title: string, championLabel: string, includeReset = false, includeThird = false): Section[] {
+  const tree = buildBracketTree(matches, id => nameOf(c, id), {
+    emptyLabel: '\u2014', byeLabel: matchStatusLabel('bye'), roundName: n => t('round.n', { n }),
+  });
+
+  const sections: Section[] = [];
+  const maxRoundsPerPage = 4;
+
+  // When the bracket fits on one page, render it as a single SVG section.
+  if (tree.rounds.length <= maxRoundsPerPage) {
+    sections.push({
+      id: `bracket-${title.toLowerCase().replace(/\s+/g, '-')}`, title, sub: t('doc.knockoutSub'),
+      pageBreakBefore: true,
+      bracket: renderBracketHtml({
+        nodes: tree.nodes, links: tree.links, rounds: tree.rounds,
+        width: tree.width, height: tree.height,
+        championMatchId: null,
+        championLabel,
+        pn: id => id ? c.names.get(id) ?? '\u2014' : '\u2014',
+        branding: c.b,
+      }),
+      note: t('doc.spiderNote'),
+    });
+    return sections;
+  }
+
+  // Otherwise split into segments of maxRoundsPerPage rounds each.
+  for (let i = 0; i < tree.rounds.length; i += maxRoundsPerPage) {
+    const segRounds = tree.rounds.slice(i, i + maxRoundsPerPage);
+    const segRoundNumbers = new Set(segRounds.map(r => r.round));
+    const segMatches = matches.filter(m => segRoundNumbers.has(m.round));
+    const segTree = buildBracketTree(segMatches, id => nameOf(c, id), {
+      emptyLabel: '\u2014', byeLabel: matchStatusLabel('bye'), roundName: n => t('round.n', { n }),
+    });
+    sections.push({
+      id: `bracket-${title.toLowerCase().replace(/\s+/g, '-')}-${i}`, title: i === 0 ? title : `${title} (cont.)`,
+      sub: i === 0 ? t('doc.knockoutSub') : '',
+      pageBreakBefore: i === 0,
+      bracket: renderBracketHtml({
+        nodes: segTree.nodes, links: segTree.links, rounds: segTree.rounds,
+        width: segTree.width, height: segTree.height,
+        championMatchId: null,
+        championLabel: i === 0 ? championLabel : '',
+        pn: id => id ? c.names.get(id) ?? '\u2014' : '\u2014',
+        branding: c.b,
+      }),
+      note: i === 0 ? t('doc.spiderNote') : '',
+    });
+  }
+  return sections;
 }
 
 // ---- Report ---------------------------------------------------------------
@@ -584,6 +674,7 @@ export function reportToCsv(report: Report): string {
   const lines = reportRows(report).map(r => r.cells.map(esc).join(';'));
   return lines.length ? '\uFEFF' + lines.join('\r\n') + '\r\n' : '';
 }
+
 
 
 

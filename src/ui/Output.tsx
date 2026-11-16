@@ -3,7 +3,7 @@
 //
 // The screen renders the *same* HTML string in the preview iframe that it hands
 // to the printer, so what an organizer sees is what comes out of the printer.
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useApp } from '../state/store';
 import { REPORT_KINDS, ReportKind, buildReport, reportToCsv } from '../engine/output';
 import { hasBracket, hasPointTable } from '../engine/generate';
@@ -13,7 +13,6 @@ import { desktop } from '../engine/desktop';
 import { fileNameFor, serializeProject } from '../engine/storage';
 import { nowIso } from '../engine/types';
 import { Collapse, Alert, Empty, Page, Panel, Toolbar } from './kit';
-import { BrandingForm } from './Branding';
 import { useT } from '../i18n';
 
 export default function Output() {
@@ -21,12 +20,7 @@ export default function Output() {
   const { domain, update, settings } = useApp();
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  // Branding is edited as a draft and committed when a field loses focus, so a
-  // whole sentence typed into tr('brand.eventTitle') is one undo step, not thirty.
-  const [draft, setDraft] = useState<Branding | null>(null);
   const t = domain.tournament;
-  useEffect(() => { setDraft(null); }, [t.branding]);
-  const branding = draft ?? normalizeBranding(t.branding);
 
   // A knockout prints its final result where a league prints a table.
   const points = hasPointTable(domain.tournament.format);
@@ -56,11 +50,6 @@ export default function Output() {
   }, kind), [t, domain, kind]);
   const html = useMemo(() => renderReportHtml(report), [report]);
   const hasData = domain.matches.length > 0;
-
-  const commitBranding = (next: Branding) => {
-    setDraft(next);
-    update(d => ({ ...d, tournament: { ...d.tournament, branding: normalizeBranding(next) } }), 'branding.updated');
-  };
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true); setMsg(null);
@@ -123,17 +112,6 @@ export default function Output() {
           )}
         </Panel>
       )}
-
-      {/* Branding and the project backup change once, then rarely. Folding them keeps
-          the document picker and its preview as the only thing on screen, which is
-          what someone printing a sheet actually came here to do. */}
-      <Collapse title={tr('brand.title')} sub={tr('brand.sub')}>
-        <Panel>
-          <div onBlur={() => { if (draft) commitBranding(draft); }}>
-            <BrandingForm branding={branding} onChange={setDraft} />
-          </div>
-        </Panel>
-      </Collapse>
 
       <Collapse title={tr('out.backupPanel')} sub={tr('out.backupPanelSub')}>
         <Panel>

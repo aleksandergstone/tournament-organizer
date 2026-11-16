@@ -1385,3 +1385,167 @@ tr.champion td.rank { color: var(--acc); }
   border-top: 1px solid var(--line); padding-top: 16px;
 }
 .type-foot .sp { flex: 1; }
+
+/* ================================================================ bracket --
+   Visual bracket: rounds side by side, connector lines between rounds,
+   match cards with all statuses, themed via branding. Replaces the old
+   vertical card list and the static SVG-only drawing.
+*/
+
+.bracket-wrap {
+  position: relative;
+  min-height: 300px;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+}
+.bracket-wrap::-webkit-scrollbar { height: 8px; }
+.bracket-wrap::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 4px; }
+.bracket-wrap::-webkit-scrollbar-thumb:hover { background: var(--chev); }
+
+.bracket-columns {
+  display: flex;
+  gap: var(--sp);
+  align-items: flex-start;
+  min-width: max-content;
+}
+
+.bracket-col {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp);
+}
+
+.bracket-col-head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--acc);
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+.bracket-node {
+  position: relative;
+  width: 170px;
+  height: 78px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--panel);
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+  overflow: hidden;
+}
+
+.bracket-node:hover {
+  border-color: var(--acc);
+  box-shadow: 0 2px 8px rgba(16, 24, 40, .12);
+}
+
+.bracket-node-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px 2px;
+  border-bottom: 1px solid var(--line-2);
+}
+
+.bracket-round {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--acc);
+}
+
+.bracket-svg-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.bracket-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-sm);
+}
+
+.bracket-foot .sp { flex: 1; }
+
+/* Status pills */
+.status {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.status.scheduled { background: var(--acc-soft); color: var(--acc-d); }
+.status.played { background: var(--ok-soft); color: var(--ok); }
+.status.draw { background: var(--warn-soft); color: var(--warn); }
+.status.walkover { background: var(--bad-soft); color: var(--bad); }
+.status.overtime { background: var(--info-soft); color: var(--info); }
+.status.bye, .status.tbd, .status.unfinished { background: rgba(105, 115, 134, .12); color: var(--muted); }
+.status.interrupted { background: var(--warn-soft); color: var(--warn); }
+
+/* Narrow screens: let the bracket scroll horizontally, columns stack if needed */
+@media (max-width: 768px) {
+  .bracket-columns { gap: 10px; padding-left: 10px; }
+  .bracket-node { width: 150px; height: 72px; }
+  .bracket-col-head { font-size: 11px; }
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .bracket-node { background: #121821; border-color: var(--line-2); }
+[data-theme="dark"] .bracket-node-head { border-bottom-color: var(--line-2); }
+[data-theme="dark"] .bracket-foot { border-top-color: var(--line-2); }
+
+/* ================================================================ double-elim --
+   Double elimination visual: winners bracket, losers bracket and grand final
+   each in their own stacked section with independent column layouts, so no
+   section can push or overlap another.
+*/
+
+.de-sections {
+  display: flex;
+  gap: 24px;
+  flex-direction: column;
+}
+
+.de-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 280px;
+}
+
+.de-ending-hint {
+  margin-bottom: 12px;
+  padding: 8px;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+}
+
+.de-section-sub {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  margin-left: auto;
+}
+
+[data-theme="dark"] .de-ending-hint {
+  background: rgba(31, 94, 255, 0.06);
+  border-color: rgba(31, 94, 255, 0.2);
+}
+
+/* Responsiveness: on narrow screens let sections stack without horizontal overflow */
+@media (max-width: 768px) {
+  .de-sections { gap: 16px; }
+  .de-section { min-width: auto; }
+}

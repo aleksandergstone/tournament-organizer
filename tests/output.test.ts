@@ -243,27 +243,25 @@ describe('bracket document', () => {
     return m;
   }
 
-  it('prints rounds in order, from the first to the last', () => {
+it('prints the bracket in the document (no round tables)', () => {
     const { participants, matches } = ko(['Lions', 'Tigers', 'Bears', 'Wolves']);
     const s = section(buildReport(input({ tournament: t({ format: 'single-elimination' }), participants, matches }), 'bracket'), 'bracket');
-    const rounds = s.rounds!;
-    expect(rounds.length).toBe(2);
-    expect(rounds[0].rows).toHaveLength(2);
-    expect(rounds[0].rows[0].no).toBe('1');
-    // Round 1 is fixed at generation; the final waits for the winners.
-    for (const m of rounds[0].rows) expect(m.home).not.toBe('—');
-    for (const m of rounds[1].rows) expect(m.home).toBe('—');
+    expect(s.bracket).toBeTruthy();
+    expect(s.bracket!.length).toBeGreaterThan(100);
+    expect(s.rounds).toBeUndefined();
   });
 
   it('carries winners into the next round', () => {
     const { participants, matches } = ko(['Lions', 'Tigers', 'Bears', 'Wolves']);
     const semi = matches.filter(x => x.round === 1);
     const m = semi.reduce((acc, x) => play(acc, x.id, 3, 0, true), matches);
-    const s = section(buildReport(input({ tournament: t({ format: 'single-elimination' }), participants, matches: m }), 'bracket'), 'bracket');
-    const final = s.rounds![1];
-    const winners = m.filter(x => x.round === 1).map(x => participants.find(p => p.id === x.result.winnerId)!.name);
-    expect(final.rows[0].home).toBe(winners[0]);
-    expect(final.rows[0].away).toBe(winners[1]);
+    const report = buildReport(input({ tournament: t({ format: 'single-elimination' }), participants, matches: m }), 'bracket');
+    const s = section(report, 'bracket');
+    // Bracket HTML is present (drawn identically to the "Drabinka" tab).
+    expect(s.bracket).toBeTruthy();
+    expect(s.bracket!.length).toBeGreaterThan(100);
+    // No round tables in the document.
+    expect(s.rounds).toBeUndefined();
   });
 
   it('names the champion once the final is decided', () => {
@@ -468,12 +466,12 @@ describe('CSV export', () => {
     expect(csv).toContain('"A;B"');
   });
 
-  it('flattens a bracket into one block per round', () => {
+  it('does not include round tables in bracket CSV', () => {
     const participants = ps(['Lions', 'Tigers', 'Bears', 'Wolves']);
     const matches = genSingleElim(participants, DEFAULT_RULES).matches;
     const csv = reportToCsv(buildReport(input({ tournament: t({ format: 'single-elimination' }), participants, matches }), 'bracket'));
-    expect(csv).toContain('No.;Home;Score;Away;Status');
-    expect(csv).toContain('Lions');
+    // Bracket HTML is in the section, not round tables.
+    expect(csv).not.toContain('No.;Home;Score;Away;Status');
   });
 });
 

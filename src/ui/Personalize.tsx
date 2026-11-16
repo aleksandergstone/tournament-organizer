@@ -20,7 +20,7 @@ export default function Personalize() {
   const t = domain.tournament;
   useEffect(() => { setDraft(null); }, [t.branding]);
   useEffect(() => { setPublicInfoDraft(null); }, [t.publicInfo]);
-  const b = draft ?? normalizeBranding(t.branding);
+  const b = normalizeBranding({ ...t.branding, ...(draft ?? {}) });
   const pi = publicInfoDraft ?? (t.publicInfo ?? {
     shortDescription: '',
     fullDescription: '',

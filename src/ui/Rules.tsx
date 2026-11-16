@@ -84,6 +84,20 @@ export default function Rules() {
       <SettingsForMode format={currentFormat} rules={r} set={set} count={count}
         groups={visibleGroups(currentFormat)} issues={issues} />
 
+      {currentFormat === 'double-elimination' && (
+        <Panel title={t('double.endingTitle')} sub={t('double.endingSub')}>
+          <Field label={t('double.endingLabel')} hint={t('double.endingHint')}>
+            <select value={r.doubleElimEnding ?? 'single'} onChange={e => {
+              set({ doubleElimEnding: e.target.value as 'single' | 'double' | 'thirdPlace' });
+            }}>
+              <option value="single">{t('double.end.single')}</option>
+              <option value="double">{t('double.end.double')}</option>
+              <option value="thirdPlace">{t('double.end.thirdPlace')}</option>
+            </select>
+          </Field>
+        </Panel>
+      )}
+
       <Panel title={t('mode.generateTitle')} sub={t('mode.generateSub')}>
         <PreviewWarning format={currentFormat} rules={r} count={count} />
         <StructurePreviewBox format={currentFormat} count={count} rules={r} />

@@ -1,21 +1,31 @@
 // Settings — grouped by how often the organizer touches them.
 // Everything here is optional; the app works with the defaults.
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../state/store';
+import { Branding, DEFAULT_BRANDING, normalizeBranding, isHexColor } from '../engine/branding';
 import { describeEdition as editionOf } from '../engine/features';
 import { APP_NAME, APP_VERSION } from '../version';
 import { LOCALES, LOCALE_NAMES, resolveLocale, useT } from '../i18n';
 import type { LocalePreference } from '../i18n';
-import { Collapse, Page, Panel, Segmented, Switch } from './kit';
+import { Collapse, Field, Page, Panel, Segmented, Switch } from './kit';
 import SyncPanel from './SyncPanel';
 import SupportBanner, { ResetSupportButton } from './SupportBanner';
 
 
 
 export default function Settings() {
-  const { settings, setSettings, go } = useApp();
+  const { domain, update, settings, setSettings, go } = useApp();
   const t = useT();
   const pref: LocalePreference = settings.locale ?? 'system';
   const effective = resolveLocale(pref);
+  const [draft, setDraft] = useState<Branding | null>(null);
+  const trn = domain.tournament;
+  useEffect(() => { setDraft(null); }, [trn.branding]);
+  const b = normalizeBranding({ ...trn.branding, ...(draft ?? {}) });
+  const set = <K extends keyof Branding>(key: K, value: Branding[K]) => {
+    setDraft(d => ({ ...(d ?? {} as Branding), [key]: value } as Branding));
+  };
+
   return (
     <Page title={t('settings.title')} sub={t('settings.sub')}>
       <Panel title={t('settings.appearance')}>
@@ -45,6 +55,29 @@ export default function Settings() {
         <p className="table-note">{t('language.restart')} ({LOCALE_NAMES[effective]})</p>
       </Panel>
 
+      <Panel title={t('settings.accents')} sub={t('settings.accentsHint')}>
+        <div className="row" style={{ gap: 16 }}>
+          <Field label={t('brand.accent1')} hint={t('brand.accent1Hint')}>
+            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <input type="color" className="color-input" aria-label={t('brand.accent1')}
+                value={isHexColor(b.accent1) ? b.accent1 : DEFAULT_BRANDING.accent1}
+                onChange={e => set('accent1', e.target.value)} />
+              <input className="hex-input" value={b.accent1} aria-label="Accent 1 hex value"
+                onChange={e => set('accent1', e.target.value)} />
+            </div>
+          </Field>
+          <Field label={t('brand.accent2')} hint={t('brand.accent2Hint')}>
+            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <input type="color" className="color-input" aria-label={t('brand.accent2')}
+                value={isHexColor(b.accent2) ? b.accent2 : DEFAULT_BRANDING.accent2}
+                onChange={e => set('accent2', e.target.value)} />
+              <input className="hex-input" value={b.accent2} aria-label="Accent 2 hex value"
+                onChange={e => set('accent2', e.target.value)} />
+            </div>
+          </Field>
+        </div>
+      </Panel>
+
       <Panel title={t('settings.working')}>
         <Switch
           checked={settings.autosave}
@@ -71,6 +104,12 @@ export default function Settings() {
           <SyncPanel />
         </Panel>
       </Collapse>
+
+      <div className="row" style={{ marginTop: 12 }}>
+        <button className="btn primary" onClick={() => { update(d => ({ ...d, tournament: { ...d.tournament, branding: normalizeBranding(b) } }), 'branding.updated'); }}>
+          {t('personalize.apply')}
+        </button>
+      </div>
 
       <Collapse title={t('settings.about')} sub={t('settings.aboutNote', { action: t('settings.aboutAction') })}>
         <Panel>

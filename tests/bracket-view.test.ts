@@ -3,8 +3,10 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { buildBracketTree, bracketSvg, knockoutPlaces, NODE_H, NODE_W } from '../src/engine/bracket-view';
 import { genSingleElim } from '../src/engine/elim';
+import { genDoubleElim } from '../src/engine/double';
 import { genRoundRobin, hasBracket, hasPointTable } from '../src/engine/generate';
 import { recordResult } from '../src/engine/result';
+import { recomputeBracket } from '../src/engine/recompute';
 import { buildReport } from '../src/engine/output';
 import { setLocale } from '../src/i18n';
 import { en } from '../src/i18n/en';
@@ -168,23 +170,34 @@ describe('documents of a knockout', () => {
     expect(report.sections[0].columns?.map(c => c.label)).toContain(en['st.colPts']);
   });
 
-  it('draws the bracket in the document and keeps the rows for CSV', () => {
+  it('draws the bracket in the document (identical HTML to the "Drabinka" tab)', () => {
     const { participants, matches } = ko(['A', 'B', 'C', 'D']);
     const report = buildReport({
       tournament: tour(), participants, groups: [], matches, generatedAt: AT,
     }, 'bracket');
     const s = report.sections.find(x => x.id === 'bracket')!;
-    expect(s.bracket).toContain('<svg');
-    expect(s.rounds?.length).toBe(2);
+    expect(s.bracket).toBeTruthy();
+    expect(s.bracket!.length).toBeGreaterThan(100);
+    // No round tables in the document.
+    expect(s.rounds).toBeUndefined();
   });
 
-  it('keeps round tables for double elimination, whose shape cannot be drawn', () => {
-    const { participants, matches } = ko(['A', 'B', 'C', 'D']);
+  it('draws graphical brackets for double elimination: winners, losers and grand final', () => {
+    const participants = players(['A', 'B', 'C', 'D']);
+    const names = new Map(participants.map(p => [p.id, p.name]));
+    const matches = recomputeBracket(genDoubleElim(participants, DEFAULT_RULES).matches);
     const report = buildReport({
       tournament: tour({ format: 'double-elimination' }), participants, groups: [], matches, generatedAt: AT,
     }, 'bracket');
-    const s = report.sections.find(x => x.id === 'bracket');
-    expect(s?.bracket).toBeUndefined();
-    expect(s?.rounds?.length).toBeGreaterThan(0);
+    // Bracket HTML is present for wb, lb, gf sections.
+    // Winners bracket has its own bracket drawing.
+    const wb = report.sections.find(x => x.id === 'bracket-winners-bracket');
+    expect(wb?.bracket).toBeTruthy();
+    // Losers bracket has its own bracket drawing.
+    const lb = report.sections.find(x => x.id === 'bracket-losers-bracket');
+    expect(lb?.bracket).toBeTruthy();
+    // Grand final has its own bracket drawing.
+    const gf = report.sections.find(x => x.id === 'bracket-grand-final');
+    expect(gf?.bracket).toBeTruthy();
   });
 });

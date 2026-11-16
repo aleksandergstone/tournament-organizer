@@ -1,6 +1,6 @@
-// Print/PDF rendering: a Report → one self-contained HTML document.
+﻿// Print/PDF rendering: a Report â†’ one self-contained HTML document.
 //
-// Self-contained on purpose — no external fonts, stylesheets or images, because
+// Self-contained on purpose â€” no external fonts, stylesheets or images, because
 // the same string is (a) shown in the in-app preview, (b) printed by Electron's
 // printToPDF in an offscreen window, and (c) printed from a browser. What the
 // organizer previews is exactly what comes out of the printer.
@@ -18,7 +18,7 @@ function safeImage(src: string | undefined | null): string {
   return /^data:image\/(png|jpe?g|webp|gif|svg\+xml);base64,[A-Za-z0-9+/=\s]+$/.test(src.trim()) ? src.trim() : '';
 }
 
-/** #rrggbb → rgba() so the accent can tint backgrounds without a colour lib. */
+/** #rrggbb â†’ rgba() so the accent can tint backgrounds without a colour lib. */
 function tint(hex: string | undefined | null, alpha: number): string {
   if (!hex) return `rgba(31, 94, 255, ${alpha})`;
   const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
@@ -70,7 +70,15 @@ const CSS = `
   section.break { break-before: page; page-break-before: always; }
   section.wide { page: wide; }
   .spider { margin: 4px 0 0; }
-  .spider svg { display: block; width: 100%; height: auto; }
+  .spider > div, .spider svg { display: block; width: 100%; height: auto; }
+  /* Bracket cards — identical to the "Drabinka" tab. */
+  .spider .bracket-wrap { position: relative; width: 100%; min-height: 300px; }
+  .spider .bracket-node { position: absolute; width: 160px; height: 90px; border: 1.5px solid #c8ced8; border-radius: 8px; background: #ffffff; overflow: hidden; display: flex; flex-direction: column; box-sizing: border-box; }
+  .spider .bracket-node-head { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 2px; border-bottom: 1px solid rgba(200,206,216,0.4); flex-shrink: 0; }
+  .spider .bracket-node > div:nth-child(2) { padding: 4px 8px; display: flex; flex-direction: column; gap: 2px; height: 100%; min-height: 0; box-sizing: border-box; }
+  .spider .bracket-node > div:nth-child(2) > div { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; width: 100%; min-height: 0; }
+  .spider .bracket-node span[style*=\"&gt;\"] { font-size: 13px; color: #697386; font-weight: 700; white-space: nowrap; }
+  .spider .bracket-round-label { position: absolute; top: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; }
   h2 { font-size: 12.5pt; margin: 0 0 2px; padding-bottom: 4px; border-bottom: 1px solid var(--accent-soft);
        break-after: avoid; page-break-after: avoid; }
   .sub { font-size: 9pt; color: #5b6472; margin: 0 0 6px; }
@@ -158,12 +166,12 @@ export function renderReportHtml(report: Report): string {
       <h2>${escapeHtml(t('doc.notes'))}</h2>
       <p class="notes">${escapeHtml(m.notes)}</p>
     </section>` : '';
-  const foot = [m.footer, m.generatedLine].filter(Boolean).map(escapeHtml).join('  ·  ');
+  const foot = [m.footer, m.generatedLine].filter(Boolean).map(escapeHtml).join('  Â·  ');
   const kindLabel = REPORT_KINDS.find(k => k.kind === report.kind)?.label;
   const lang = INTL_LOCALES[getLocale()];
   return `<!doctype html>
 <html lang="${lang}"><head><meta charset="utf-8" />
-<title>${escapeHtml(m.docTitle || m.title)} — ${escapeHtml(kindLabel ? t(kindLabel) : m.subtitle)}</title>
+<title>${escapeHtml(m.docTitle || m.title)} â€” ${escapeHtml(kindLabel ? t(kindLabel) : m.subtitle)}</title>
 <style>${style}${CSS}</style></head>
 <body>
   <div class="head head-${m.logoPlacement}">
@@ -184,6 +192,7 @@ export function renderReportHtml(report: Report): string {
   ${foot ? `<div class="foot">${foot}</div>` : ''}
 </body></html>`;
 }
+
 
 
 

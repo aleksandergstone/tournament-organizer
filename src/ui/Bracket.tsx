@@ -1,12 +1,12 @@
-// The generated structure: the knockout bracket drawn as a "spider", group
-// fixtures, or a plain match list for formats that end in a league.
-import { useMemo } from 'react';
+// The generated structure: the knockout bracket drawn side by side,
+// with connector lines between rounds, for every format that ends in a bracket.
 import { useApp } from '../state/store';
 import { Match } from '../engine/types';
 import { describeFormat, hasBracket } from '../engine/generate';
-import { bracketSvg, buildBracketTree, knockoutPlaces } from '../engine/bracket-view';
+import { buildBracketTree, knockoutPlaces } from '../engine/bracket-view';
 import { Branding, normalizeBranding } from '../engine/branding';
-import { Empty, Meta, Page, Panel, StatusPill } from './kit';
+import { Empty, Page } from './kit';
+import { BracketCanvas } from './BracketCanvas';
 import { useT } from '../i18n';
 
 const FINISHED = new Set(['played', 'draw', 'walkover', 'overtime']);
@@ -17,12 +17,20 @@ function tintColor(hex: string, alpha: number): string {
   return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})`;
 }
 
+/** Polish plural for match count: 1 mecz, 2-4 mecze, 5+ meczów. */
+function matchCountLabel(count: number, t: ReturnType<typeof useT>): string {
+  const key = count === 1 ? 'double.matchOne' : count <= 4 ? 'double.matchFew' : 'double.matchMany';
+  return `${count} ${t(key)}`;
+}
+
 function useNames() {
   const t = useT();
   const { domain } = useApp();
   const names = new Map(domain.participants.map(p => [p.id, p.name]));
   return (id: string | null | undefined) => (id ? names.get(id) ?? t('common.unknown') : t('common.tbd'));
 }
+
+type Pn = (id: string | null | undefined) => string;
 
 export default function Bracket() {
   const t = useT();
@@ -31,7 +39,6 @@ export default function Bracket() {
   const fmt = domain.tournament.format;
   const branding = normalizeBranding(domain.tournament.branding);
 
-  // A league (or any format without a knockout stage) has no bracket to draw.
   if (!hasBracket(fmt)) {
     return (
       <Page title={t('bracket.notHere')}>
@@ -59,59 +66,49 @@ export default function Bracket() {
   const played = domain.matches.filter(m => FINISHED.has(m.result.status)).length;
   const sub = t('bracket.subPlayed', { format: describeFormat(fmt), played, total: domain.matches.length });
 
-  if (fmt === 'double-elimination') return <DoubleView pn={pn} sub={sub} branding={branding} />;
-  if (fmt === 'groups-knockout' && domain.groups.length > 0) return <GroupsKoView pn={pn} sub={sub} branding={branding} />;
+  if (fmt === 'single-elimination') return <SingleView pn={pn} sub={sub} branding={branding} />;
+  if (fmt === 'double-elimination') return <DoubleEliminationView pn={pn} sub={sub} branding={branding} />;
+  if (fmt === 'groups-knockout' && domain.groups.length > 0)
+    return <GroupsKoView pn={pn} sub={sub} branding={branding} />;
 
-  // Single elimination: the bracket as a drawn spider, the same drawing the
-  // document prints — one picture, no second rendering to keep in sync.
+  return null;
+}
+
+// Single elimination: one tree, all rounds side by side with connector lines.
+function SingleView({ pn, sub, branding }: { pn: Pn; sub: string; branding: Branding }) {
+  const t = useT();
+  const { domain, go } = useApp();
   const koMs = domain.matches.filter(m => !m.groupId);
-  const tree = useMemo(() => buildBracketTree(koMs, pn, {
+  const tree = buildBracketTree(koMs, pn, {
     emptyLabel: t('common.tbd'), byeLabel: t('status.bye'), roundName: n => t('round.n', { n }),
-  }), [koMs, pn, t]);
-  const spider = useMemo(() => bracketSvg({
-    tree, title: t('bracket.title'), championLabel: t('st.champion'),
-    accent1: branding.accent1, accent2: branding.accent2, background: branding.background,
-  }), [tree, t, branding]);
-  const places = useMemo(() => knockoutPlaces(koMs, pn), [koMs, pn]);
-
+  });
+  const places = knockoutPlaces(koMs, pn);
   return (
     <Page title={t('bracket.title')} sub={sub}
       actions={<button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>}>
       {places.length > 0 && (
-        <Panel title={t('st.finalTitle')}>
-          <div className="champion-row" style={{
-            display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap',
-            marginBottom: 12,
-          }}>
-            {places.map(p => (
-              <span key={p.place} className={`champion-place place-${p.place}`} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '6px 12px', borderRadius: 20,
-                background: p.place === 1 ? branding.accent1 : branding.background,
-                color: p.place === 1 ? '#ffffff' : branding.accent1,
-                border: `1px solid ${p.place === 1 ? branding.accent1 : branding.accent2}`,
-                fontWeight: p.place === 1 ? 700 : 600,
-              }}>
-                <b>{p.place}</b> {p.name}
-              </span>
-            ))}
-          </div>
-        </Panel>
-      )}
-      <Panel>
-        <div className="bracket-wrap" style={{
-          background: branding.background,
-          border: `1px solid ${branding.accent2}`,
-          borderRadius: 8,
-          padding: 16,
-          overflowX: 'auto',
-          marginBottom: 12,
-        }}>
-          <div className="bracket-svg" dangerouslySetInnerHTML={{ __html: spider }} />
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+          {places.map(p => (
+            <span key={p.place} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, background: tintColor(branding.accent1, 0.1), color: branding.accent1, fontWeight: 600, fontSize: 13 }}>
+              {p.place}. {p.name}
+            </span>
+          ))}
         </div>
-        <p className="table-note">{t('doc.spiderNote')}</p>
-      </Panel>
-      <div className="footbar">
+      )}
+      <BracketCanvas
+        nodes={tree.nodes}
+        links={tree.links}
+        rounds={tree.rounds}
+        width={tree.width}
+        height={tree.height}
+        championMatchId={tree.champion?.matchId ?? null}
+        championLabel={t('st.champion')}
+        pn={pn}
+        branding={branding}
+        title={t('bracket.title')}
+        sub={t('bracket.subPlayed', { format: describeFormat('single-elimination'), played: koMs.filter(m => FINISHED.has(m.result.status)).length, total: koMs.length })}
+      />
+      <div className="bracket-foot">
         <span className="muted">{t('bracket.updateNote')}</span>
         <span className="sp" />
         <button className="btn" onClick={() => go('standings')}>{t('nav.standings')}</button>
@@ -120,119 +117,169 @@ export default function Bracket() {
     </Page>
   );
 }
-
-
-function GroupsKoView({ pn, sub, branding }: { pn: (id: string | null) => string; sub: string; branding: Branding }) {
+// Double elimination: separate layout for winners bracket, losers bracket and
+// grand final. Each section has its own column layout, spacing and connectors,
+// so nothing overlaps or shifts chaotically.
+function DoubleEliminationView({ pn, sub, branding }: { pn: Pn; sub: string; branding: Branding }) {
   const t = useT();
   const { domain, go } = useApp();
-  const groupMs = domain.matches.filter(m => m.groupId != null);
-  const koMs = domain.matches.filter(m => m.groupId == null);
-  const rounds = [...new Set(koMs.map(m => m.round))].sort((a, b) => a - b);
-  const total = groupMs.filter(m => m.result.status !== 'bye').length;
-  const done = groupMs.filter(m => FINISHED.has(m.result.status)).length;
-  return (
-    <Page title={t('bracket.groupsKo')} sub={sub}
-      actions={<button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>}>
-      <Meta items={[
-        { label: 'Group matches', value: `${done}/${total}` },
-        { label: 'Knockout matches', value: koMs.length },
-        { label: t('common.groups'), value: domain.groups.length },
-      ]} />
-      {koMs.length === 0 ? (
-        <Empty
-          title={t('bracket.koNotSeeded')}
-          hint={t('bracket.koNotSeededHint')}
-          action={<button className="btn primary" onClick={() => go('standings')}>{t('bracket.goStandings')}</button>}
-        />
-      ) : (
-        <div className="bracket">{rounds.map(r => (
-          <div className="bround" key={r}>
-            <h3>{koMs.find(m => m.round === r)?.roundName ?? 'Round ' + r}</h3>
-            {koMs.filter(m => m.round === r).map(m => <MCard key={m.id} m={m} pn={pn} branding={branding} />)}
-          </div>
-        ))}</div>
-      )}
+  const r = domain.tournament.rules;
+  const ending = r.doubleElimEnding ?? 'single';
 
-      <Panel title={t('bracket.groupStage')} sub={t('bracket.groupStageSub')}>
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>{t('common.round')}</th><th>{t('common.group')}</th><th>{t('nav.home')}</th><th>{t('common.away')}</th><th className="num">{t('common.score')}</th><th>{t('common.status')}</th></tr></thead>
-            <tbody>{groupMs.map(m => (
-              <tr key={m.id} className={FINISHED.has(m.result.status) ? '' : 'dim'}>
-                <td className="muted nowrap">{m.roundName}</td>
-                <td className="muted nowrap">{domain.groups.find(g => g.id === m.groupId)?.name ?? ''}</td>
-                <td className="name">{pn(m.homeId)}</td>
-                <td className="name">{pn(m.awayId)}</td>
-                <td className="num">{m.result.homeScore ?? '–'} : {m.result.awayScore ?? '–'}</td>
-                <td><StatusPill status={m.result.status} /></td>
-              </tr>
-            ))}</tbody>
-          </table>
-        </div>
-      </Panel>
-      <div className="footbar">
-        <span className="muted">{t('bracket.qualifierNote')}</span>
+  const wb = domain.matches.filter(m => m.bracket?.kind === 'winners').sort((a, b) => a.round - b.round);
+  const lb = domain.matches.filter(m => m.bracket?.kind === 'losers').sort((a, b) => a.round - b.round);
+  const finals = domain.matches.filter(m => m.bracket?.kind === 'final').sort((a, b) => a.round - b.round);
+  const gf = finals.find(m => m.roundName === 'Grand Final');
+  const gfReset = finals.find(m => m.roundName === 'Grand Final Reset');
+  const thirdPlace = finals.find(m => m.roundName === 'Third Place');
+
+  const treeFrom = (ms: Match[]) => buildBracketTree(ms, pn, {
+    emptyLabel: t('common.tbd'), byeLabel: t('status.bye'), roundName: n => t('round.n', { n }),
+  });
+
+  const showReset = ending === 'double' && !!gfReset;
+  const showThird = ending === 'thirdPlace' && !!thirdPlace;
+
+  return (
+    <Page title={t('bracket.doubleTitle')} sub={sub}
+      actions={<button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>}>
+      <div className="de-ending-hint" style={{ marginBottom: 12, padding: 8, background: tintColor(branding.accent1, 0.06), borderRadius: 8, border: `1px solid ${tintColor(branding.accent1, 0.2)}`, fontSize: 13, color: branding.muted }}>
+        {ending === 'single' ? t('double.end.single') : ending === 'double' ? t('double.end.double') : t('double.end.thirdPlace')}
+      </div>
+      <div className="de-sections" style={{ display: 'flex', gap: 24, flexDirection: 'column' }}>
+        <section className="de-section" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {wb.length > 0 ? (
+            <BracketCanvas
+              nodes={treeFrom(wb).nodes}
+              links={treeFrom(wb).links}
+              rounds={treeFrom(wb).rounds}
+              width={treeFrom(wb).width}
+              height={treeFrom(wb).height}
+              championMatchId={null}
+              championLabel={t('bracket.winners')}
+              pn={pn}
+              branding={branding}
+              title={t('bracket.winners')}
+              sub={matchCountLabel(wb.length, t)}
+            />
+          ) : <Empty title={t('common.nothingHere')} hint={t('bracket.emptyHint')} />}
+        </section>
+        <section className="de-section" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ fontSize: 13, color: '#697386', margin: 0, marginBottom: 8 }}>{t('bracket.losersHint')}</p>
+          {lb.length > 0 ? (
+            <BracketCanvas
+              nodes={treeFrom(lb).nodes}
+              links={treeFrom(lb).links}
+              rounds={treeFrom(lb).rounds}
+              width={treeFrom(lb).width}
+              height={treeFrom(lb).height}
+              championMatchId={null}
+              championLabel={t('bracket.losers')}
+              pn={pn}
+              branding={branding}
+              title={t('bracket.losers')}
+              sub={matchCountLabel(lb.length, t)}
+            />
+          ) : <Empty title={t('common.nothingHere')} hint={t('bracket.emptyHint')} />}
+        </section>
+        {gf && (
+          <section className="de-section" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <BracketCanvas
+              nodes={treeFrom([gf]).nodes}
+              links={treeFrom([gf]).links}
+              rounds={treeFrom([gf]).rounds}
+              width={treeFrom([gf]).width}
+              height={treeFrom([gf]).height}
+              championMatchId={gf.id}
+              championLabel={t('st.champion')}
+              pn={pn}
+              branding={branding}
+              title={t('bracket.grandFinal')}
+              sub=""
+            />
+          </section>
+        )}
+        {showReset && gfReset && (
+          <section className="de-section" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <BracketCanvas
+              nodes={treeFrom([gfReset]).nodes}
+              links={treeFrom([gfReset]).links}
+              rounds={treeFrom([gfReset]).rounds}
+              width={treeFrom([gfReset]).width}
+              height={treeFrom([gfReset]).height}
+              championMatchId={gfReset.id}
+              championLabel={t('st.champion')}
+              pn={pn}
+              branding={branding}
+              title={t('round.grandFinalReset')}
+              sub=""
+            />
+          </section>
+        )}
+        {showThird && thirdPlace && (
+          <section className="de-section" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <BracketCanvas
+              nodes={treeFrom([thirdPlace]).nodes}
+              links={treeFrom([thirdPlace]).links}
+              rounds={treeFrom([thirdPlace]).rounds}
+              width={treeFrom([thirdPlace]).width}
+              height={treeFrom([thirdPlace]).height}
+              championMatchId={null}
+              championLabel={t('bracket.thirdPlace')}
+              pn={pn}
+              branding={branding}
+              title={t('bracket.thirdPlace')}
+              sub=""
+            />
+          </section>
+        )}
+      </div>
+      <div className="bracket-foot">
+        <span className="muted">{t('bracket.losersAuto')}</span>
         <span className="sp" />
         <button className="btn" onClick={() => go('standings')}>{t('nav.standings')}</button>
-        <button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>
       </div>
     </Page>
   );
 }
 
-function MCard({ m, pn, branding }: { m: Match; pn: (id: string | null) => string; branding: Branding }) {
-  const w = m.result.winnerId;
-  const done = FINISHED.has(m.result.status);
-  const wonHome = w === m.homeId;
-  const wonAway = w === m.awayId;
-  return (
-    <div className={'bmatch' + (done ? ' settled' : '')} style={{
-      border: `1px solid ${done ? (wonHome || wonAway ? branding.accent1 : branding.accent2) : branding.accent2}`,
-      borderRadius: 8,
-      background: done ? (wonHome || wonAway ? tintColor(branding.accent1, 0.1) : branding.background) : 'transparent',
-      padding: 10,
-      marginBottom: 8,
-    }}>
-      <div className="rh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <span style={{ fontWeight: 600, color: branding.accent1 }}>{m.roundName}</span>
-        <StatusPill status={m.result.status} />
-      </div>
-      <div className={'nm' + (wonHome ? ' w' : w ? ' l' : '')} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ color: wonHome ? branding.accent1 : '#1a1d21' }}>{pn(m.homeId)}</span>
-        <b style={{ color: wonHome ? branding.accent1 : '#1a1d21' }}>{m.result.homeScore ?? ''}</b>
-      </div>
-      <div className={'nm' + (wonAway ? ' w' : w ? ' l' : '')} style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ color: wonAway ? branding.accent1 : '#1a1d21' }}>{pn(m.awayId)}</span>
-        <b style={{ color: wonAway ? branding.accent1 : '#1a1d21' }}>{m.result.awayScore ?? ''}</b>
-      </div>
-    </div>
-  );
-}
-
-function DoubleView({ pn, sub, branding }: { pn: (id: string | null) => string; sub: string; branding: Branding }) {
+// Groups → knockout: group fixtures stay as a table; the knockout phase uses
+// the same bracket visual as single elimination.
+function GroupsKoView({ pn, sub, branding }: { pn: Pn; sub: string; branding: Branding }) {
   const t = useT();
   const { domain, go } = useApp();
-  const wb = domain.matches.filter(m => m.bracket?.kind === 'winners').sort((a, b) => a.round - b.round);
-  const lb = domain.matches.filter(m => m.bracket?.kind === 'losers').sort((a, b) => a.round - b.round);
-  const finals = domain.matches.filter(m => m.bracket?.kind === 'final');
-  const gf = finals.filter(m => m.homeId !== null).sort((a, b) => a.round - b.round);
-  const col = (title: string, ms: Match[], hint?: string) => (
-    <div className="bround">
-      <h3>{title} ({ms.length})</h3>
-      {hint ? <p className="f-hint" style={{ margin: '-4px 0 8px' }}>{hint}</p> : null}
-      {ms.map(m => <MCard key={m.id} m={m} pn={pn} branding={branding} />)}
-    </div>
-  );
+  const koMs = domain.matches.filter(m => m.groupId === null);
+  const tree = koMs.length > 0 ? buildBracketTree(koMs, pn, {
+    emptyLabel: t('common.tbd'), byeLabel: t('status.bye'), roundName: n => t('round.n', { n }),
+  }) : { nodes: [], links: [], rounds: [], width: 0, height: 0, champion: null };
   return (
-    <Page title={t('bracket.doubleTitle')} sub={sub}
+    <Page title={t('bracket.title')} sub={sub}
       actions={<button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>}>
-      <div className="bracket">
-        {col(t('bracket.winners'), wb)}
-        {col(t('bracket.losers'), lb, t('bracket.losersHint'))}
-        {col(t('bracket.grandFinal'), gf.length ? gf : finals)}
-      </div>
-      <div className="footbar">
-        <span className="muted">{t('bracket.losersAuto')}</span>
+      <section style={{ marginBottom: 18 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>{t('bracket.groupStage')}</h2>
+        <p style={{ fontSize: 13, color: '#697386', margin: 0 }}>{t('bracket.groupStageSub')}</p>
+        <Empty title={t('common.nothingHere')} hint="Group fixtures are shown on the Standings screen." />
+      </section>
+      <section>
+        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 10 }}>{t('bracket.title')}</h2>
+        {koMs.length > 0 ? (
+          <BracketCanvas
+            nodes={tree.nodes}
+            links={tree.links}
+            rounds={tree.rounds}
+            width={tree.width}
+            height={tree.height}
+            championMatchId={tree.champion?.matchId ?? null}
+            championLabel={t('st.champion')}
+            pn={pn}
+            branding={branding}
+            title={t('bracket.title')}
+            sub={t('bracket.subPlayed', { format: describeFormat('groups-knockout'), played: koMs.filter(m => FINISHED.has(m.result.status)).length, total: koMs.length })}
+          />
+        ) : <Empty title={t('bracket.emptyTitle')} hint={t('bracket.emptyHint')} />}
+      </section>
+      <div className="bracket-foot">
+        <span className="muted">{t('bracket.updateNote')}</span>
         <span className="sp" />
         <button className="btn" onClick={() => go('standings')}>{t('nav.standings')}</button>
         <button className="btn primary" onClick={() => go('matches')}>{t('bracket.enterResults')}</button>
