@@ -3,6 +3,17 @@
 All notable changes to Tournament Organizer.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow semver.
 
+## [1.8.2] — 2026-11-17
+
+### Added
+
+- **One bracket everywhere** — the same drabinki component renders identically in the app (Bracket tab), in Documents/PDF, and on the public online preview page. Single Elimination, Double Elimination and Groups → Knockout all supported online, read-only.
+- Published snapshot now includes `bracket` data (placed tree, nodes, links, rounds, geometry) so the public page can draw the bracket.
+
+### Fixed
+
+- Removed the standalone document-only bracket implementation; documents now use the same `renderBracketHtml` as the on-screen canvas.
+
 ## [1.8.0] — 2026-11-10
 
 ### Fixed

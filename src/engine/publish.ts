@@ -10,7 +10,9 @@
 //    organizer does not already print on the match sheet.
 
 import { computeStandings } from './standings';
-import { describeFormat } from './generate';
+import { describeFormat, hasBracket } from './generate';
+import { buildBracketTree } from './bracket-view';
+import type { BracketTree, PlacedNode } from './bracket-view';
 import { brandingOf, DEFAULT_BRANDING, isHexColor } from './branding';
 import type { Group, Match, Participant, Tournament, VenueResource } from './types';
 import { disciplineOf, matchLabel, participantLabel, venueLabel } from './discipline';
@@ -64,6 +66,8 @@ export interface Snapshot {
     homeScore: number | null; awayScore: number | null; status: string;
     scheduledAt: string | null; venue: string | null; durationMin: number | null;
   }[];
+  /** The drawn bracket — same geometry as the desktop app's BracketCanvas. Null when no bracket. */
+  bracket: { nodes: PlacedNode[]; links: { from: string; to: string; slot: 0 | 1 }[]; rounds: { round: number; name: string }[]; width: number; height: number; champion: { matchId: string; name: string } | null } | null;
 }
 
 /** A match is finished when the engine says so, not when a score happens to exist. */
@@ -228,6 +232,25 @@ export function buildSnapshot(input: BuildInput): Snapshot {
       venue: venueOf(m),
       durationMin: m.durationMin ?? null,
     })),
+    /** The drawn bracket — same tree the app draws on screen and in documents. */
+    bracket: hasBracket(tournament.format) && matches.length > 0
+      ? (() => {
+          const koMs = matches.filter(m => !m.groupId);
+          const tree = buildBracketTree(koMs, id => id ? names.get(id) ?? '—' : '—', {
+            emptyLabel: '—',
+            byeLabel: '—',
+            roundName: n => String(n),
+          });
+          return {
+            nodes: tree.nodes,
+            links: tree.links,
+            rounds: tree.rounds,
+            width: tree.width,
+            height: tree.height,
+            champion: tree.champion ? { matchId: tree.champion.matchId, name: tree.champion.name } : null,
+          };
+        })()
+      : null,
   };
 }
 
